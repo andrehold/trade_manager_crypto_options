@@ -8,7 +8,7 @@ export type DeribitTicker = {
   };
   
   export async function dbGetTicker(instrument: string): Promise<DeribitTicker | null> {
-    const url = `/deribit/public/ticker?instrument_name=${encodeURIComponent(instrument)}`;
+    const url = `/api/deribit/public/ticker?instrument_name=${encodeURIComponent(instrument)}`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const json = await res.json();

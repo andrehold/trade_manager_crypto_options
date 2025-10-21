@@ -10,7 +10,7 @@ export type CoincallDetail = {
 };
 
 export async function ccGetDetail(symbol: string): Promise<CoincallDetail | null> {
-  const res = await fetch(`/coincall/open/option/detail/v1/${encodeURIComponent(symbol)}`);
+  const res = await fetch(`/api/coincall/open/option/detail/v1/${encodeURIComponent(symbol)}`);
   if (!res.ok) return null;
   const json = await res.json();
   const d = json?.data;
@@ -28,7 +28,7 @@ export async function ccGetDetail(symbol: string): Promise<CoincallDetail | null
 }
 
 export async function ccGetOrderbook(symbol: string): Promise<number | null> {
-  const res = await fetch(`/coincall/open/option/order/orderbook/v1/${encodeURIComponent(symbol)}`);
+  const res = await fetch(`/api/coincall/open/option/order/orderbook/v1/${encodeURIComponent(symbol)}`);
   if (!res.ok) return null;
   const json = await res.json();
   const bid = +(json?.data?.bids?.[0]?.price ?? 0);
@@ -38,7 +38,7 @@ export async function ccGetOrderbook(symbol: string): Promise<number | null> {
 }
 
 export async function ccGetLast(symbol: string): Promise<number | null> {
-  const res = await fetch(`/coincall/open/option/trade/lasttrade/v1/${encodeURIComponent(symbol)}`);
+  const res = await fetch(`/api/coincall/open/option/trade/lasttrade/v1/${encodeURIComponent(symbol)}`);
   if (!res.ok) return null;
   const json = await res.json();
   const p = json?.data?.[0]?.price;
