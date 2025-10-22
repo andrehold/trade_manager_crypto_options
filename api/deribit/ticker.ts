@@ -1,8 +1,11 @@
 export const config = { runtime: 'edge' };
+
 export default async function handler(req: Request) {
   const url = new URL(req.url);
   const target = 'https://www.deribit.com/api/v2/public/ticker' + url.search;
+
   const upstream = await fetch(target, { headers: { accept: 'application/json' } });
+
   return new Response(upstream.body, {
     status: upstream.status,
     headers: {
