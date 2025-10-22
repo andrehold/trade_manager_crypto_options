@@ -8,7 +8,9 @@ export type DeribitTicker = {
   };
   
   export async function dbGetTicker(instrument: string): Promise<DeribitTicker | null> {
-    const url = `/api/deribit/public/ticker?instrument_name=${encodeURIComponent(instrument)}`;
+    // Use Vite dev proxy locally, Vercel serverless route in prod
+    const BASE = import.meta.env.PROD ? '/api/deribit' : '/deribit';
+    const url = `${BASE}/public/ticker?instrument_name=${encodeURIComponent(instrument)}`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const json = await res.json();
@@ -16,9 +18,7 @@ export type DeribitTicker = {
   }
   
   /** Best available: mark_price -> mid(bid/ask) -> last_price. Multiplier ~ 1. */
-  export async function dbGetBest(
-    instrument: string
-  ): Promise<{ price: number | null; multiplier: number | null; greeks?: DeribitTicker['greeks'] }> {
+  export async function dbGetBest(instrument: string): Promise<{ price: number | null; multiplier: number | null; greeks?: DeribitTicker['greeks'] }> {
     const t = await dbGetTicker(instrument);
     if (!t) return { price: null, multiplier: 1, greeks: undefined };
     let price = t.mark_price ?? null;

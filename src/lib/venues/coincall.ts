@@ -10,7 +10,9 @@ export type CoincallDetail = {
 };
 
 export async function ccGetDetail(symbol: string): Promise<CoincallDetail | null> {
-  const res = await fetch(`/api/coincall/open/option/detail/v1/${encodeURIComponent(symbol)}`);
+  const BASE = import.meta.env.PROD ? '/api/coincall' : '/coincall';
+  const url = `${BASE}/open/option/detail/v1/${encodeURIComponent(symbol)}`;
+  const res = await fetch(url);
   if (!res.ok) return null;
   const json = await res.json();
   const d = json?.data;
