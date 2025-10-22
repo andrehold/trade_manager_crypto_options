@@ -11,8 +11,8 @@ export type CoincallDetail = {
 
 export async function ccGetDetail(symbol: string): Promise<CoincallDetail | null> {
   const BASE = import.meta.env.PROD ? '/api/coincall' : '/coincall';
-  const url = `${BASE}/open/option/detail/v1/${encodeURIComponent(symbol)}`;
-  const res = await fetch(url);
+  const detailUrl = `${BASE}/open/option/detail/v1/${encodeURIComponent(symbol)}`;
+  const res = await fetch(detailUrl);
   if (!res.ok) return null;
   const json = await res.json();
   const d = json?.data;
@@ -30,7 +30,9 @@ export async function ccGetDetail(symbol: string): Promise<CoincallDetail | null
 }
 
 export async function ccGetOrderbook(symbol: string): Promise<number | null> {
-  const res = await fetch(`/api/coincall/open/option/order/orderbook/v1/${encodeURIComponent(symbol)}`);
+  const BASE = import.meta.env.PROD ? '/api/coincall' : '/coincall';
+  const orderbkUrl = `${BASE}/open/option/order/orderbook/v1/${encodeURIComponent(symbol)}`;
+  const res = await fetch(orderbkUrl);
   if (!res.ok) return null;
   const json = await res.json();
   const bid = +(json?.data?.bids?.[0]?.price ?? 0);
@@ -40,7 +42,9 @@ export async function ccGetOrderbook(symbol: string): Promise<number | null> {
 }
 
 export async function ccGetLast(symbol: string): Promise<number | null> {
-  const res = await fetch(`/api/coincall/open/option/trade/lasttrade/v1/${encodeURIComponent(symbol)}`);
+  const BASE = import.meta.env.PROD ? '/api/coincall' : '/coincall';
+  const lastUrl = `${BASE}/open/option/trade/lasttrade/v1/${encodeURIComponent(symbol)}`;
+  const res = await fetch(lastUrl);
   if (!res.ok) return null;
   const json = await res.json();
   const p = json?.data?.[0]?.price;
