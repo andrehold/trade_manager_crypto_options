@@ -5,4 +5,4 @@
 .env.*.local
 .env.development
 .env.production
-!.env.example
+!.env.examplenode_modules/
