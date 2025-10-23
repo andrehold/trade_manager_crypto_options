@@ -20,7 +20,7 @@ export interface TxnRow {
   expiry?: string;
   strike?: number;
   optionType?: 'C' | 'P' | string;
-  kitId?: string;
+  structureId?: string;
   exchange?: Exchange;
 }
 
@@ -53,7 +53,7 @@ export interface Position {
   status: 'OPEN' | 'ATTENTION' | 'ALERT';
   greeks: { delta?: number | null; gamma?: number | null; theta?: number | null; vega?: number | null; rho?: number | null; };
   playbook?: string;
-  kitId?: string;
+  structureId?: string;
   exchange?: Exchange;
 }
 

@@ -25,7 +25,7 @@ export default function App() {
   const [alertsOnly, setAlertsOnly] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [visibleCols, setVisibleCols] = useLocalStorage<string[]>("visible_cols_v1", [
-    "status","symbol","kit","dte","type","legs","strategy","pnl","pnlpct","delta","gamma","theta","vega","rho","playbook"
+    "status","symbol","structure","dte","type","legs","strategy","pnl","pnlpct","delta","gamma","theta","vega","rho","playbook"
   ]);
   const [selectedExchange, setSelectedExchange] = React.useState<Exchange>('deribit');
   // price per unique leg "exchange:symbol"
@@ -118,7 +118,7 @@ export default function App() {
   function finalizeImport(selectedRows: TxnRow[]) {
     const rows: TxnRow[] = selectedRows.map((r) => ({
       ...r,
-      kitId: String(r.kitId ?? normalizeSecond(r.timestamp))
+      structureId: String(r.structureId ?? normalizeSecond(r.timestamp))
     }));
     for (const row of rows) {
       const parsed = parseInstrumentByExchange(selectedExchange, row.instrument);
@@ -139,15 +139,15 @@ export default function App() {
     for (const r of rows) {
       if (!r.underlying || !r.expiry || r.strike == null || !r.optionType) continue;
       const ex = (r.exchange ?? 'deribit') as Exchange;
-      const kitKey = String(r.kitId ?? 'auto');
-      const key = `${ex}__${r.underlying}__${r.expiry}__${kitKey}`;
+      const structureKey = String(r.structureId ?? 'auto');
+      const key = `${ex}__${r.underlying}__${r.expiry}__${structureKey}`;
       if (!byPos.has(key)) byPos.set(key, []);
       byPos.get(key)!.push(r);
     }
 
     const out: Position[] = [];
     for (const [key, txns] of byPos.entries()) {
-      const [exchange, underlying, expiryISO, kitId] = key.split("__");
+      const [exchange, underlying, expiryISO, structureId] = key.split("__");
 
       const byLeg = new Map<string, TxnRow[]>();
       for (const t of txns) {
@@ -211,7 +211,7 @@ export default function App() {
         status,
         greeks: { delta: null, gamma: null, theta: null, vega: null, rho: null },
         playbook: undefined,
-        kitId,
+        structureId,
         exchange: exchange as Exchange,
       });
     }
@@ -240,7 +240,7 @@ export default function App() {
     const all = [
       { key: "status", label: "Status" },
       { key: "symbol", label: "Symbol" },
-      { key: "kit", label: "Kit" },
+      { key: "structure", label: "Structure" },
       { key: "dte", label: "DTE" },
       { key: "type", label: "Type" },
       { key: "legs", label: "Legs" },
@@ -432,7 +432,7 @@ export default function App() {
                     <th className="p-3 text-left w-10"> </th>
                     {visibleCols.includes("status") && <th className="p-3 text-left">Status</th>}
                     {visibleCols.includes("symbol") && <th className="p-3 text-left">Symbol</th>}
-                    {visibleCols.includes("kit") && <th className="p-3 text-left">Kit</th>}
+                    {visibleCols.includes("structure") && <th className="p-3 text-left">Structure</th>}
                     {visibleCols.includes("dte") && <th className="p-3 text-left">DTE</th>}
                     {visibleCols.includes("type") && <th className="p-3 text-left">Type</th>}
                     {visibleCols.includes("legs") && <th className="p-3 text-left">Legs</th>}

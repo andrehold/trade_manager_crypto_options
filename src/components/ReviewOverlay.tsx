@@ -6,7 +6,7 @@ export function ReviewOverlay({ rows, excludedRows, onConfirm, onCancel }: { row
   const [selected, setSelected] = React.useState<boolean[]>(() => rows.map(() => true));
 
   //per-row Kit #, defaulted by same-second grouping
-  const [kitNumbers, setKitNumbers] = React.useState<number[]>(() => {
+  const [structureNumbers, setStructureNumbers] = React.useState<number[]>(() => {
     const map = new Map<string, number>();
     let c = 1;
     return rows.map((r) => {
@@ -20,14 +20,14 @@ export function ReviewOverlay({ rows, excludedRows, onConfirm, onCancel }: { row
   React.useEffect(() => {
     const map = new Map<string, number>();
     let c = 1;
-    setKitNumbers(rows.map((r) => {
+    setStructureNumbers(rows.map((r) => {
       const k = normalizeSecond(r.timestamp);
       if (!map.has(k)) map.set(k, c++);
       return map.get(k)!;
     }));
   }, [rows]);
 
-  const kits = React.useMemo(() => {
+  const structures = React.useMemo(() => {
     const m = new Map<string, number>();
     for (const r of rows) {
       const k = normalizeSecond(r.timestamp);
@@ -69,22 +69,22 @@ export function ReviewOverlay({ rows, excludedRows, onConfirm, onCancel }: { row
         </div>
         {activeTab==='included' && (
           <>
-            <p className="text-sm text-slate-600 mb-3">Uncheck any rows you don’t want to import. Lines with the same second form one “trade kit”.</p>
+            <p className="text-sm text-slate-600 mb-3">Uncheck any rows you don’t want to import. Lines with the same second form one “trade structure”.</p>
             <div className="flex gap-2 mb-3 items-center">
               <button className="px-3 py-1 border rounded-lg" onClick={() => setSelected(Array(rows.length).fill(true))}>Select all</button>
               <button className="px-3 py-1 border rounded-lg" onClick={() => setSelected(Array(rows.length).fill(false))}>Select none</button>
               <div className="mx-2 w-px h-5 bg-slate-200" />
               <button
                 className="px-3 py-1 border rounded-lg"
-                onClick={() => setKitNumbers(prev => prev.map(() => 1))}
-                title="Set every row to kit #1"
+                onClick={() => setStructureNumbers(prev => prev.map(() => 1))}
+                title="Set every row to structure #1"
               >All → 1</button>
               <button
                 className="px-3 py-1 border rounded-lg"
                 onClick={() => {
                   const map = new Map<string, number>();
                   let c = 1;
-                  setKitNumbers(rows.map((r) => {
+                  setStructureNumbers(rows.map((r) => {
                     const k = normalizeSecond(r.timestamp);
                     if (!map.has(k)) map.set(k, c++);
                     return map.get(k)!;
@@ -98,19 +98,19 @@ export function ReviewOverlay({ rows, excludedRows, onConfirm, onCancel }: { row
                 <TableHead />
                 <tbody>
                   {rows.map((r, i) => {
-                    const kit = normalizeSecond(r.timestamp);
+                    const structure = normalizeSecond(r.timestamp);
                     return (
                       <tr key={i} className="border-t">
                         <td className="p-2"><input type="checkbox" checked={selected[i]} onChange={(e) => setSelected((prev) => { const cp = [...prev]; cp[i] = e.target.checked; return cp; })} /></td>
                         <td className="p-2">{r.timestamp || '—'}</td>
-                        <td className="p-2">{kit}</td>
+                        <td className="p-2">{structure}</td>
                         <td className="p-2">
                           <input
                             type="number"
                             min={1}
                             className="border rounded-lg px-2 py-1 text-sm w-20"
-                            value={kitNumbers[i] ?? 1}
-                            onChange={(e) => setKitNumbers((prev) => {
+                            value={structureNumbers[i] ?? 1}
+                            onChange={(e) => setStructureNumbers((prev) => {
                               const cp = [...prev];
                               const v = Number(e.target.value);
                               cp[i] = Number.isFinite(v) && v > 0 ? Math.floor(v) : 1;
@@ -136,7 +136,7 @@ export function ReviewOverlay({ rows, excludedRows, onConfirm, onCancel }: { row
               <button onClick={onCancel} className="px-4 py-2 rounded-xl border">Back</button>
               <button onClick={() => {
                 const idx = rows.map((_, i) => i).filter((i) => selected[i]);
-                const payload = idx.map((i) => ({ ...rows[i], kitId: String(kitNumbers[i] ?? 1)}));
+                const payload = idx.map((i) => ({ ...rows[i], structureId: String(structureNumbers[i] ?? 1)}));
                 onConfirm(payload);
               }}
               className="px-4 py-2 rounded-xl bg-slate-900 text-white">Import selected ({selected.filter(Boolean).length})</button>
@@ -151,12 +151,12 @@ export function ReviewOverlay({ rows, excludedRows, onConfirm, onCancel }: { row
                 <TableHead />
                 <tbody>
                   {excludedRows.map((r, i) => {
-                    const kit = normalizeSecond(r.timestamp);
+                    const structure = normalizeSecond(r.timestamp);
                     return (
                       <tr key={i} className="border-t opacity-70">
                         <td className="p-2"><input type="checkbox" disabled checked={false} readOnly /></td>
                         <td className="p-2">{r.timestamp || '—'}</td>
-                        <td className="p-2">{kit}</td>
+                        <td className="p-2">{structure}</td>
                         <td className="p-2">{r.instrument}</td>
                         <td className="p-2">{(r.action ? r.action + ' ' : '') + r.side}</td>
                         <td className="p-2">{r.amount}</td>

@@ -1,6 +1,6 @@
 # Trade Manager — Crypto Options
 
-A lightweight web app to import options transactions (CSV), group legs into trade kits, fetch **live marks & greeks** from **Coincall** and **Deribit**, and compute PnL at leg and kit level.
+A lightweight web app to import options transactions (CSV), group legs into trade structures, fetch **live marks & greeks** from **Coincall** and **Deribit**, and compute PnL at leg and structure level.
 
 <p align="center">
   <a href="./api/deribit/ticker.ts"><code>api/deribit/ticker.ts</code></a> ·
@@ -19,7 +19,7 @@ A lightweight web app to import options transactions (CSV), group legs into trad
 ## ✨ Features
 - CSV import with column mapping (Deribit, Coincall, CME starter presets)
 - Line filtering (auto-exclude timestamps ending **08:00:00**; manual include/exclude)
-- Kit assignment in the review overlay (e.g., legs 1–4 → kit #1, 5–6 → kit #2)
+- Kit assignment in the review overlay (e.g., legs 1–4 → structure #1, 5–6 → structure #2)
 - **Single** “Get Live Marks” button fetching Coincall **and** Deribit
 - Leg/Kit **Mark**, **uPnL**, and **Greeks** (Gamma with 6 decimals)
 - Progress bar + counts during fetch (done/total/errors)

@@ -28,7 +28,7 @@ export function PositionRow({ p, onUpdate, visibleCols, marks, markLoading}: { p
   // Total PnL = realized + unrealized
   const posTotalPnl = p.realizedPnl + posUnrealized;
 
-  const kitGreeks = React.useMemo(
+  const structureGreeks = React.useMemo(
     () => (marks ? positionGreeks(p, marks, toCoincallSymbol) : { delta: 0, gamma: 0, theta: 0, vega: 0, rho: 0 }),
     [marks, p]
   );
@@ -46,7 +46,7 @@ export function PositionRow({ p, onUpdate, visibleCols, marks, markLoading}: { p
           </div></td>
         )}
         {visibleCols.includes("symbol") && <td className="p-3 align-top font-medium text-slate-800">{p.underlying}</td>}
-        {visibleCols.includes("kit") && <td className="p-3 align-top">{p.kitId}</td>}
+        {visibleCols.includes("structure") && <td className="p-3 align-top">{p.structureId}</td>}
         {visibleCols.includes("dte") && <td className="p-3 align-top">{p.dte}</td>}
         {visibleCols.includes("type") && <td className="p-3 align-top">{p.type}</td>}
         {visibleCols.includes("legs") && <td className="p-3 align-top">{p.legsCount}</td>}
@@ -71,11 +71,11 @@ export function PositionRow({ p, onUpdate, visibleCols, marks, markLoading}: { p
           </td>
         )}
         {visibleCols.includes("pnlpct") && <td className={`p-3 align-top ${p.pnlPct && p.pnlPct < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{p.pnlPct == null ? '—' : `${p.pnlPct.toFixed(2)}%`}</td>}
-        {visibleCols.includes("delta") && <td className="p-3 align-top">{fmtNumber(kitGreeks.delta)}</td>}
-        {visibleCols.includes("gamma") && <td className="p-3 align-top">{fmtGreek(kitGreeks.gamma, 6)}</td>}
-        {visibleCols.includes("theta") && <td className="p-3 align-top">{fmtNumber(kitGreeks.theta)}</td>}
-        {visibleCols.includes("vega") && <td className="p-3 align-top">{fmtNumber(kitGreeks.vega)}</td>}
-        {visibleCols.includes("rho") && <td className="p-3 align-top">{fmtNumber(kitGreeks.rho)}</td>}
+        {visibleCols.includes("delta") && <td className="p-3 align-top">{fmtNumber(structureGreeks.delta)}</td>}
+        {visibleCols.includes("gamma") && <td className="p-3 align-top">{fmtGreek(structureGreeks.gamma, 6)}</td>}
+        {visibleCols.includes("theta") && <td className="p-3 align-top">{fmtNumber(structureGreeks.theta)}</td>}
+        {visibleCols.includes("vega") && <td className="p-3 align-top">{fmtNumber(structureGreeks.vega)}</td>}
+        {visibleCols.includes("rho") && <td className="p-3 align-top">{fmtNumber(structureGreeks.rho)}</td>}
         {visibleCols.includes("playbook") && (
           <td className="p-3 align-top">
             <input
@@ -178,7 +178,7 @@ export function PositionRow({ p, onUpdate, visibleCols, marks, markLoading}: { p
                             </td>
                           </tr>
 
-                          {/* NEW: individual trade pills with a Kit chip */}
+                          {/* NEW: individual trade pills with a Structure chip */}
                           <tr className="border-t-0">
                           {/* legs table has 6 columns -> span across all */}
                           <td colSpan={7} className="p-2 text-left">
@@ -189,9 +189,9 @@ export function PositionRow({ p, onUpdate, visibleCols, marks, markLoading}: { p
                                     className="inline-flex items-center gap-2 rounded-full border px-2 py-1 bg-slate-50"
                                     title={t.timestamp || ''}
                                   >
-                                    {/* Kit chip */}
+                                    {/* Structure chip */}
                                     <span className="text-[10px] rounded-full px-2 py-[2px] border bg-white text-slate-700">
-                                      Kit #{t.kitId ?? '—'}
+                                      Structure #{t.structureId ?? '—'}
                                       {String(t.exchange ?? p.exchange ?? '').toUpperCase() || '—'}
                                     </span>
 
