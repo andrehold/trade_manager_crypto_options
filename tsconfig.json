@@ -18,7 +18,9 @@
     "strict": true,
     "types": [
       "vite/client"
-    ]
+    ],
+    "baseUrl": "src",
+    "paths": { "@/*": ["*"] }
   },
   "include": [
     "src"
