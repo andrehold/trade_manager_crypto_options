@@ -9,7 +9,7 @@ import {
   useLocalStorage, devQuickTests,
   parseActionSide, toNumber, parseInstrumentByExchange, normalizeSecond,
   daysTo, fifoMatchAndRealize, classifyStatus,
-  Exchange, toCoincallSymbol, positionGreeks, positionUnrealizedPnL, toDeribitInstrument
+  Exchange, getLegMarkRef
 } from './utils'
 import { PositionRow } from './components/PositionRow'
 import { ccGetBest } from './lib/venues/coincall'
@@ -232,9 +232,9 @@ export default function App() {
     });
   }, [positions, alertsOnly, query]);
 
-  function updatePosition(id: string, updates: Partial<Position>) {
+  const updatePosition = React.useCallback((id: string, updates: Partial<Position>) => {
     setPositions((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
-  }
+  }, [setPositions]);
 
   function ColumnPicker() {
     const all = [
@@ -276,63 +276,75 @@ export default function App() {
     );
   }
 
-  async function fetchAllMarksForPositions(ps: Position[]) {
+  const fetchAllMarksForPositions = React.useCallback(async (ps: Position[]) => {
     setMarkFetch({ inProgress: true, total: 0, done: 0, errors: 0 });
-  
-    const entries: Array<[string, Promise<{ price: number | null; multiplier: number | null; greeks?: any }>]> = [];
-    const seen = new Set<string>(); // avoid duplicate lookups within one run
-  
-    for (const p of ps) {
-      for (const l of p.legs) {
-        if (p.exchange === 'coincall') {
-          const sym = toCoincallSymbol(p.underlying, p.expiryISO, l.strike, l.optionType);
-          const key = `coincall:${sym}`;
-          if (legMarks[key]?.price != null || seen.has(key)) continue;
-          seen.add(key);
-          entries.push([key, ccGetBest(sym)]);
-        } else if (p.exchange === 'deribit') {
-          const instr = toDeribitInstrument(p.underlying, p.expiryISO, l.strike, l.optionType);
-          const key = `deribit:${instr}`;
-          if (legMarks[key]?.price != null || seen.has(key)) continue;
-          seen.add(key);
-          entries.push([key, dbGetBest(instr)]);
+
+    type FetchEntry = {
+      key: string;
+      fetcher: () => Promise<{ price: number | null; multiplier: number | null; greeks?: any }>;
+    };
+
+    const entries: FetchEntry[] = [];
+    const seen = new Set<string>();
+
+    for (const position of ps) {
+      for (const leg of position.legs) {
+        const ref = getLegMarkRef(position, leg);
+        if (!ref) continue;
+
+        if (legMarks[ref.key]?.price != null || seen.has(ref.key)) continue;
+        seen.add(ref.key);
+
+        if (ref.exchange === 'coincall') {
+          entries.push({ key: ref.key, fetcher: () => ccGetBest(ref.symbol) });
+        } else if (ref.exchange === 'deribit') {
+          entries.push({ key: ref.key, fetcher: () => dbGetBest(ref.symbol) });
         }
-        // add more exchanges here later
       }
     }
-  
+
     setMarkFetch(prev => ({ ...prev, total: entries.length }));
     if (entries.length === 0) {
       setMarkFetch(prev => ({ ...prev, inProgress: false }));
       return;
     }
-  
+
     const MAX = 5; // throttle concurrency
     const results: Record<string, { price: number | null; multiplier: number | null; greeks?: any }> = {};
-  
+
     for (let i = 0; i < entries.length; i += MAX) {
       const slice = entries.slice(i, i + MAX);
       const vals = await Promise.all(
-        slice.map(async ([k, p]) => {
-          try { const v = await p; return { ok: true, k, v }; }
-          catch (e) { console.error('[marks] fetch failed for', k, e); return { ok: false, k, v: { price: null, multiplier: null } }; }
+        slice.map(async ({ key, fetcher }) => {
+          try {
+            const value = await fetcher();
+            return { key, value, ok: true as const };
+          } catch (e) {
+            console.error('[marks] fetch failed for', key, e);
+            return { key, value: { price: null, multiplier: null }, ok: false as const };
+          }
         })
       );
+
       let errs = 0;
-      slice.forEach(([k], idx) => { results[k] = vals[idx].v; if (!vals[idx].ok) errs++; });
+      for (const { key, value, ok } of vals) {
+        results[key] = value;
+        if (!ok) errs++;
+      }
+
       setMarkFetch(prev => ({
         ...prev,
         done: Math.min(prev.done + slice.length, prev.total),
         errors: prev.errors + errs,
       }));
     }
-  
+
     if (Object.keys(results).length) {
       setLegMarks(prev => ({ ...prev, ...results }));
     }
-  
+
     setMarkFetch(prev => ({ ...prev, inProgress: false }));
-  }
+  }, [legMarks]);
 
   function Spinner({ className = "h-4 w-4" }: { className?: string }) {
     return (
@@ -450,7 +462,14 @@ export default function App() {
                 </thead>
                 <tbody>
                   {positions.map((p) => (
-                    <PositionRow key={p.id} p={p} onUpdate={updatePosition} visibleCols={visibleCols} marks={legMarks} markLoading={markFetch.inProgress}/>
+                    <PositionRow
+                      key={p.id}
+                      p={p}
+                      onUpdate={updatePosition}
+                      visibleCols={visibleCols}
+                      marks={legMarks}
+                      markLoading={markFetch.inProgress}
+                    />
                   ))}
                 </tbody>
               </table>

@@ -271,6 +271,31 @@ export function toDeribitInstrument(
   return `${u}-${date}-${strikeStr}-${k}`;
 }
 
+export interface LegMarkRef {
+  key: string;
+  symbol: string;
+  exchange: Exchange;
+  defaultMultiplier: number;
+}
+
+/** Build a stable cache key + symbol for fetching marks for a leg. */
+export function getLegMarkRef(position: Position, leg: Leg): LegMarkRef | null {
+  const exchange = (leg.exchange ?? position.exchange) as Exchange | undefined;
+  if (!exchange) return null;
+
+  if (exchange === 'coincall') {
+    const symbol = toCoincallSymbol(position.underlying, position.expiryISO, leg.strike, leg.optionType);
+    return { key: `coincall:${symbol}`, symbol, exchange, defaultMultiplier: 1 };
+  }
+
+  if (exchange === 'deribit') {
+    const symbol = toDeribitInstrument(position.underlying, position.expiryISO, leg.strike, leg.optionType);
+    return { key: `deribit:${symbol}`, symbol, exchange, defaultMultiplier: 1 };
+  }
+
+  return null;
+}
+
 /** Unrealized PnL for a single leg given mark price.
  * Uses your sign convention via openLots: lot.sign = +1 long, -1 short.
  * qty is always positive in lots; sign carries direction.
@@ -291,26 +316,18 @@ export function legUnrealizedPnL(
 /** Sum unrealized across all legs of a position, using a marks map. */
 export function positionUnrealizedPnL(
   p: Position,
-  marks: Record<string, { price: number | null; multiplier: number | null }>,
-  toSymbol: (underlying: string, expiryISO: string, strike: number, optionType: string) => string
+  marks: Record<string, { price: number | null; multiplier: number | null }>
 ): number {
   let sum = 0;
   for (const l of p.legs) {
-    if (p.exchange === 'coincall') {
-      const sym = toSymbol(p.underlying, p.expiryISO, l.strike, l.optionType);
-      const key = `coincall:${sym}`;
-      const info = marks[key];
-      if (info?.price != null) {
-        sum += legUnrealizedPnL(l, info.price, info.multiplier);
-      } 
-    } else if (p.exchange === 'deribit') {
-      const sym = toDeribitInstrument(p.underlying, p.expiryISO, l.strike, l.optionType);
-      const key = `deribit:${sym}`;
-      const info = marks[key];
-      // Deribit options are effectively multiplier == 1
-      if (info?.price != null) sum += legUnrealizedPnL(l, info.price, 1);
-    }
-    // TODO: other exchanges later
+    const ref = getLegMarkRef(p, l);
+    if (!ref) continue;
+
+    const info = marks[ref.key];
+    if (info?.price == null) continue;
+
+    const multiplier = ref.exchange === 'coincall' ? info.multiplier : ref.defaultMultiplier;
+    sum += legUnrealizedPnL(l, info.price, multiplier);
   }
   return sum;
 }
@@ -335,32 +352,22 @@ export function legGreekExposure(
 /** Sum greek across all legs in a position using the marks cache (by exchange). */
 export function positionGreeks(
   p: Position,
-  marks: Record<string, { price: number | null; multiplier: number | null; greeks?: any }>,
-  toSymbol: (u: string, e: string, k: number, t: string) => string
+  marks: Record<string, { price: number | null; multiplier: number | null; greeks?: any }>
 ): { delta: number; gamma: number; theta: number; vega: number; rho: number } {
   let delta = 0, gamma = 0, theta = 0, vega = 0, rho = 0;
   for (const l of p.legs) {
-    if (p.exchange === 'coincall') {
-      const sym = toSymbol(p.underlying, p.expiryISO, l.strike, l.optionType);
-      const k = `coincall:${sym}`;
-      const info = marks[k];
-      const g = info?.greeks || {};
-      const m = info?.multiplier ?? 1;
-      delta += legGreekExposure(l, g.delta, m);
-      gamma += legGreekExposure(l, g.gamma, m);
-      theta += legGreekExposure(l, g.theta, m);
-      vega  += legGreekExposure(l, g.vega,  m);
-      rho   += legGreekExposure(l, g.rho,   m);
-    } else if (p.exchange === 'deribit') {
-      const sym = toDeribitInstrument(p.underlying, p.expiryISO, l.strike, l.optionType);
-      const k = `deribit:${sym}`, info = marks[k]; const g = info?.greeks || {};
-      // Deribit: treat multiplier as 1 for option Greeks exposure
-      delta += legGreekExposure(l, g.delta, 1);
-      gamma += legGreekExposure(l, g.gamma, 1);
-      theta += legGreekExposure(l, g.theta, 1);
-      vega  += legGreekExposure(l, g.vega,  1);
-      rho   += legGreekExposure(l, g.rho,   1);
-    }
+    const ref = getLegMarkRef(p, l);
+    if (!ref) continue;
+
+    const info = marks[ref.key];
+    const g = info?.greeks || {};
+    const multiplier = ref.exchange === 'coincall' ? info?.multiplier : ref.defaultMultiplier;
+
+    delta += legGreekExposure(l, g.delta, multiplier);
+    gamma += legGreekExposure(l, g.gamma, multiplier);
+    theta += legGreekExposure(l, g.theta, multiplier);
+    vega  += legGreekExposure(l, g.vega,  multiplier);
+    rho   += legGreekExposure(l, g.rho,   multiplier);
   }
   return { delta, gamma, theta, vega, rho };
 }
