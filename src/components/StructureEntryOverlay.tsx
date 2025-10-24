@@ -295,7 +295,7 @@ function Field({
 }) {
   const { label, type = 'text', options, placeholder, helperText, required } = meta;
   const displayValue = value ?? '';
-  const baseClass = `mt-1 block w-full rounded-lg border bg-slate-900/40 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 ${missing ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-700 focus:ring-slate-500'}`;
+  const baseClass = `mt-1 block w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 ${missing ? 'border-rose-500 focus:ring-rose-400' : 'border-slate-200 focus:ring-slate-400'}`;
 
   const handleChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
@@ -318,11 +318,11 @@ function Field({
   };
 
   const labelText = (
-    <span className="text-xs font-medium uppercase tracking-wide text-slate-300">
+    <span className="text-xs font-medium uppercase tracking-wide text-slate-600">
       {label}
-      {required ? <span className="ml-1 text-rose-400">*</span> : null}
+      {required ? <span className="ml-1 text-rose-500">*</span> : null}
       {missing ? (
-        <span className="ml-2 rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] font-semibold text-rose-200">
+        <span className="ml-2 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-600">
           Required
         </span>
       ) : null}
@@ -390,25 +390,27 @@ function CheckboxField({
   return (
     <label
       className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-        missing ? 'border-rose-500 text-rose-200' : 'border-slate-700 text-slate-200'
+        missing
+          ? 'border-rose-500 bg-rose-50 text-rose-600'
+          : 'border-slate-200 bg-white text-slate-700'
       }`}
     >
       <input
         type="checkbox"
         checked={Boolean(value)}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-slate-200 focus:ring-slate-500"
+        className="h-4 w-4 rounded border-slate-300 bg-white text-slate-600 focus:ring-slate-500"
       />
       <span className="font-medium">{meta.label}</span>
       {meta.required ? (
-        <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-rose-300">Required</span>
+        <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-rose-600">Required</span>
       ) : null}
       {missing ? (
-        <span className="ml-2 rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] font-semibold text-rose-200">
+        <span className="ml-2 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-600">
           Missing
         </span>
       ) : null}
-      {meta.helperText ? <span className="ml-auto text-xs text-slate-400">{meta.helperText}</span> : null}
+      {meta.helperText ? <span className="ml-auto text-xs text-slate-500">{meta.helperText}</span> : null}
     </label>
   );
 }
@@ -421,10 +423,10 @@ type SectionProps = {
 
 function Section({ title, description, children }: SectionProps) {
   return (
-    <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-inner">
+    <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <header className="space-y-1">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-200">{title}</h3>
-        {description ? <p className="text-xs text-slate-400">{description}</p> : null}
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-700">{title}</h3>
+        {description ? <p className="text-xs text-slate-500">{description}</p> : null}
       </header>
       <div className="space-y-4">{children}</div>
     </section>
@@ -621,35 +623,35 @@ export function StructureEntryOverlay({
 
   return (
     <Overlay open={open} onClose={onClose} title={`Structure entry for ${position.underlying}`}>
-      <div className="flex max-h-[90vh] w-[min(960px,100vw-3rem)] flex-col overflow-hidden rounded-2xl">
-        <header className="flex items-center gap-3 border-b border-slate-800 bg-slate-900/80 px-6 py-4">
+      <div className="flex max-h-[90vh] w-[min(960px,100vw-3rem)] flex-col overflow-hidden rounded-2xl bg-white">
+        <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-6 py-4">
           <div>
-            <h2 className="text-base font-semibold text-slate-100">Structure entry for {position.underlying}</h2>
-            <p className="text-xs text-slate-400">
+            <h2 className="text-base font-semibold text-slate-900">Structure entry for {position.underlying}</h2>
+            <p className="text-xs text-slate-500">
               Fill in details for program, position, legs, and fills. Fields marked with * are required.
             </p>
           </div>
-          <div className="ml-auto flex items-center gap-3 text-xs text-slate-400">
+          <div className="ml-auto flex items-center gap-3 text-xs text-slate-500">
             {missing.size > 0 ? (
-              <span className="rounded-full bg-rose-500/15 px-3 py-1 font-medium text-rose-200">
+              <span className="rounded-full bg-rose-50 px-3 py-1 font-medium text-rose-600">
                 {missing.size} required field{missing.size === 1 ? '' : 's'} missing
               </span>
             ) : (
-              <span className="rounded-full bg-emerald-500/10 px-3 py-1 font-medium text-emerald-200">
+              <span className="rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-600">
                 All required fields complete
               </span>
             )}
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 text-slate-200 hover:bg-slate-800"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100"
             >
               <X className="h-4 w-4" />
               <span className="sr-only">Close</span>
             </button>
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto bg-slate-950/90 px-6 py-6">
+        <div className="flex-1 overflow-y-auto bg-slate-50 px-6 py-6">
           <div className="space-y-6">
             <Section title="Program" description="Program metadata required before importing trades.">
               <div className="grid gap-4 md:grid-cols-2">
@@ -700,13 +702,13 @@ export function StructureEntryOverlay({
               title="Venue (optional)"
               description="Toggle on to include venue details for new venue creation or association."
             >
-              <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3 text-sm text-slate-300">
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-600">
                 <span>Include venue details in payload</span>
                 <button
                   type="button"
                   onClick={() => setIncludeVenue((prev) => !prev)}
-                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
-                    includeVenue ? 'bg-emerald-500/15 text-emerald-200' : 'bg-slate-800 text-slate-300'
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${
+                    includeVenue ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-slate-200 bg-white text-slate-600'
                   }`}
                 >
                   {includeVenue ? 'Included' : 'Excluded'}
@@ -739,9 +741,9 @@ export function StructureEntryOverlay({
                 {(form.legs ?? []).map((leg, index) => (
                   <div
                     key={index}
-                    className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-4"
+                    className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4"
                   >
-                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600">
                       Leg {index + 1}
                     </h4>
                     <div className="grid gap-4 md:grid-cols-3">
@@ -831,9 +833,9 @@ export function StructureEntryOverlay({
                   {(form.fills ?? []).map((fill, index) => (
                     <div
                       key={index}
-                      className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/30 p-4"
+                      className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4"
                     >
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600">
                         Fill {index + 1}
                       </h4>
                       <div className="grid gap-4 md:grid-cols-3">
