@@ -2,20 +2,36 @@
 import type { ImportPayload } from '@/lib/import';
 import { payloadSchema } from '@/lib/import';
 
+type IssuePath = ReadonlyArray<PropertyKey>;
+
 /** Convert a Zod path like ["legs", 0, "expiry"] to "legs[0].expiry" */
-function pathToString(path: (string | number)[]): string {
+function pathToString(path: IssuePath): string {
   if (!path.length) return "";
   let out = "";
   for (let i = 0; i < path.length; i++) {
     const seg = path[i];
-    out += typeof seg === "number" ? `[${seg}]` : (i === 0 ? seg : `.${seg}`);
+    if (typeof seg === "number") {
+      out += `[${seg}]`;
+      continue;
+    }
+
+    const asString =
+      typeof seg === "string"
+        ? seg
+        : seg.description ?? seg.toString();
+
+    out += i === 0 ? asString : `.${asString}`;
   }
   return out;
 }
 
 /** Safe nested getter following a Zod issue.path */
-function getValueByPath(obj: any, path: (string | number)[]) {
-  return path.reduce((acc, seg) => (acc == null ? acc : acc[seg as any]), obj);
+function getValueByPath(obj: unknown, path: IssuePath) {
+  return path.reduce<unknown>((acc, seg) => {
+    if (acc == null) return acc;
+    if (typeof acc !== "object" && typeof acc !== "function") return undefined;
+    return (acc as Record<PropertyKey, unknown>)[seg];
+  }, obj);
 }
 
 /** Treat undefined, null, "", or NaN as "missing" */
@@ -74,9 +90,8 @@ export function computeMissing(payload: Partial<ImportPayload>): string[] {
       switch (issue.code) {
         case "invalid_type": {
           // Consider missing only if Zod received 'undefined' or 'null'
-          // @ts-expect-error Zod issue has 'received'
-          const received = issue.received;
-          if ((received === "undefined" || received === "null") && key) {
+          const input = issue.input;
+          if ((input === undefined || input === null) && key) {
             missing.add(key);
           }
           break;
@@ -85,10 +100,17 @@ export function computeMissing(payload: Partial<ImportPayload>): string[] {
         case "too_small": {
           // Strings/arrays with min requirements — treat empty as missing
           const current = getValueByPath(payload, issue.path);
-          if (issue.type === "string" && (current === "" || current === undefined || current === null)) {
+          if (
+            issue.origin === "string" &&
+            (current === "" || current === undefined || current === null)
+          ) {
             if (key) missing.add(key);
           }
-          if (issue.type === "array" && Array.isArray(current) && current.length === 0) {
+          if (
+            issue.origin === "array" &&
+            Array.isArray(current) &&
+            current.length === 0
+          ) {
             const containerKey = pathToString(issue.path);
             if (containerKey) missing.add(containerKey);
           }
@@ -105,7 +127,6 @@ export function computeMissing(payload: Partial<ImportPayload>): string[] {
   // 2) Fallback pass for DB-critical fields (catches NaN/blank that Zod may not label "missing")
   if (payload.position) {
     for (const k of REQUIRED_POSITION_KEYS) {
-      // @ts-expect-error Partial at runtime
       const v = payload.position[k];
       if (isMissingValue(v)) missing.add(`position.${String(k)}`);
     }
@@ -116,7 +137,6 @@ export function computeMissing(payload: Partial<ImportPayload>): string[] {
   if (Array.isArray(payload.legs)) {
     payload.legs.forEach((leg, i) => {
       for (const k of REQUIRED_LEG_KEYS) {
-        // @ts-expect-error Partial at runtime
         const v = leg?.[k];
         if (isMissingValue(v)) missing.add(`legs[${i}].${String(k)}`);
       }
@@ -130,7 +150,6 @@ export function computeMissing(payload: Partial<ImportPayload>): string[] {
   if (Array.isArray(payload.fills)) {
     payload.fills.forEach((fill, i) => {
       for (const k of REQUIRED_FILL_KEYS) {
-        // @ts-expect-error Partial at runtime
         const v = fill?.[k];
         if (isMissingValue(v)) missing.add(`fills[${i}].${String(k)}`);
       }
