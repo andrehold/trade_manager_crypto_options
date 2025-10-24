@@ -1,6 +1,5 @@
 import React from 'react'
-import { createPortal } from 'react-dom'
-import { Save, X } from 'lucide-react'
+import { Save } from 'lucide-react'
 import {
   Position,
   fmtPremium,
@@ -12,6 +11,7 @@ import {
   getLegMarkRef,
   type LegMarkRef,
 } from '../utils'
+import { StructureEntryOverlay } from './StructureEntryOverlay'
 
 type MarkInfo = { price: number | null; multiplier: number | null; greeks?: any }
 type MarkMap = Record<string, MarkInfo>
@@ -77,27 +77,6 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
     () => (marks ? positionGreeks(p, marks) : { delta: 0, gamma: 0, theta: 0, vega: 0, rho: 0 }),
     [marks, p]
   )
-
-  let saveOverlay: React.ReactNode = null
-  if (showSaveOverlay && typeof document !== 'undefined') {
-    saveOverlay = createPortal(
-      (
-        <div className="fixed inset-0 z-50 bg-white" role="dialog" aria-modal="true">
-          <div className="flex justify-end p-4">
-            <button
-              type="button"
-              onClick={() => setShowSaveOverlay(false)}
-              className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
-            >
-              <X className="h-4 w-4" />
-              <span className="sr-only">Close save overlay</span>
-            </button>
-          </div>
-        </div>
-      ),
-      document.body
-    )
-  }
 
   return (
     <>
@@ -315,7 +294,13 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           </td>
         </tr>
       )}
-      {saveOverlay}
+      {showSaveOverlay ? (
+        <StructureEntryOverlay
+          open={showSaveOverlay}
+          onClose={() => setShowSaveOverlay(false)}
+          position={p}
+        />
+      ) : null}
     </>
   )
 }
