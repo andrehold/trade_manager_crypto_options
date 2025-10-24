@@ -1,6 +1,6 @@
 // src/features/import/missing.ts
-import type { ImportPayload } from '@/lib/import';
-import { payloadSchema } from '@/lib/import';
+import type { ImportPayload } from '../../lib/import';
+import { payloadSchema } from '../../lib/import';
 
 type IssuePath = ReadonlyArray<PropertyKey>;
 
