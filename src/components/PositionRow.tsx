@@ -1,4 +1,6 @@
 import React from 'react'
+import { createPortal } from 'react-dom'
+import { Save, X } from 'lucide-react'
 import {
   Position,
   fmtPremium,
@@ -51,6 +53,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   markLoading,
 }) => {
   const [open, setOpen] = React.useState(false)
+  const [showSaveOverlay, setShowSaveOverlay] = React.useState(false)
   const statusTone = p.status === 'OPEN' ? 'success' : p.status === 'ATTENTION' ? 'warning' : 'destructive'
 
   const legMarkData = React.useMemo(() => {
@@ -74,6 +77,27 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
     () => (marks ? positionGreeks(p, marks) : { delta: 0, gamma: 0, theta: 0, vega: 0, rho: 0 }),
     [marks, p]
   )
+
+  let saveOverlay: React.ReactNode = null
+  if (showSaveOverlay && typeof document !== 'undefined') {
+    saveOverlay = createPortal(
+      (
+        <div className="fixed inset-0 z-50 bg-white" role="dialog" aria-modal="true">
+          <div className="flex justify-end p-4">
+            <button
+              type="button"
+              onClick={() => setShowSaveOverlay(false)}
+              className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close save overlay</span>
+            </button>
+          </div>
+        </div>
+      ),
+      document.body
+    )
+  }
 
   return (
     <>
@@ -157,6 +181,16 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
             className="text-slate-500"
           >
             ⋯
+          </button>
+        </td>
+        <td className="p-3 align-top text-right">
+          <button
+            type="button"
+            onClick={() => setShowSaveOverlay(true)}
+            className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
+          >
+            <Save className="h-4 w-4" />
+            <span className="sr-only">Open save overlay</span>
           </button>
         </td>
       </tr>
@@ -281,6 +315,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           </td>
         </tr>
       )}
+      {saveOverlay}
     </>
   )
 }

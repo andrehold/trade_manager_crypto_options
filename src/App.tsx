@@ -457,7 +457,12 @@ export default function App() {
                     {visibleCols.includes("vega") && <th className="p-3 text-left">V</th>}
                     {visibleCols.includes("rho") && <th className="p-3 text-left">ρ</th>}
                     {visibleCols.includes("playbook") && <th className="p-3 text-left">Playbook</th>}
-                    <th className="p-3 text-right w-12"> </th>
+                    <th className="p-3 text-right w-12">
+                      <span className="sr-only">Toggle status</span>
+                    </th>
+                    <th className="p-3 text-right w-12">
+                      <span className="sr-only">Save position</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
