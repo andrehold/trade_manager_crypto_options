@@ -27,6 +27,28 @@ export async function importTrades(payload: ImportPayload): Promise<ImportTrades
     if (error) return { ok: false as const, error: error.message };
   }
 
+  // 2b) Ensure strategy catalog + linkage
+  {
+    const strategyRow = {
+      strategy_code: position.strategy_code,
+      strategy_name: position.strategy_name,
+    };
+    const { error: strategyErr } = await supabase
+      .from("strategies")
+      .upsert(strategyRow, { onConflict: "strategy_code" });
+    if (strategyErr) return { ok: false as const, error: strategyErr.message };
+
+    const programStrategyRow = {
+      program_id: position.program_id,
+      strategy_code: position.strategy_code,
+    };
+    const { error: programStrategyErr } = await supabase
+      .from("program_strategies")
+      .upsert(programStrategyRow, { onConflict: "program_id,strategy_code" });
+    if (programStrategyErr)
+      return { ok: false as const, error: programStrategyErr.message };
+  }
+
   // 3) Optional venue
   let venue_id = position.venue_id ?? null;
   if (venue && !venue_id) {
@@ -42,7 +64,11 @@ export async function importTrades(payload: ImportPayload): Promise<ImportTrades
   // 4) Insert position → get id
   const { data: pos, error: posErr } = await supabase
     .from("positions")
-    .insert({ ...position, venue_id })
+    .insert({
+      ...position,
+      venue_id,
+      strategy_name_at_entry: position.strategy_name,
+    })
     .select("position_id")
     .single();
   if (posErr) return { ok: false as const, error: posErr.message };

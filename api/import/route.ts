@@ -21,6 +21,32 @@ export async function POST(req: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  // 1b) Ensure strategy exists and is linked to the program
+  {
+    const strategyRow = {
+      strategy_code: position.strategy_code,
+      strategy_name: position.strategy_name,
+    };
+    const { error: strategyErr } = await supabase
+      .from("strategies")
+      .upsert([strategyRow], { onConflict: "strategy_code", ignoreDuplicates: false });
+    if (strategyErr)
+      return NextResponse.json({ error: strategyErr.message }, { status: 400 });
+
+    const programStrategyRow = {
+      program_id: position.program_id,
+      strategy_code: position.strategy_code,
+    };
+    const { error: programStrategyErr } = await supabase
+      .from("program_strategies")
+      .upsert([programStrategyRow], {
+        onConflict: "program_id,strategy_code",
+        ignoreDuplicates: false,
+      });
+    if (programStrategyErr)
+      return NextResponse.json({ error: programStrategyErr.message }, { status: 400 });
+  }
+
   // 2) Optionally insert a venue and capture its id
   let venue_id: string | null = position.venue_id ?? null;
   if (venue && !venue_id) {
@@ -36,7 +62,11 @@ export async function POST(req: Request) {
   // 3) Insert position
   const { data: pos, error: posErr } = await supabase
     .from("positions")
-    .insert({ ...position, venue_id })
+    .insert({
+      ...position,
+      venue_id,
+      strategy_name_at_entry: position.strategy_name,
+    })
     .select("position_id")
     .single();
   if (posErr) return NextResponse.json({ error: posErr.message }, { status: 400 });
