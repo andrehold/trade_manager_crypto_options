@@ -21,10 +21,40 @@
   --blue-600: #2563eb;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+  border-color: var(--slate-200);
+}
+
 body {
+  margin: 0;
   font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
   background-color: var(--slate-50);
   color: var(--slate-900);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+  background-color: transparent;
+}
+
+button {
+  border: none;
+  cursor: pointer;
+}
+
+input,
+textarea,
+select {
+  border-radius: 0;
 }
 
 /* Layout */
@@ -198,6 +228,26 @@ body {
 .shadow-xl { box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 10px 10px -5px rgba(15, 23, 42, 0.04); }
 .transition { transition: all 0.2s ease-in-out; }
 .transition-all { transition: all 0.2s ease-in-out; }
+
+/* Form helpers */
+.resize-y { resize: vertical; }
+
+.focus\:outline-none:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.focus\:ring-2:focus {
+  box-shadow: 0 0 0 2px var(--focus-ring-color, rgba(148, 163, 184, 0.45));
+}
+
+.focus\:ring-slate-400:focus {
+  --focus-ring-color: rgba(148, 163, 184, 0.45);
+}
+
+.focus\:ring-rose-400:focus {
+  --focus-ring-color: rgba(251, 113, 133, 0.45);
+}
 
 /* Positioning */
 .relative { position: relative; }
