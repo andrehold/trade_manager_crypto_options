@@ -12,7 +12,7 @@ if (!url || !key) {
 
 // DEBUG: log the outgoing headers on every request
 const loggingFetch: typeof fetch = async (input, init) => {
-  const urlStr = typeof input === 'string' ? input : input.url;
+  const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
   const hdrs = new Headers(init?.headers);
   console.log('[supabase →]', urlStr, {
     apikey: hdrs.get('apikey') ? '(present)' : '(missing)',
