@@ -10,10 +10,16 @@ if (!url || !key) {
   );
 }
 
-const loggingFetch: typeof fetch = async (...args) => {
-  console.log('[supabase fetch] →', args[0]);
-  const res = await fetch(...args);
-  console.log('[supabase fetch] ←', res.status, res.url);
+// DEBUG: log the outgoing headers on every request
+const loggingFetch: typeof fetch = async (input, init) => {
+  const urlStr = typeof input === 'string' ? input : input.url;
+  const hdrs = new Headers(init?.headers);
+  console.log('[supabase →]', urlStr, {
+    apikey: hdrs.get('apikey') ? '(present)' : '(missing)',
+    authorization: hdrs.get('authorization') ? '(present)' : '(missing)',
+  });
+  const res = await fetch(input as RequestInfo, init as RequestInit);
+  console.log('[supabase ←]', res.status, res.url);
   return res;
 };
 
@@ -21,7 +27,10 @@ export const supabase = createClient(
   url,
   key,
   {
-    global: { fetch: loggingFetch }, // wrap all supabase-js network calls
+    global: { 
+      fetch: loggingFetch,
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+     }, // wrap all supabase-js network calls
     auth: {
       persistSession: true,         // keep the user logged in across refreshes
       autoRefreshToken: true,
