@@ -55,6 +55,10 @@ const REQUIRED_LEG_SUFFIXES = [
 
 const REQUIRED_FILL_SUFFIXES = ['ts', 'qty', 'price'];
 
+/**
+ * Break a string path like `legs[0].qty` into discrete object/array segments
+ * so the value can be read or written in a type-safe way later on.
+ */
 function parsePath(path: string): PathSegment[] {
   const segments: PathSegment[] = [];
   const parts = path.split('.');
@@ -69,6 +73,11 @@ function parsePath(path: string): PathSegment[] {
   return segments;
 }
 
+/**
+ * Safely walks a nested object following the provided path and returns the
+ * value if every segment can be resolved. Any missing/invalid segment returns
+ * `undefined` instead of throwing.
+ */
 function getValue(obj: unknown, path: PathSegment[]): any {
   return path.reduce<any>((acc, seg) => {
     if (acc == null) return undefined;
@@ -81,6 +90,11 @@ function getValue(obj: unknown, path: PathSegment[]): any {
   }, obj);
 }
 
+/**
+ * Clones the provided object (shallowly) and writes a value at the requested
+ * path. Any missing intermediate structures are created using sensible
+ * defaults (arrays for numeric keys, objects otherwise).
+ */
 function setValue<T>(obj: T, path: PathSegment[], value: any): T {
   if (!path.length) return value;
   const [head, ...tail] = path;
@@ -95,6 +109,10 @@ function setValue<T>(obj: T, path: PathSegment[], value: any): T {
   return clone;
 }
 
+/**
+ * When venue information is optional we either strip it from the payload or
+ * ensure a minimal stub exists so the downstream schema validation succeeds.
+ */
 function ensureVenue(payload: PartialPayload, include: boolean): PartialPayload {
   if (!include) {
     const copy: PartialPayload = { ...payload };
@@ -112,6 +130,7 @@ function ensureVenue(payload: PartialPayload, include: boolean): PartialPayload 
   };
 }
 
+/** Convert a timestamp to ISO 8601 when we can, otherwise preserve the input. */
 function safeIso(ts?: string | null): string | undefined {
   if (!ts) return undefined;
   const parsed = Date.parse(ts);
@@ -119,6 +138,7 @@ function safeIso(ts?: string | null): string | undefined {
   return new Date(parsed).toISOString();
 }
 
+/** Total fees incurred across every leg in the position. */
 function sumFees(legs: Position['legs']): number {
   return legs.reduce((acc, leg) => {
     const total = leg.trades?.reduce((sum, trade) => sum + (trade.fee ?? 0), 0) ?? 0;
@@ -126,6 +146,10 @@ function sumFees(legs: Position['legs']): number {
   }, 0);
 }
 
+/**
+ * Consolidate individual trade fills into a single signed notional to seed the
+ * `net_fill` field in the import payload.
+ */
 function computeNetFill(legs: Position['legs']): number {
   return legs.reduce((acc, leg) => {
     const legTotal = leg.trades?.reduce((sum, trade) => {
@@ -138,6 +162,7 @@ function computeNetFill(legs: Position['legs']): number {
   }, 0);
 }
 
+/** Pick the first trade we encounter, primarily for default metadata fields. */
 function firstTrade(legs: Position['legs']): TxnRow | undefined {
   for (const leg of legs) {
     if (leg.trades?.length) return leg.trades[0];
@@ -145,6 +170,7 @@ function firstTrade(legs: Position['legs']): TxnRow | undefined {
   return undefined;
 }
 
+/** Flatten every trade from each leg into a single array for aggregation. */
 function collectAllTrades(legs: Position['legs']): TxnRow[] {
   const trades: TxnRow[] = [];
   for (const leg of legs) {
@@ -153,6 +179,7 @@ function collectAllTrades(legs: Position['legs']): TxnRow[] {
   return trades;
 }
 
+/** Timestamp helpers used for default entry/exit values in the overlay form. */
 function earliestTimestamp(trades: TxnRow[]): string | undefined {
   const sorted = trades
     .map((t) => ({ raw: t.timestamp, time: t.timestamp ? Date.parse(t.timestamp) : NaN }))
@@ -169,6 +196,10 @@ function latestTimestamp(trades: TxnRow[]): string | undefined {
   return sorted[0]?.raw;
 }
 
+/**
+ * Translate existing position legs into the structured shape expected by the
+ * import API, pre-populating values wherever the source data is clear enough.
+ */
 function buildInitialLegs(position: Position): Array<Partial<ImportPayload['legs'][number]>> {
   return position.legs.map((leg, idx) => {
     const totalQty = leg.trades?.reduce((sum, trade) => sum + Math.abs(trade.amount ?? 0), 0) ?? 0;
@@ -193,6 +224,10 @@ function buildInitialLegs(position: Position): Array<Partial<ImportPayload['legs
   });
 }
 
+/**
+ * Rehydrate trade-level information so that each fill row matches the import
+ * schema (including references back to the originating leg).
+ */
 function buildInitialFills(
   position: Position,
 ): Array<Partial<NonNullable<ImportPayload['fills']>[number]>> {
@@ -220,6 +255,11 @@ function buildInitialFills(
   return fills;
 }
 
+/**
+ * Build the complete default payload for the overlay using the information we
+ * already have from the parsed position. The result is the baseline state for
+ * the interactive form, so it aims to fill in as much as possible.
+ */
 function buildInitialPayload(position: Position): PartialPayload {
   const trades = collectAllTrades(position.legs);
   const entryTs = earliestTimestamp(trades);
