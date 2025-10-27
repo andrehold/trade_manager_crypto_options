@@ -10,10 +10,18 @@ if (!url || !key) {
   );
 }
 
+const loggingFetch: typeof fetch = async (...args) => {
+  console.log('[supabase fetch] →', args[0]);
+  const res = await fetch(...args);
+  console.log('[supabase fetch] ←', res.status, res.url);
+  return res;
+};
+
 export const supabase = createClient(
   url,
   key,
   {
+    global: { fetch: loggingFetch }, // wrap all supabase-js network calls
     auth: {
       persistSession: true,         // keep the user logged in across refreshes
       autoRefreshToken: true,
