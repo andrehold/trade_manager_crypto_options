@@ -16,7 +16,7 @@ import {
   OPTION_TYPES,
 } from '../lib/import/types';
 
-type PartialPayload = Partial<ImportPayload> & {
+type PartialPayload = {
   program?: Partial<ImportPayload['program']>;
   venue?: Partial<NonNullable<ImportPayload['venue']>> | null;
   position?: Partial<ImportPayload['position']>;
@@ -127,6 +127,7 @@ function ensureVenue(payload: PartialPayload, include: boolean): PartialPayload 
     ...payload,
     venue: {
       type: VENUE_TYPES[0],
+      name: '',
     },
   };
 }
@@ -319,7 +320,7 @@ function buildInitialPayload(position: Position): PartialPayload {
     position: positionDetails,
     legs: buildInitialLegs(position),
     fills: buildInitialFills(position),
-    venue: null,
+    venue: undefined,
   };
 }
 
@@ -521,7 +522,7 @@ export function StructureEntryOverlay({
     () => ensureVenue(form, includeVenue),
     [form, includeVenue],
   );
-  const missing = React.useMemo(() => new Set(computeMissing(payloadForValidation)), [payloadForValidation]);
+  const missing = React.useMemo(() => new Set(computeMissing(payloadForValidation as Partial<ImportPayload>)), [payloadForValidation]);
 
   const updateField = React.useCallback((path: string, value: any) => {
     setForm((prev) => {
