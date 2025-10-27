@@ -490,6 +490,9 @@ export function StructureEntryOverlay({
   const [programOptions, setProgramOptions] = React.useState<
     Array<{ program_id: string; program_name: string }>
   >([]);
+  const [strategyOptions, setStrategyOptions] = React.useState<
+    Array<{ strategy_code: string; strategy_name: string }>
+  >([]);
 
   React.useEffect(() => {
     let active = true;
@@ -506,7 +509,21 @@ export function StructureEntryOverlay({
       setProgramOptions(data ?? []);
     };
 
+    const loadStrategies = async () => {
+      const { data, error } = await supabase
+        .from('strategies')
+        .select('strategy_code, strategy_name')
+        .order('strategy_name');
+      if (error) {
+        console.error('Failed to load strategy resources', error);
+        return;
+      }
+      if (!active) return;
+      setStrategyOptions(data ?? []);
+    };
+
     void loadPrograms();
+    void loadStrategies();
 
     return () => {
       active = false;
@@ -531,9 +548,14 @@ export function StructureEntryOverlay({
       if (path === 'program.program_id') {
         next = setValue(next, parsePath('position.program_id'), value ?? '');
       }
+      if (path === 'position.strategy_code') {
+        const match = strategyOptions.find((option) => option.strategy_code === value);
+        const nextName = match?.strategy_name;
+        next = setValue(next, parsePath('position.strategy_name'), nextName);
+      }
       return next;
     });
-  }, []);
+  }, [strategyOptions]);
 
   const handleProgramNameChange = React.useCallback(
     (value: string) => {
@@ -550,6 +572,20 @@ export function StructureEntryOverlay({
     [programOptions],
   );
 
+  const handleStrategyNameChange = React.useCallback(
+    (value: string) => {
+      setForm((prev) => {
+        const nextName = value || undefined;
+        let next = setValue(prev, parsePath('position.strategy_name'), nextName);
+        const match = strategyOptions.find((option) => option.strategy_name === value);
+        const strategyCode = match?.strategy_code ?? '';
+        next = setValue(next, parsePath('position.strategy_code'), strategyCode);
+        return next;
+      });
+    },
+    [strategyOptions],
+  );
+
   React.useEffect(() => {
     const currentId = form.program?.program_id;
     if (!currentId || !programOptions.length) return;
@@ -558,6 +594,15 @@ export function StructureEntryOverlay({
     if (form.program?.program_name === match.program_name) return;
     setForm((prev) => setValue(prev, parsePath('program.program_name'), match.program_name));
   }, [form.program?.program_id, form.program?.program_name, programOptions]);
+
+  React.useEffect(() => {
+    const currentCode = form.position?.strategy_code;
+    if (!currentCode || !strategyOptions.length) return;
+    const match = strategyOptions.find((option) => option.strategy_code === currentCode);
+    if (!match) return;
+    if (form.position?.strategy_name === match.strategy_name) return;
+    setForm((prev) => setValue(prev, parsePath('position.strategy_name'), match.strategy_name));
+  }, [form.position?.strategy_code, form.position?.strategy_name, strategyOptions]);
 
   const programFields: FieldMeta[] = [
     { label: 'Program ID', path: 'program.program_id', valueType: 'string', required: true },
@@ -584,7 +629,14 @@ export function StructureEntryOverlay({
     { label: 'Program ID', path: 'position.program_id', valueType: 'string', required: true },
     { label: 'Underlier', path: 'position.underlier', valueType: 'string', required: true },
     { label: 'Strategy Code', path: 'position.strategy_code', valueType: 'string', required: true },
-    { label: 'Strategy Name', path: 'position.strategy_name', valueType: 'string', required: true },
+    {
+      label: 'Strategy Name',
+      path: 'position.strategy_name',
+      valueType: 'string',
+      required: true,
+      type: 'select',
+      options: strategyOptions.map((option) => option.strategy_name),
+    },
     {
       label: 'Options Structure',
       path: 'position.options_structure',
@@ -780,7 +832,11 @@ export function StructureEntryOverlay({
                     meta={field}
                     value={getValue(form, parsePath(field.path))}
                     missing={missing.has(field.path)}
-                    onChange={(value) => updateField(field.path, value)}
+                    onChange={(value) =>
+                      field.path === 'position.strategy_name'
+                        ? handleStrategyNameChange(value as string)
+                        : updateField(field.path, value)
+                    }
                   />
                 ))}
                 <CheckboxField
