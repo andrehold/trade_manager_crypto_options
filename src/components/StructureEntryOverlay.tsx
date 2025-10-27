@@ -4,6 +4,7 @@ import Overlay from './Overlay';
 import type { Position, TxnRow } from '../utils';
 import { computeMissing } from '../features/import/missing';
 import type { ImportPayload } from '../lib/import';
+import { supabase } from '../lib/supabase/supabase';
 import {
   OPTIONS_STRUCTURES,
   CONSTRUCTIONS,
@@ -485,6 +486,31 @@ export function StructureEntryOverlay({
   const initialPayload = React.useMemo(() => buildInitialPayload(position), [position]);
   const [form, setForm] = React.useState<PartialPayload>(initialPayload);
   const [includeVenue, setIncludeVenue] = React.useState(false);
+  const [programOptions, setProgramOptions] = React.useState<
+    Array<{ program_id: string; program_name: string }>
+  >([]);
+
+  React.useEffect(() => {
+    let active = true;
+    const loadPrograms = async () => {
+      const { data, error } = await supabase
+        .from('program_resources')
+        .select('program_id, program_name')
+        .order('program_name');
+      if (error) {
+        console.error('Failed to load program resources', error);
+        return;
+      }
+      if (!active) return;
+      setProgramOptions(data ?? []);
+    };
+
+    void loadPrograms();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   React.useEffect(() => {
     setForm(buildInitialPayload(position));
@@ -508,9 +534,40 @@ export function StructureEntryOverlay({
     });
   }, []);
 
+  const handleProgramNameChange = React.useCallback(
+    (value: string) => {
+      setForm((prev) => {
+        const nextName = value || undefined;
+        let next = setValue(prev, parsePath('program.program_name'), nextName);
+        const match = programOptions.find((option) => option.program_name === value);
+        const programId = match?.program_id ?? '';
+        next = setValue(next, parsePath('program.program_id'), programId);
+        next = setValue(next, parsePath('position.program_id'), programId);
+        return next;
+      });
+    },
+    [programOptions],
+  );
+
+  React.useEffect(() => {
+    const currentId = form.program?.program_id;
+    if (!currentId || !programOptions.length) return;
+    const match = programOptions.find((option) => option.program_id === currentId);
+    if (!match) return;
+    if (form.program?.program_name === match.program_name) return;
+    setForm((prev) => setValue(prev, parsePath('program.program_name'), match.program_name));
+  }, [form.program?.program_id, form.program?.program_name, programOptions]);
+
   const programFields: FieldMeta[] = [
     { label: 'Program ID', path: 'program.program_id', valueType: 'string', required: true },
-    { label: 'Program Name', path: 'program.program_name', valueType: 'string', required: true },
+    {
+      label: 'Program Name',
+      path: 'program.program_name',
+      valueType: 'string',
+      required: true,
+      type: 'select',
+      options: programOptions.map((option) => option.program_name),
+    },
     {
       label: 'Base Currency',
       path: 'program.base_currency',
@@ -701,7 +758,11 @@ export function StructureEntryOverlay({
                     meta={field}
                     value={getValue(form, parsePath(field.path))}
                     missing={missing.has(field.path)}
-                    onChange={(value) => updateField(field.path, value)}
+                    onChange={(value) =>
+                      field.path === 'program.program_name'
+                        ? handleProgramNameChange(value as string)
+                        : updateField(field.path, value)
+                    }
                   />
                 ))}
               </div>
