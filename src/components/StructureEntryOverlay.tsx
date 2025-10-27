@@ -495,7 +495,7 @@ export function StructureEntryOverlay({
     let active = true;
     const loadPrograms = async () => {
       const { data, error } = await supabase
-        .from('program_resources')
+        .from('programs')
         .select('program_id, program_name')
         .order('program_name');
       if (error) {
