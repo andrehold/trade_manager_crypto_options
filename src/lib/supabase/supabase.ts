@@ -1,23 +1,51 @@
 // src/lib/supabase.ts
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+let cachedClient: SupabaseClient | null | undefined;
 
-if (!url || !key) {
-  throw new Error(
-    `Missing Supabase envs: have URL? ${!!url} / have key? ${!!key}`
-  );
-}
+function initClient(): SupabaseClient | null {
+  if (cachedClient !== undefined) return cachedClient;
 
-export const supabase = createClient(
-  url,
-  key,
-  {
+  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+
+  if (!url || !key) {
+    if (import.meta.env.DEV) {
+      console.warn(
+        "Supabase environment variables are not configured. Features that rely on Supabase will be disabled."
+      );
+    }
+    cachedClient = null;
+    return cachedClient;
+  }
+
+  cachedClient = createClient(url, key, {
     auth: {
-      persistSession: true,         // keep the user logged in across refreshes
+      persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
     },
+  });
+
+  return cachedClient;
+}
+
+export function tryGetSupabaseClient(): SupabaseClient | null {
+  return initClient();
+}
+
+export function hasSupabaseClient(): boolean {
+  return initClient() !== null;
+}
+
+export function getSupabaseClient(): SupabaseClient {
+  const client = initClient();
+  if (!client) {
+    throw new Error(
+      "Supabase client is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to enable this feature."
+    );
   }
-);
+  return client;
+}
+
+export const supabase = initClient();
