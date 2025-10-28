@@ -35,6 +35,8 @@ type FieldMeta = {
   placeholder?: string;
   helperText?: string;
   required?: boolean;
+  step?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
 };
 
 type CheckboxMeta = {
@@ -335,7 +337,7 @@ function Field({
   onChange: (value: any) => void;
   missing: boolean;
 }) {
-  const { label, type = 'text', options, placeholder, helperText, required } = meta;
+  const { label, type = 'text', options, placeholder, helperText, required, step, inputMode } = meta;
   const displayValue = value ?? '';
   const baseClass = `mt-1 block w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 ${missing ? 'border-rose-500 focus:ring-rose-400' : 'border-slate-200 focus:ring-slate-400'}`;
 
@@ -412,6 +414,8 @@ function Field({
         value={displayValue}
         onChange={handleChange}
         placeholder={placeholder}
+        step={type === 'number' ? step : undefined}
+        inputMode={inputMode}
       />
       {helperText ? <p className="text-[11px] text-slate-500">{helperText}</p> : null}
     </label>
@@ -892,9 +896,11 @@ export function StructureEntryOverlay({
                             ? {
                                 label: 'Quantity',
                                 path,
-                                valueType: 'integer',
+                                valueType: 'number',
                                 type: 'number',
                                 required: true,
+                                step: '0.01',
+                                inputMode: 'decimal',
                               }
                             : suffix === 'price'
                             ? {
