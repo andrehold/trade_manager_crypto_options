@@ -494,6 +494,8 @@ export function StructureEntryOverlay({
   const [programOptions, setProgramOptions] = React.useState<
     Array<{ program_id: string; program_name: string }>
   >([]);
+  const [strategyLookup, setStrategyLookup] = React.useState<Record<string, string>>({});
+  const strategyRequests = React.useRef<Set<string>>(new Set());
 
   React.useEffect(() => {
     let active = true;
@@ -535,6 +537,19 @@ export function StructureEntryOverlay({
       if (path === 'program.program_id') {
         next = setValue(next, parsePath('position.program_id'), value ?? '');
       }
+      if (path === 'position.strategy_code') {
+        next = setValue(next, parsePath('position.strategy_name'), '');
+      }
+      if (path === 'position.strategy_name') {
+        const code = getValue(next, parsePath('position.strategy_code'));
+        if (typeof code === 'string') {
+          const trimmedCode = code.trim();
+          const trimmedName = typeof value === 'string' ? value.trim() : '';
+          if (trimmedCode && trimmedName) {
+            setStrategyLookup((prevLookup) => ({ ...prevLookup, [trimmedCode]: trimmedName }));
+          }
+        }
+      }
       return next;
     });
   }, []);
@@ -562,6 +577,58 @@ export function StructureEntryOverlay({
     if (form.program?.program_name === match.program_name) return;
     setForm((prev) => setValue(prev, parsePath('program.program_name'), match.program_name));
   }, [form.program?.program_id, form.program?.program_name, programOptions]);
+
+  React.useEffect(() => {
+    const rawCode = form.position?.strategy_code;
+    const code = typeof rawCode === 'string' ? rawCode.trim() : '';
+    if (!code) return;
+
+    const cached = strategyLookup[code];
+    if (cached) {
+      if (!form.position?.strategy_name || !form.position.strategy_name.trim()) {
+        setForm((prev) => {
+          const current = getValue(prev, parsePath('position.strategy_name'));
+          if (current && String(current).trim().length > 0) return prev;
+          return setValue(prev, parsePath('position.strategy_name'), cached);
+        });
+      }
+      return;
+    }
+
+    if (strategyRequests.current.has(code)) return;
+
+    let active = true;
+    strategyRequests.current.add(code);
+
+    const loadStrategy = async () => {
+      const { data, error } = await supabase
+        .from('strategies')
+        .select('strategy_name')
+        .eq('strategy_code', code)
+        .maybeSingle();
+
+      strategyRequests.current.delete(code);
+      if (!active) return;
+      if (error) {
+        console.error('Failed to fetch strategy name', error);
+        return;
+      }
+      const name = data?.strategy_name;
+      if (!name) return;
+      setStrategyLookup((prevLookup) => ({ ...prevLookup, [code]: name }));
+      setForm((prev) => {
+        const current = getValue(prev, parsePath('position.strategy_name'));
+        if (current && String(current).trim().length > 0) return prev;
+        return setValue(prev, parsePath('position.strategy_name'), name);
+      });
+    };
+
+    void loadStrategy();
+
+    return () => {
+      active = false;
+    };
+  }, [form.position?.strategy_code, form.position?.strategy_name, strategyLookup]);
 
   const programFields: FieldMeta[] = [
     { label: 'Program ID', path: 'program.program_id', valueType: 'string', required: true },
