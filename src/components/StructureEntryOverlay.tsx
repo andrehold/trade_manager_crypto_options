@@ -494,6 +494,9 @@ export function StructureEntryOverlay({
   const [programOptions, setProgramOptions] = React.useState<
     Array<{ program_id: string; program_name: string }>
   >([]);
+  const [strategyOptions, setStrategyOptions] = React.useState<
+    Array<{ strategy_code: string; strategy_name: string }>
+  >([]);
   const [strategyLookup, setStrategyLookup] = React.useState<Record<string, string>>({});
   const strategyRequests = React.useRef<Set<string>>(new Set());
 
@@ -520,6 +523,47 @@ export function StructureEntryOverlay({
     };
 
     void loadPrograms();
+
+    return () => {
+      active = false;
+    };
+  }, [supabase]);
+
+  React.useEffect(() => {
+    if (!supabase) return;
+    let active = true;
+
+    const loadStrategies = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('strategies')
+          .select('strategy_code, strategy_name')
+          .order('strategy_name');
+        if (!active) return;
+        if (error) {
+          console.error('Failed to load strategy resources', error);
+          return;
+        }
+        const rows = (data ?? []).filter(
+          (row): row is { strategy_code: string; strategy_name: string } =>
+            Boolean(row?.strategy_code && row?.strategy_name),
+        );
+        setStrategyOptions(rows);
+        if (rows.length) {
+          setStrategyLookup((prevLookup) => {
+            const next = { ...prevLookup };
+            for (const row of rows) {
+              next[row.strategy_code] = row.strategy_name;
+            }
+            return next;
+          });
+        }
+      } catch (err) {
+        if (active) console.error('Failed to load strategy resources', err);
+      }
+    };
+
+    void loadStrategies();
 
     return () => {
       active = false;
@@ -574,6 +618,26 @@ export function StructureEntryOverlay({
       });
     },
     [programOptions],
+  );
+
+  const handleStrategyNameChange = React.useCallback(
+    (value: string) => {
+      const match = strategyOptions.find((option) => option.strategy_name === value);
+      setForm((prev) => {
+        const nextName = value || undefined;
+        let next = setValue(prev, parsePath('position.strategy_name'), nextName);
+        const strategyCode = match?.strategy_code ?? '';
+        next = setValue(next, parsePath('position.strategy_code'), strategyCode);
+        return next;
+      });
+      if (match?.strategy_code && match.strategy_name) {
+        setStrategyLookup((prevLookup) => ({
+          ...prevLookup,
+          [match.strategy_code]: match.strategy_name,
+        }));
+      }
+    },
+    [strategyOptions],
   );
 
   React.useEffect(() => {
@@ -670,7 +734,14 @@ export function StructureEntryOverlay({
     { label: 'Program ID', path: 'position.program_id', valueType: 'string', required: true },
     { label: 'Underlier', path: 'position.underlier', valueType: 'string', required: true },
     { label: 'Strategy Code', path: 'position.strategy_code', valueType: 'string', required: true },
-    { label: 'Strategy Name', path: 'position.strategy_name', valueType: 'string', required: true },
+    {
+      label: 'Strategy Name',
+      path: 'position.strategy_name',
+      valueType: 'string',
+      required: true,
+      type: 'select',
+      options: strategyOptions.map((option) => option.strategy_name),
+    },
     {
       label: 'Options Structure',
       path: 'position.options_structure',
@@ -878,7 +949,11 @@ export function StructureEntryOverlay({
                     meta={field}
                     value={getValue(form, parsePath(field.path))}
                     missing={missing.has(field.path)}
-                    onChange={(value) => updateField(field.path, value)}
+                    onChange={(value) =>
+                      field.path === 'position.strategy_name'
+                        ? handleStrategyNameChange(value as string)
+                        : updateField(field.path, value)
+                    }
                   />
                 ))}
                 <CheckboxField
