@@ -292,7 +292,7 @@ export default function App() {
         const ref = getLegMarkRef(position, leg);
         if (!ref) continue;
 
-        if (legMarks[ref.key]?.price != null || seen.has(ref.key)) continue;
+        if (seen.has(ref.key)) continue;
         seen.add(ref.key);
 
         if (ref.exchange === 'coincall') {
