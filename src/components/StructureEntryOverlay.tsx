@@ -4,7 +4,7 @@ import Overlay from './Overlay';
 import type { Position, TxnRow } from '../utils';
 import { computeMissing } from '../features/import/missing';
 import type { ImportPayload } from '../lib/import';
-import { supabase } from '../lib/supabase/supabase';
+import { tryGetSupabaseClient } from '../lib/supabase';
 import {
   OPTIONS_STRUCTURES,
   CONSTRUCTIONS,
@@ -497,19 +497,26 @@ export function StructureEntryOverlay({
   const [strategyLookup, setStrategyLookup] = React.useState<Record<string, string>>({});
   const strategyRequests = React.useRef<Set<string>>(new Set());
 
+  const supabase = React.useMemo(() => tryGetSupabaseClient(), []);
+
   React.useEffect(() => {
+    if (!supabase) return;
     let active = true;
     const loadPrograms = async () => {
-      const { data, error } = await supabase
-        .from('programs')
-        .select('program_id, program_name')
-        .order('program_name');
-      if (error) {
-        console.error('Failed to load program resources', error);
-        return;
+      try {
+        const { data, error } = await supabase
+          .from('programs')
+          .select('program_id, program_name')
+          .order('program_name');
+        if (!active) return;
+        if (error) {
+          console.error('Failed to load program resources', error);
+          return;
+        }
+        setProgramOptions(data ?? []);
+      } catch (err) {
+        if (active) console.error('Failed to load program resources', err);
       }
-      if (!active) return;
-      setProgramOptions(data ?? []);
     };
 
     void loadPrograms();
@@ -517,7 +524,7 @@ export function StructureEntryOverlay({
     return () => {
       active = false;
     };
-  }, []);
+  }, [supabase]);
 
   React.useEffect(() => {
     setForm(buildInitialPayload(position));
@@ -597,38 +604,46 @@ export function StructureEntryOverlay({
 
     if (strategyRequests.current.has(code)) return;
 
+    if (!supabase) return;
+
     let active = true;
     strategyRequests.current.add(code);
 
     const loadStrategy = async () => {
-      const { data, error } = await supabase
-        .from('strategies')
-        .select('strategy_name')
-        .eq('strategy_code', code)
-        .maybeSingle();
+      try {
+        const { data, error } = await supabase
+          .from('strategies')
+          .select('strategy_name')
+          .eq('strategy_code', code)
+          .maybeSingle();
 
-      strategyRequests.current.delete(code);
-      if (!active) return;
-      if (error) {
-        console.error('Failed to fetch strategy name', error);
-        return;
+        if (!active) return;
+        if (error) {
+          console.error('Failed to fetch strategy name', error);
+          return;
+        }
+        const name = data?.strategy_name;
+        if (!name) return;
+        setStrategyLookup((prevLookup) => ({ ...prevLookup, [code]: name }));
+        setForm((prev) => {
+          const current = getValue(prev, parsePath('position.strategy_name'));
+          if (current && String(current).trim().length > 0) return prev;
+          return setValue(prev, parsePath('position.strategy_name'), name);
+        });
+      } catch (err) {
+        if (active) console.error('Failed to fetch strategy name', err);
+      } finally {
+        strategyRequests.current.delete(code);
       }
-      const name = data?.strategy_name;
-      if (!name) return;
-      setStrategyLookup((prevLookup) => ({ ...prevLookup, [code]: name }));
-      setForm((prev) => {
-        const current = getValue(prev, parsePath('position.strategy_name'));
-        if (current && String(current).trim().length > 0) return prev;
-        return setValue(prev, parsePath('position.strategy_name'), name);
-      });
     };
 
     void loadStrategy();
 
     return () => {
       active = false;
+      strategyRequests.current.delete(code);
     };
-  }, [form.position?.strategy_code, form.position?.strategy_name, strategyLookup]);
+  }, [form.position?.strategy_code, form.position?.strategy_name, strategyLookup, supabase]);
 
   const programFields: FieldMeta[] = [
     { label: 'Program ID', path: 'program.program_id', valueType: 'string', required: true },
@@ -792,42 +807,54 @@ export function StructureEntryOverlay({
 
   return (
     <Overlay open={open} onClose={onClose} title={`Structure entry for ${position.underlying}`}>
-      <div
-        className="flex max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white"
-        style={{ width: 'min(960px, calc(100vw - 3rem))' }}
-      >
-        <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-6 py-4">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900">Structure entry for {position.underlying}</h2>
-            <p className="text-xs text-slate-500">
-              Fill in details for program, position, legs, and fills. Fields marked with * are required.
-            </p>
-          </div>
-          <div className="ml-auto flex items-center gap-3 text-xs text-slate-500">
-            {missing.size > 0 ? (
-              <span className="rounded-full bg-rose-50 px-3 py-1 font-medium text-rose-600">
-                {missing.size} required field{missing.size === 1 ? '' : 's'} missing
-              </span>
-            ) : (
-              <span className="rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-600">
-                All required fields complete
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100"
-            >
-              <X className="h-4 w-4" />
-              <span className="sr-only">Close</span>
-            </button>
-          </div>
-        </header>
-        <div className="flex-1 overflow-y-auto bg-slate-50 px-6 py-6">
-          <div className="space-y-6">
-            <Section title="Program" description="Program metadata required before importing trades.">
-              <div className="grid gap-4 md:grid-cols-2">
-                {programFields.map((field) => (
+      {!supabase ? (
+        <div className="flex max-h-[90vh] flex-col items-center justify-center gap-3 rounded-2xl bg-white p-8 text-center text-sm text-slate-600"
+          style={{ width: 'min(560px, calc(100vw - 3rem))' }}
+        >
+          <p className="font-semibold text-slate-700">Supabase configuration required</p>
+          <p>
+            Set <code className="rounded bg-slate-100 px-1 py-0.5">VITE_SUPABASE_URL</code> and{' '}
+            <code className="rounded bg-slate-100 px-1 py-0.5">VITE_SUPABASE_PUBLISHABLE_KEY</code> to enable
+            structure imports and program lookups.
+          </p>
+        </div>
+      ) : (
+        <div
+          className="flex max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white"
+          style={{ width: 'min(960px, calc(100vw - 3rem))' }}
+        >
+          <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-6 py-4">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">Structure entry for {position.underlying}</h2>
+              <p className="text-xs text-slate-500">
+                Fill in details for program, position, legs, and fills. Fields marked with * are required.
+              </p>
+            </div>
+            <div className="ml-auto flex items-center gap-3 text-xs text-slate-500">
+              {missing.size > 0 ? (
+                <span className="rounded-full bg-rose-50 px-3 py-1 font-medium text-rose-600">
+                  {missing.size} required field{missing.size === 1 ? '' : 's'} missing
+                </span>
+              ) : (
+                <span className="rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-600">
+                  All required fields complete
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100"
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close</span>
+              </button>
+            </div>
+          </header>
+          <div className="flex-1 overflow-y-auto bg-slate-50 px-6 py-6">
+            <div className="space-y-6">
+              <Section title="Program" description="Program metadata required before importing trades.">
+                <div className="grid gap-4 md:grid-cols-2">
+                  {programFields.map((field) => (
                   <Field
                     key={field.path}
                     meta={field}
@@ -1139,9 +1166,10 @@ export function StructureEntryOverlay({
                 </div>
               )}
             </Section>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </Overlay>
   );
 }

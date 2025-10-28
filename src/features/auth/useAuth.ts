@@ -1,21 +1,36 @@
 // src/features/auth/useAuth.ts
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import type { User } from "@supabase/supabase-js";
+import { getSupabaseClient, hasSupabaseClient } from "@/lib/supabase";
 
 export function useAuth() {
-  const [user, setUser] = useState<Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"]>(null);
+  const supabaseConfigured = hasSupabaseClient();
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!supabaseConfigured) {
+      setLoading(false);
+      return;
+    }
+
+    const client = getSupabaseClient();
     let ignore = false;
 
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!ignore) setUser(user ?? null);
-      setLoading(false);
+      try {
+        const {
+          data: { user },
+        } = await client.auth.getUser();
+        if (!ignore) setUser(user ?? null);
+      } catch (error) {
+        console.error("Failed to initialize Supabase auth", error);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
     })();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = client.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
 
@@ -23,9 +38,9 @@ export function useAuth() {
       ignore = true;
       sub.subscription.unsubscribe();
     };
-  }, []);
+  }, [supabaseConfigured]);
 
-  return { user, loading };
+  return { user, loading, supabaseConfigured };
 }
 
 // somewhere in your UI

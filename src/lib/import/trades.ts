@@ -1,5 +1,5 @@
 // src/features/import/importTrades.ts
-import { supabase } from "../supabase/supabase";
+import { tryGetSupabaseClient } from "../supabase";
 import { payloadSchema } from "./validation";
 import type { ImportPayload } from "./types";
 
@@ -8,6 +8,14 @@ type ImportTradesResult =
   | { ok: false; error: string; details?: unknown };
 
 export async function importTrades(payload: ImportPayload): Promise<ImportTradesResult> {
+  const supabase = tryGetSupabaseClient();
+  if (!supabase) {
+    return {
+      ok: false as const,
+      error: "Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to enable imports.",
+    };
+  }
+
   // 0) Validate
   const parsed = payloadSchema.safeParse(payload);
   if (!parsed.success) {
