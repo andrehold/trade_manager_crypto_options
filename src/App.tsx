@@ -399,15 +399,49 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-        <div className="flex w-full max-w-lg flex-col items-center gap-6 rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-600 shadow-sm">
-          <div className="space-y-2">
-            <p className="text-base font-semibold text-slate-700">Sign in to Supabase</p>
-            <p>
-              Use your Supabase email and password to unlock program lookups, structure imports, and live mark fetching.
+      <div className="relative min-h-screen overflow-hidden bg-slate-950">
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" />
+          <div className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-sky-500/30 blur-3xl" />
+          <div className="absolute bottom-[-120px] right-[-80px] h-[520px] w-[520px] rounded-full bg-indigo-500/20 blur-3xl" />
+          <div className="absolute -bottom-32 left-[-60px] h-80 w-80 rounded-full bg-emerald-500/20 blur-3xl" />
+        </div>
+
+        <div className="absolute inset-0 bg-slate-950/50 backdrop-blur">
+          <div className="absolute inset-x-6 top-28 hidden gap-6 opacity-60 lg:flex">
+            <div className="flex flex-1 flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 text-left text-xs text-slate-200/80">
+              <div className="h-3 w-32 rounded-full bg-white/20" />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="h-24 rounded-2xl border border-white/5 bg-slate-900/40" />
+                <div className="h-24 rounded-2xl border border-white/5 bg-slate-900/40" />
+                <div className="h-24 rounded-2xl border border-white/5 bg-slate-900/40" />
+                <div className="h-24 rounded-2xl border border-white/5 bg-slate-900/40" />
+              </div>
+              <div className="h-3 w-20 rounded-full bg-white/20" />
+            </div>
+            <div className="hidden w-64 flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 text-xs text-slate-200/80 xl:flex">
+              <div className="h-3 w-24 rounded-full bg-white/20" />
+              <div className="space-y-3">
+                <div className="h-10 rounded-2xl border border-white/5 bg-slate-900/40" />
+                <div className="h-10 rounded-2xl border border-white/5 bg-slate-900/40" />
+                <div className="h-10 rounded-2xl border border-white/5 bg-slate-900/40" />
+                <div className="h-10 rounded-2xl border border-white/5 bg-slate-900/40" />
+              </div>
+              <div className="h-3 w-14 rounded-full bg-white/20" />
+            </div>
+          </div>
+        </div>
+
+        <div className="relative z-10 flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center text-slate-200">
+          <div className="max-w-xl space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">Authentication required</p>
+            <h1 className="text-3xl font-semibold tracking-tight">Sign in to continue</h1>
+            <p className="text-sm text-slate-400">
+              Unlock program lookups, structure imports, and live mark fetching with your workspace credentials.
             </p>
           </div>
           <SupabaseLogin />
+          <p className="text-xs text-slate-500">Access is limited to authorized trading workspaces.</p>
         </div>
       </div>
     );
