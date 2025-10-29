@@ -4,6 +4,9 @@ import { Toggle } from './components/Toggle'
 import { UploadBox } from './components/UploadBox'
 import { ColumnMapper } from './components/ColumnMapper'
 import { ReviewOverlay } from './components/ReviewOverlay'
+import { SupabaseLogin } from './features/auth/SupabaseLogin'
+import { useAuth } from './features/auth/useAuth'
+import { tryGetSupabaseClient } from './lib/supabase'
 import {
   Position, TxnRow, Lot,
   useLocalStorage, devQuickTests,
@@ -17,6 +20,12 @@ import { dbGetBest } from './lib/venues/deribit'
 
 export default function App() {
   React.useEffect(() => { devQuickTests(); }, []);
+
+  const { user, loading: authLoading, supabaseConfigured } = useAuth();
+  const supabase = React.useMemo(
+    () => (supabaseConfigured ? tryGetSupabaseClient() : null),
+    [supabaseConfigured],
+  );
 
   const [rawRows, setRawRows] = useLocalStorage<any[]>("deribit_raw_rows", []);
   const [positions, setPositions] = useLocalStorage<Position[]>("deribit_positions_v1", []);
@@ -357,6 +366,53 @@ export default function App() {
     );
   }
 
+  const handleSignOut = React.useCallback(() => {
+    if (!supabase) return;
+    void supabase.auth.signOut();
+  }, [supabase]);
+
+  if (!supabaseConfigured || !supabase) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-600 shadow-sm">
+          <p className="text-base font-semibold text-slate-700">Supabase configuration required</p>
+          <p>
+            Set <code className="rounded bg-slate-100 px-1 py-0.5">VITE_SUPABASE_URL</code> and{' '}
+            <code className="rounded bg-slate-100 px-1 py-0.5">VITE_SUPABASE_PUBLISHABLE_KEY</code> to enable
+            authentication and program lookups.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-600 shadow-sm">
+          <p className="text-base font-semibold text-slate-700">Checking Supabase session…</p>
+          <p>Hold tight while we verify your saved Supabase credentials.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="flex w-full max-w-lg flex-col items-center gap-6 rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-600 shadow-sm">
+          <div className="space-y-2">
+            <p className="text-base font-semibold text-slate-700">Sign in to Supabase</p>
+            <p>
+              Use your Supabase email and password to unlock program lookups, structure imports, and live mark fetching.
+            </p>
+          </div>
+          <SupabaseLogin />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="px-6 py-4 flex items-center gap-4 border-b bg-white sticky top-0 z-30">
@@ -370,6 +426,18 @@ export default function App() {
             <Toggle checked={alertsOnly} onChange={setAlertsOnly} />
           </div>
           <button className="rounded-xl bg-slate-900 text-white px-3 py-2 text-sm shadow">Add Trade</button>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
+            <span className="font-medium text-slate-700">{user.email ?? 'Signed in'}</span>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="text-xs font-semibold text-slate-500 transition hover:text-slate-700"
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       </div>
 
