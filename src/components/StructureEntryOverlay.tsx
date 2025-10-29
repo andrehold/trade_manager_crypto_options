@@ -15,6 +15,7 @@ import {
   EXECUTION_MODES,
   LIQUIDITY_ROLES,
   OPTION_TYPES,
+  STRUCTURE_LIFECYCLES,
 } from '../lib/import/types';
 
 type PartialPayload = {
@@ -289,6 +290,7 @@ function buildInitialPayload(position: Position): PartialPayload {
     options_structure: position.legs.length > 1 ? 'strangle' : 'single_option',
     construction: position.legs.length > 1 ? 'balanced' : 'outright',
     risk_defined: position.legs.length > 1,
+    lifecycle: 'open',
     entry_ts: safeIso(entryTs) ?? entryTs,
     exit_ts: safeIso(exitTs) ?? undefined,
     execution_route: position.legs.length > 1 ? 'package' : 'single',
@@ -316,6 +318,7 @@ function buildInitialPayload(position: Position): PartialPayload {
     counterparty: undefined,
     pricing_currency: 'USD',
     notes: position.playbook ?? '',
+    close_target_structure_id: undefined,
   };
 
   return {
@@ -484,10 +487,12 @@ export function StructureEntryOverlay({
   open,
   onClose,
   position,
+  allPositions,
 }: {
   open: boolean;
   onClose: () => void;
   position: Position;
+  allPositions: Position[];
 }) {
   const initialPayload = React.useMemo(() => buildInitialPayload(position), [position]);
   const [form, setForm] = React.useState<PartialPayload>(initialPayload);
@@ -579,11 +584,42 @@ export function StructureEntryOverlay({
     setIncludeVenue(false);
   }, [position]);
 
+  React.useEffect(() => {
+    if (lifecycle !== 'close') return;
+    if (form.position?.close_target_structure_id) return;
+    if (openStructureOptions.length !== 1) return;
+    const only = openStructureOptions[0];
+    if (!only) return;
+    updateField('position.close_target_structure_id', only.value);
+  }, [form.position?.close_target_structure_id, lifecycle, openStructureOptions, updateField]);
+
   const payloadForValidation = React.useMemo(
     () => ensureVenue(form, includeVenue),
     [form, includeVenue],
   );
-  const missing = React.useMemo(() => new Set(computeMissing(payloadForValidation as Partial<ImportPayload>)), [payloadForValidation]);
+  const missing = React.useMemo(
+    () => new Set(computeMissing(payloadForValidation as Partial<ImportPayload>)),
+    [payloadForValidation],
+  );
+  const lifecycle = (form.position?.lifecycle as (typeof STRUCTURE_LIFECYCLES)[number]) ?? 'open';
+  const openStructureOptions = React.useMemo(
+    () =>
+      allPositions
+        .filter((candidate) => candidate.status === 'OPEN' && candidate.id !== position.id)
+        .map((candidate) => {
+          const parts = [
+            candidate.structureId ? `#${candidate.structureId}` : 'No structure #',
+            candidate.underlying,
+          ];
+          if (candidate.expiryISO) parts.push(candidate.expiryISO);
+          if (candidate.exchange) parts.push(candidate.exchange.toUpperCase());
+          return {
+            value: candidate.structureId ?? candidate.id,
+            label: parts.join(' • '),
+          };
+        }),
+    [allPositions, position.id],
+  );
 
   const updateField = React.useCallback((path: string, value: any) => {
     setForm((prev) => {
@@ -604,6 +640,9 @@ export function StructureEntryOverlay({
             setStrategyLookup((prevLookup) => ({ ...prevLookup, [trimmedCode]: trimmedName }));
           }
         }
+      }
+      if (path === 'position.lifecycle' && value === 'open') {
+        next = setValue(next, parsePath('position.close_target_structure_id'), undefined);
       }
       return next;
     });
@@ -970,6 +1009,84 @@ export function StructureEntryOverlay({
                   )}
                 </div>
               )}
+
+              <Section
+                title="Structure lifecycle"
+                description="Specify whether this payload opens a new structure or closes an existing one."
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  {STRUCTURE_LIFECYCLES.map((option) => {
+                    const active = lifecycle === option;
+                    const label = option === 'open' ? 'Open structure' : 'Close structure';
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => updateField('position.lifecycle', option)}
+                        className={`rounded-full border px-4 py-2 text-sm font-medium transition focus:outline-none focus:ring-2 ${
+                          active
+                            ? 'border-slate-900 bg-slate-900 text-white shadow-sm focus:ring-slate-500'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 focus:ring-slate-300'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {missing.has('position.lifecycle') ? (
+                  <p className="text-xs text-rose-600">Select whether this entry opens or closes a structure.</p>
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    {lifecycle === 'open'
+                      ? 'This payload will create a new open structure.'
+                      : 'Select the matching open structure to link this close entry.'}
+                  </p>
+                )}
+
+                {lifecycle === 'close' ? (
+                  <div className="space-y-2 pt-3">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                      Link to open structure
+                    </label>
+                    {openStructureOptions.length > 0 ? (
+                      <select
+                        value={form.position?.close_target_structure_id ?? ''}
+                        onChange={(event) =>
+                          updateField(
+                            'position.close_target_structure_id',
+                            event.target.value ? event.target.value : undefined,
+                          )
+                        }
+                        className={`mt-1 block w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 ${
+                          missing.has('position.close_target_structure_id')
+                            ? 'border-rose-500 focus:ring-rose-400'
+                            : 'border-slate-200 focus:ring-slate-400'
+                        }`}
+                      >
+                        <option value="">Select an open structure…</option>
+                        {openStructureOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                        No open structures available to link.
+                      </div>
+                    )}
+                    {openStructureOptions.length === 0 ? (
+                      <p className="text-xs text-slate-500">
+                        Save at least one structure as open to link it when recording a close.
+                      </p>
+                    ) : null}
+                    {missing.has('position.close_target_structure_id') ? (
+                      <p className="text-xs text-rose-600">Select the open structure this close is paired with.</p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </Section>
 
               <Section title="Program" description="Program metadata required before importing trades.">
                 <div className="grid gap-4 md:grid-cols-2">

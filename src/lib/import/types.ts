@@ -17,6 +17,7 @@ export const EXECUTION_ROUTES = ['single', 'package', 'legged'] as const;
 export const ORDER_TYPES = ['market', 'limit', 'pegged', 'stop', 'stop_limit'] as const;
 export const SIDES = ['buy', 'sell'] as const;
 export const OPTION_TYPES = ['call', 'put'] as const;
+export const STRUCTURE_LIFECYCLES = ['open', 'close'] as const;
 
 // ───────────────────────────────────────────────────────────────────────────────
 // Primitive aliases
@@ -36,6 +37,7 @@ export type ExecutionRoute = typeof EXECUTION_ROUTES[number];
 export type OrderType = typeof ORDER_TYPES[number];
 export type Side = typeof SIDES[number];
 export type OptionType = typeof OPTION_TYPES[number];
+export type StructureLifecycle = typeof STRUCTURE_LIFECYCLES[number];
 
 // ───────────────────────────────────────────────────────────────────────────────
 // Entities
@@ -70,6 +72,7 @@ export type Position = {
   options_structure: OptionsStructure;
   construction: Construction;
   risk_defined: boolean;
+  lifecycle: StructureLifecycle;
   entry_ts: ISODateTime;           // ISO datetime
   exit_ts?: ISODateTime | null;
   execution_route: ExecutionRoute;
@@ -97,6 +100,7 @@ export type Position = {
   counterparty?: string | null;
   pricing_currency?: string | null;
   notes?: string | null;
+  close_target_structure_id?: string | null;
 };
 
 export type Leg = {

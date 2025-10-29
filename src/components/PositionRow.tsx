@@ -22,6 +22,7 @@ type PositionRowProps = {
   visibleCols: string[]
   marks?: MarkMap
   markLoading?: boolean
+  allPositions: Position[]
 }
 
 function CellSpinner() {
@@ -51,6 +52,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   visibleCols,
   marks,
   markLoading,
+  allPositions,
 }) => {
   const [open, setOpen] = React.useState(false)
   const [showSaveOverlay, setShowSaveOverlay] = React.useState(false)
@@ -299,6 +301,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           open={showSaveOverlay}
           onClose={() => setShowSaveOverlay(false)}
           position={p}
+          allPositions={allPositions}
         />
       ) : null}
     </>
@@ -312,7 +315,8 @@ export const PositionRow = React.memo(
     prev.onUpdate === next.onUpdate &&
     prev.visibleCols === next.visibleCols &&
     prev.marks === next.marks &&
-    prev.markLoading === next.markLoading
+    prev.markLoading === next.markLoading &&
+    prev.allPositions === next.allPositions
 )
 
 PositionRow.displayName = 'PositionRow'

@@ -576,6 +576,7 @@ export default function App() {
                       visibleCols={visibleCols}
                       marks={legMarks}
                       markLoading={markFetch.inProgress}
+                      allPositions={positions}
                     />
                   ))}
                 </tbody>
