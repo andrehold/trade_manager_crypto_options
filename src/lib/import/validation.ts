@@ -11,6 +11,7 @@ import {
   ORDER_TYPES,
   SIDES,
   OPTION_TYPES,
+  STRUCTURE_LIFECYCLES,
 } from './types';
 
 // ── Shared scalars ─────────────────────────────────────────────────────────────
@@ -40,42 +41,57 @@ export const VenueSchema = z.object({
   account: z.string().optional().nullable(),
 });
 
-export const PositionSchema = z.object({
-  program_id: z.string().min(1),
-  underlier: z.string().min(1),
-  strategy_code: z.string().min(1),
-  strategy_name: z.string().min(1),
-  options_structure: z.enum(OPTIONS_STRUCTURES),
-  construction: z.enum(CONSTRUCTIONS),
-  risk_defined: z.boolean(),
-  entry_ts: ISO_DATETIME,
-  exit_ts: ISO_DATETIME.optional().nullable(),
-  execution_route: z.enum(EXECUTION_ROUTES),
-  order_type: z.enum(ORDER_TYPES).optional(),
-  provider: z.string().optional().nullable(),
-  venue_id: z.string().uuid().optional().nullable(),
-  package_order_id: z.string().optional().nullable(),
-  order_id: z.string().optional().nullable(),
-  rfq_id: z.string().optional().nullable(),
-  deal_id: z.string().optional().nullable(),
-  trade_id: z.string().optional().nullable(),
-  fees_total: z.number().optional().nullable(),
-  fees_currency: z.string().length(3).optional().nullable(),
-  net_fill: z.number(),
-  mark_at_entry: z.number().optional().nullable(),
-  mark_source: z.string().optional().nullable(),
-  mark_ts: ISO_DATETIME.optional().nullable(),
-  spot: z.number().optional().nullable(),
-  expected_move_pts: z.number().optional().nullable(),
-  em_coverage_pct: z.number().optional().nullable(),
-  multiplier: z.number().optional().nullable(),
-  max_gain: z.number().optional().nullable(),
-  max_loss: z.number().optional().nullable(),
-  net_delta: z.number().optional().nullable(),
-  counterparty: z.string().optional().nullable(),
-  pricing_currency: z.string().length(3).optional().nullable(),
-  notes: z.string().optional().nullable(),
-});
+export const PositionSchema = z
+  .object({
+    program_id: z.string().min(1),
+    underlier: z.string().min(1),
+    strategy_code: z.string().min(1),
+    strategy_name: z.string().min(1),
+    options_structure: z.enum(OPTIONS_STRUCTURES),
+    construction: z.enum(CONSTRUCTIONS),
+    risk_defined: z.boolean(),
+    lifecycle: z.enum(STRUCTURE_LIFECYCLES),
+    entry_ts: ISO_DATETIME,
+    exit_ts: ISO_DATETIME.optional().nullable(),
+    execution_route: z.enum(EXECUTION_ROUTES),
+    order_type: z.enum(ORDER_TYPES).optional(),
+    provider: z.string().optional().nullable(),
+    venue_id: z.string().uuid().optional().nullable(),
+    package_order_id: z.string().optional().nullable(),
+    order_id: z.string().optional().nullable(),
+    rfq_id: z.string().optional().nullable(),
+    deal_id: z.string().optional().nullable(),
+    trade_id: z.string().optional().nullable(),
+    fees_total: z.number().optional().nullable(),
+    fees_currency: z.string().length(3).optional().nullable(),
+    net_fill: z.number(),
+    mark_at_entry: z.number().optional().nullable(),
+    mark_source: z.string().optional().nullable(),
+    mark_ts: ISO_DATETIME.optional().nullable(),
+    spot: z.number().optional().nullable(),
+    expected_move_pts: z.number().optional().nullable(),
+    em_coverage_pct: z.number().optional().nullable(),
+    multiplier: z.number().optional().nullable(),
+    max_gain: z.number().optional().nullable(),
+    max_loss: z.number().optional().nullable(),
+    net_delta: z.number().optional().nullable(),
+    counterparty: z.string().optional().nullable(),
+    pricing_currency: z.string().length(3).optional().nullable(),
+    notes: z.string().optional().nullable(),
+    close_target_structure_id: z.string().optional().nullable(),
+  })
+  .superRefine((position, ctx) => {
+    if (
+      position.lifecycle === 'close' &&
+      (!position.close_target_structure_id || position.close_target_structure_id.trim().length === 0)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['close_target_structure_id'],
+        message: 'Required when lifecycle is close',
+      });
+    }
+  });
 
 export const LegSchema = z.object({
   leg_seq: z.number().int().positive(),

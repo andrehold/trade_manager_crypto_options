@@ -51,6 +51,7 @@ const REQUIRED_POSITION_KEYS: Array<keyof ImportPayload["position"]> = [
   "options_structure",
   "construction",
   "risk_defined",
+  "lifecycle",
   "entry_ts",
   "execution_route",
   "net_fill",
@@ -129,6 +130,12 @@ export function computeMissing(payload: Partial<ImportPayload>): string[] {
     for (const k of REQUIRED_POSITION_KEYS) {
       const v = payload.position[k];
       if (isMissingValue(v)) missing.add(`position.${String(k)}`);
+    }
+    if (
+      payload.position.lifecycle === 'close' &&
+      isMissingValue(payload.position.close_target_structure_id)
+    ) {
+      missing.add('position.close_target_structure_id');
     }
   } else {
     for (const k of REQUIRED_POSITION_KEYS) missing.add(`position.${String(k)}`);
