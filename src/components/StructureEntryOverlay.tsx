@@ -584,43 +584,6 @@ export function StructureEntryOverlay({
     setIncludeVenue(false);
   }, [position]);
 
-  React.useEffect(() => {
-    if (lifecycle !== 'close') return;
-    if (form.position?.close_target_structure_id) return;
-    if (openStructureOptions.length !== 1) return;
-    const only = openStructureOptions[0];
-    if (!only) return;
-    updateField('position.close_target_structure_id', only.value);
-  }, [form.position?.close_target_structure_id, lifecycle, openStructureOptions, updateField]);
-
-  const payloadForValidation = React.useMemo(
-    () => ensureVenue(form, includeVenue),
-    [form, includeVenue],
-  );
-  const missing = React.useMemo(
-    () => new Set(computeMissing(payloadForValidation as Partial<ImportPayload>)),
-    [payloadForValidation],
-  );
-  const lifecycle = (form.position?.lifecycle as (typeof STRUCTURE_LIFECYCLES)[number]) ?? 'open';
-  const openStructureOptions = React.useMemo(
-    () =>
-      allPositions
-        .filter((candidate) => candidate.status === 'OPEN' && candidate.id !== position.id)
-        .map((candidate) => {
-          const parts = [
-            candidate.structureId ? `#${candidate.structureId}` : 'No structure #',
-            candidate.underlying,
-          ];
-          if (candidate.expiryISO) parts.push(candidate.expiryISO);
-          if (candidate.exchange) parts.push(candidate.exchange.toUpperCase());
-          return {
-            value: candidate.structureId ?? candidate.id,
-            label: parts.join(' • '),
-          };
-        }),
-    [allPositions, position.id],
-  );
-
   const updateField = React.useCallback((path: string, value: any) => {
     setForm((prev) => {
       const parsed = parsePath(path);
@@ -647,6 +610,44 @@ export function StructureEntryOverlay({
       return next;
     });
   }, []);
+
+  const lifecycle = (form.position?.lifecycle as (typeof STRUCTURE_LIFECYCLES)[number]) ?? 'open';
+  const openStructureOptions = React.useMemo(
+    () =>
+      allPositions
+        .filter((candidate) => candidate.status === 'OPEN' && candidate.id !== position.id)
+        .map((candidate) => {
+          const parts = [
+            candidate.structureId ? `#${candidate.structureId}` : 'No structure #',
+            candidate.underlying,
+          ];
+          if (candidate.expiryISO) parts.push(candidate.expiryISO);
+          if (candidate.exchange) parts.push(candidate.exchange.toUpperCase());
+          return {
+            value: candidate.structureId ?? candidate.id,
+            label: parts.join(' • '),
+          };
+        }),
+    [allPositions, position.id],
+  );
+
+  React.useEffect(() => {
+    if (lifecycle !== 'close') return;
+    if (form.position?.close_target_structure_id) return;
+    if (openStructureOptions.length !== 1) return;
+    const only = openStructureOptions[0];
+    if (!only) return;
+    updateField('position.close_target_structure_id', only.value);
+  }, [form.position?.close_target_structure_id, lifecycle, openStructureOptions, updateField]);
+
+  const payloadForValidation = React.useMemo(
+    () => ensureVenue(form, includeVenue),
+    [form, includeVenue],
+  );
+  const missing = React.useMemo(
+    () => new Set(computeMissing(payloadForValidation as Partial<ImportPayload>)),
+    [payloadForValidation],
+  );
 
   const handleProgramNameChange = React.useCallback(
     (value: string) => {
