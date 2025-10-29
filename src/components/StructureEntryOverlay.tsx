@@ -6,7 +6,6 @@ import { computeMissing } from '../features/import/missing';
 import type { ImportPayload } from '../lib/import';
 import { tryGetSupabaseClient } from '../lib/supabase';
 import { useAuth } from '../features/auth/useAuth';
-import { SupabaseLogin } from '../features/auth/SupabaseLogin';
 import {
   OPTIONS_STRUCTURES,
   CONSTRUCTIONS,
@@ -892,47 +891,16 @@ export function StructureEntryOverlay({
   const missingLegPath = (index: number, suffix: string) => `legs[${index}].${suffix}`;
   const missingFillPath = (index: number, suffix: string) => `fills[${index}].${suffix}`;
 
+  const supabaseUnavailable = !supabaseConfigured || !supabase;
+  const supabaseChecking = !supabaseUnavailable && authLoading;
+  const supabaseSignedOut = !supabaseUnavailable && !authLoading && !user;
+
   return (
     <Overlay open={open} onClose={onClose} title={`Structure entry for ${position.underlying}`}>
-      {!supabaseConfigured || !supabase ? (
-        <div
-          className="flex max-h-[90vh] flex-col items-center justify-center gap-3 rounded-2xl bg-white p-8 text-center text-sm text-slate-600"
-          style={{ width: 'min(560px, calc(100vw - 3rem))' }}
-        >
-          <p className="font-semibold text-slate-700">Supabase configuration required</p>
-          <p>
-            Set <code className="rounded bg-slate-100 px-1 py-0.5">VITE_SUPABASE_URL</code> and{' '}
-            <code className="rounded bg-slate-100 px-1 py-0.5">VITE_SUPABASE_PUBLISHABLE_KEY</code> to enable
-            structure imports and program lookups.
-          </p>
-        </div>
-      ) : authLoading ? (
-        <div
-          className="flex max-h-[90vh] flex-col items-center justify-center gap-3 rounded-2xl bg-white p-8 text-center text-sm text-slate-600"
-          style={{ width: 'min(560px, calc(100vw - 3rem))' }}
-        >
-          <p className="font-semibold text-slate-700">Checking Supabase session…</p>
-          <p>Hold tight while we verify your saved Supabase credentials.</p>
-        </div>
-      ) : !user ? (
-        <div
-          className="flex max-h-[90vh] flex-col items-center justify-center gap-6 rounded-2xl bg-white p-8 text-center text-sm text-slate-600"
-          style={{ width: 'min(560px, calc(100vw - 3rem))' }}
-        >
-          <div className="space-y-2">
-            <p className="text-base font-semibold text-slate-700">Sign in to Supabase</p>
-            <p>
-              Use the Supabase email and password associated with your Publishable and secret API keys to enable
-              program lookups and structure imports.
-            </p>
-          </div>
-          <SupabaseLogin />
-        </div>
-      ) : (
-        <div
-          className="flex max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white"
-          style={{ width: 'min(960px, calc(100vw - 3rem))' }}
-        >
+      <div
+        className="flex max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white"
+        style={{ width: 'min(960px, calc(100vw - 3rem))' }}
+      >
           <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-6 py-4">
             <div>
               <h2 className="text-base font-semibold text-slate-900">Structure entry for {position.underlying}</h2>
@@ -941,7 +909,7 @@ export function StructureEntryOverlay({
               </p>
             </div>
             <div className="ml-auto flex items-center gap-3 text-xs text-slate-500">
-              {user?.email ? (
+              {!supabaseUnavailable && user?.email ? (
                 <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">
                   <span className="font-medium text-slate-700">{user.email}</span>
                   <button
@@ -974,6 +942,35 @@ export function StructureEntryOverlay({
           </header>
           <div className="flex-1 overflow-y-auto bg-slate-50 px-6 py-6">
             <div className="space-y-6">
+              {(supabaseUnavailable || supabaseChecking || supabaseSignedOut) && (
+                <div className="space-y-2 rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
+                  {supabaseUnavailable ? (
+                    <>
+                      <p className="font-semibold text-slate-700">Supabase unavailable</p>
+                      <p>
+                        Program lookups and strategy autocomplete are disabled. Provide any required identifiers manually or
+                        configure <code className="rounded bg-slate-100 px-1 py-0.5">VITE_SUPABASE_URL</code> and{' '}
+                        <code className="rounded bg-slate-100 px-1 py-0.5">VITE_SUPABASE_PUBLISHABLE_KEY</code> to enable live
+                        resources.
+                      </p>
+                    </>
+                  ) : supabaseChecking ? (
+                    <>
+                      <p className="font-semibold text-slate-700">Restoring Supabase session…</p>
+                      <p>Realtime lookups will become available once your saved credentials are verified.</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-semibold text-slate-700">Supabase sign-in required for lookups</p>
+                      <p>
+                        You can continue editing the payload manually. Sign in from the main workspace header to enable program
+                        and strategy search.
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+
               <Section title="Program" description="Program metadata required before importing trades.">
                 <div className="grid gap-4 md:grid-cols-2">
                   {programFields.map((field) => (
@@ -1295,7 +1292,6 @@ export function StructureEntryOverlay({
             </div>
           </div>
         </div>
-      )}
     </Overlay>
   );
 }
