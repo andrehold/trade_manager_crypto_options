@@ -5,6 +5,8 @@ import type { Position, TxnRow } from '../utils';
 import { computeMissing } from '../features/import/missing';
 import type { ImportPayload } from '../lib/import';
 import { tryGetSupabaseClient } from '../lib/supabase';
+import { useAuth } from '../features/auth/useAuth';
+import { SupabaseLogin } from '../features/auth/SupabaseLogin';
 import {
   OPTIONS_STRUCTURES,
   CONSTRUCTIONS,
@@ -499,11 +501,14 @@ export function StructureEntryOverlay({
   >([]);
   const [strategyLookup, setStrategyLookup] = React.useState<Record<string, string>>({});
   const strategyRequests = React.useRef<Set<string>>(new Set());
-
-  const supabase = React.useMemo(() => tryGetSupabaseClient(), []);
+  const { user, loading: authLoading, supabaseConfigured } = useAuth();
+  const supabase = React.useMemo(
+    () => (supabaseConfigured ? tryGetSupabaseClient() : null),
+    [supabaseConfigured],
+  );
 
   React.useEffect(() => {
-    if (!supabase) return;
+    if (!supabase || !user) return;
     let active = true;
     const loadPrograms = async () => {
       try {
@@ -527,10 +532,10 @@ export function StructureEntryOverlay({
     return () => {
       active = false;
     };
-  }, [supabase]);
+  }, [supabase, user]);
 
   React.useEffect(() => {
-    if (!supabase) return;
+    if (!supabase || !user) return;
     let active = true;
 
     const loadStrategies = async () => {
@@ -568,7 +573,7 @@ export function StructureEntryOverlay({
     return () => {
       active = false;
     };
-  }, [supabase]);
+  }, [supabase, user]);
 
   React.useEffect(() => {
     setForm(buildInitialPayload(position));
@@ -640,6 +645,11 @@ export function StructureEntryOverlay({
     [strategyOptions],
   );
 
+  const handleSignOut = React.useCallback(() => {
+    if (!supabase) return;
+    void supabase.auth.signOut();
+  }, [supabase]);
+
   React.useEffect(() => {
     const currentId = form.program?.program_id;
     if (!currentId || !programOptions.length) return;
@@ -668,7 +678,7 @@ export function StructureEntryOverlay({
 
     if (strategyRequests.current.has(code)) return;
 
-    if (!supabase) return;
+    if (!supabase || !user) return;
 
     let active = true;
     strategyRequests.current.add(code);
@@ -707,7 +717,13 @@ export function StructureEntryOverlay({
       active = false;
       strategyRequests.current.delete(code);
     };
-  }, [form.position?.strategy_code, form.position?.strategy_name, strategyLookup, supabase]);
+  }, [
+    form.position?.strategy_code,
+    form.position?.strategy_name,
+    strategyLookup,
+    supabase,
+    user,
+  ]);
 
   const programFields: FieldMeta[] = [
     { label: 'Program ID', path: 'program.program_id', valueType: 'string', required: true },
@@ -878,8 +894,9 @@ export function StructureEntryOverlay({
 
   return (
     <Overlay open={open} onClose={onClose} title={`Structure entry for ${position.underlying}`}>
-      {!supabase ? (
-        <div className="flex max-h-[90vh] flex-col items-center justify-center gap-3 rounded-2xl bg-white p-8 text-center text-sm text-slate-600"
+      {!supabaseConfigured || !supabase ? (
+        <div
+          className="flex max-h-[90vh] flex-col items-center justify-center gap-3 rounded-2xl bg-white p-8 text-center text-sm text-slate-600"
           style={{ width: 'min(560px, calc(100vw - 3rem))' }}
         >
           <p className="font-semibold text-slate-700">Supabase configuration required</p>
@@ -888,6 +905,28 @@ export function StructureEntryOverlay({
             <code className="rounded bg-slate-100 px-1 py-0.5">VITE_SUPABASE_PUBLISHABLE_KEY</code> to enable
             structure imports and program lookups.
           </p>
+        </div>
+      ) : authLoading ? (
+        <div
+          className="flex max-h-[90vh] flex-col items-center justify-center gap-3 rounded-2xl bg-white p-8 text-center text-sm text-slate-600"
+          style={{ width: 'min(560px, calc(100vw - 3rem))' }}
+        >
+          <p className="font-semibold text-slate-700">Checking Supabase session…</p>
+          <p>Hold tight while we verify your saved Supabase credentials.</p>
+        </div>
+      ) : !user ? (
+        <div
+          className="flex max-h-[90vh] flex-col items-center justify-center gap-6 rounded-2xl bg-white p-8 text-center text-sm text-slate-600"
+          style={{ width: 'min(560px, calc(100vw - 3rem))' }}
+        >
+          <div className="space-y-2">
+            <p className="text-base font-semibold text-slate-700">Sign in to Supabase</p>
+            <p>
+              Use the Supabase email and password associated with your Publishable and secret API keys to enable
+              program lookups and structure imports.
+            </p>
+          </div>
+          <SupabaseLogin />
         </div>
       ) : (
         <div
@@ -902,6 +941,18 @@ export function StructureEntryOverlay({
               </p>
             </div>
             <div className="ml-auto flex items-center gap-3 text-xs text-slate-500">
+              {user?.email ? (
+                <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">
+                  <span className="font-medium text-slate-700">{user.email}</span>
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    className="text-xs font-semibold text-slate-500 transition hover:text-slate-700"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              ) : null}
               {missing.size > 0 ? (
                 <span className="rounded-full bg-rose-50 px-3 py-1 font-medium text-rose-600">
                   {missing.size} required field{missing.size === 1 ? '' : 's'} missing
