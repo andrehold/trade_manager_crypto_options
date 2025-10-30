@@ -632,23 +632,86 @@ export function StructureEntryOverlay({
     [allPositions, position.id],
   );
 
+  const linkableStructureLookup = React.useMemo(
+    () =>
+      new Map(
+        linkableStructureOptions.map((option) => [option.value, option.label] as const),
+      ),
+    [linkableStructureOptions],
+  );
+
+  const closeTargetStructureId =
+    typeof form.position?.close_target_structure_id === 'string'
+      ? form.position.close_target_structure_id
+      : undefined;
+
+  const linkedStructureIds = React.useMemo(() => {
+    const rawIds = Array.isArray(form.position?.linked_structure_ids)
+      ? form.position.linked_structure_ids
+      : [];
+    const uniqueIds = new Set(
+      rawIds.filter((id): id is string => typeof id === 'string' && id.length > 0),
+    );
+    if (closeTargetStructureId) {
+      uniqueIds.add(closeTargetStructureId);
+    }
+    return Array.from(uniqueIds);
+  }, [closeTargetStructureId, form.position?.linked_structure_ids]);
+
   React.useEffect(() => {
     if (lifecycle !== 'close') return;
-    if (form.position?.close_target_structure_id) return;
-    if (linkableStructureOptions.length !== 1) return;
-    const only = linkableStructureOptions[0];
-    if (!only) return;
-    updateField('position.close_target_structure_id', only.value);
-  }, [form.position?.close_target_structure_id, lifecycle, linkableStructureOptions, updateField]);
+    if (!closeTargetStructureId) {
+      if (linkableStructureOptions.length !== 1) return;
+      const only = linkableStructureOptions[0];
+      if (!only) return;
+      updateField('position.linked_structure_ids', [only.value]);
+      updateField('position.close_target_structure_id', only.value);
+      return;
+    }
 
-  const linkedStructureIds = Array.isArray(form.position?.linked_structure_ids)
-    ? form.position?.linked_structure_ids
-    : [];
+    const hasCloseTargetLinked = Array.isArray(form.position?.linked_structure_ids)
+      ? form.position.linked_structure_ids.includes(closeTargetStructureId)
+      : false;
+
+    if (!hasCloseTargetLinked) {
+      const next = [closeTargetStructureId, ...linkedStructureIds.filter((id) => id !== closeTargetStructureId)];
+      updateField('position.linked_structure_ids', next);
+    }
+  }, [
+    closeTargetStructureId,
+    form.position?.linked_structure_ids,
+    lifecycle,
+    linkableStructureOptions,
+    linkedStructureIds,
+    updateField,
+  ]);
 
   const handleLinkedStructureChange = React.useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
       const selected = Array.from(event.target.selectedOptions).map((option) => option.value);
-      updateField('position.linked_structure_ids', selected.length > 0 ? selected : undefined);
+      const unique = Array.from(new Set(selected));
+      updateField('position.linked_structure_ids', unique.length > 0 ? unique : undefined);
+
+      if (lifecycle === 'close') {
+        if (unique.length === 0) {
+          updateField('position.close_target_structure_id', undefined);
+          return;
+        }
+
+        if (!closeTargetStructureId || !unique.includes(closeTargetStructureId)) {
+          updateField('position.close_target_structure_id', unique[0]);
+        }
+      }
+    },
+    [closeTargetStructureId, lifecycle, updateField],
+  );
+
+  const handleCloseTargetChange = React.useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      updateField(
+        'position.close_target_structure_id',
+        event.target.value ? event.target.value : undefined,
+      );
     },
     [updateField],
   );
@@ -1058,71 +1121,78 @@ export function StructureEntryOverlay({
                   </p>
                 )}
 
-                {lifecycle === 'close' ? (
-                  <div className="space-y-2 pt-3">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                      Link to open structure
-                    </label>
-                    {linkableStructureOptions.length > 0 ? (
+                <div className="space-y-2 pt-3">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    Linked structures{lifecycle === 'open' ? ' (optional)' : ''}
+                  </label>
+                  {linkableStructureOptions.length > 0 ? (
+                    <>
                       <select
-                        value={form.position?.close_target_structure_id ?? ''}
-                        onChange={(event) =>
-                          updateField(
-                            'position.close_target_structure_id',
-                            event.target.value ? event.target.value : undefined,
-                          )
-                        }
+                        multiple
+                        value={linkedStructureIds}
+                        onChange={handleLinkedStructureChange}
                         className={`mt-1 block w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 ${
-                          missing.has('position.close_target_structure_id')
+                          lifecycle === 'close' && missing.has('position.close_target_structure_id')
                             ? 'border-rose-500 focus:ring-rose-400'
                             : 'border-slate-200 focus:ring-slate-400'
                         }`}
                       >
-                        <option value="">Select an open structure…</option>
                         {linkableStructureOptions.map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.label}
                           </option>
                         ))}
                       </select>
-                    ) : (
-                      <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                        No open structures available to link.
-                      </div>
-                    )}
-                    {linkableStructureOptions.length === 0 ? (
                       <p className="text-xs text-slate-500">
-                        Save at least one structure as open to link it when recording a close.
+                        {lifecycle === 'close'
+                          ? 'Select the open structure this close entry is paired with. You can add more related structures if needed.'
+                          : 'Optionally link this structure to other open structures.'}
                       </p>
-                    ) : null}
-                    {missing.has('position.close_target_structure_id') ? (
-                      <p className="text-xs text-rose-600">Select the open structure this close is paired with.</p>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {linkableStructureOptions.length > 0 ? (
-                  <div className="space-y-2 pt-3">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                      Related structures (optional)
-                    </label>
-                    <select
-                      multiple
-                      value={linkedStructureIds}
-                      onChange={handleLinkedStructureChange}
-                      className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-400"
-                    >
-                      {linkableStructureOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                      {lifecycle === 'close' ? (
+                        <div className="space-y-1 pt-2">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                            Closing target
+                          </label>
+                          <select
+                            value={closeTargetStructureId ?? ''}
+                            onChange={handleCloseTargetChange}
+                            disabled={linkedStructureIds.length === 0}
+                            className={`mt-1 block w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 ${
+                              missing.has('position.close_target_structure_id')
+                                ? 'border-rose-500 focus:ring-rose-400'
+                                : 'border-slate-200 focus:ring-slate-400'
+                            } ${linkedStructureIds.length === 0 ? 'opacity-60' : ''}`}
+                          >
+                            <option value="">Select closing target…</option>
+                            {linkedStructureIds.map((id) => (
+                              <option key={id} value={id}>
+                                {linkableStructureLookup.get(id) ?? id}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="text-xs text-slate-500">
+                            Choose which linked structure should be marked as closed.
+                          </p>
+                        </div>
+                      ) : null}
+                      {lifecycle === 'close' && missing.has('position.close_target_structure_id') ? (
+                        <p className="text-xs text-rose-600">Select at least one linked structure to close.</p>
+                      ) : null}
+                      <p className="text-xs text-slate-500">
+                        Hold Ctrl (Windows) or Cmd (macOS) to select multiple structures.
+                      </p>
+                    </>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                      No open structures available to link.
+                    </div>
+                  )}
+                  {linkableStructureOptions.length === 0 ? (
                     <p className="text-xs text-slate-500">
-                      Hold Ctrl (Windows) or Cmd (macOS) to select multiple structures.
+                      Save at least one structure as open to link it when recording a close.
                     </p>
-                  </div>
-                ) : null}
+                  ) : null}
+                </div>
               </Section>
 
               <Section title="Program" description="Program metadata required before importing trades.">
