@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import Overlay from './Overlay';
 import type { Position, TxnRow } from '../utils';
 import { computeMissing } from '../features/import/missing';
+import { importTrades } from '../lib/import';
 import type { ImportPayload } from '../lib/import';
 import { tryGetSupabaseClient } from '../lib/supabase';
 import { useAuth } from '../features/auth/useAuth';
@@ -506,6 +507,10 @@ export function StructureEntryOverlay({
   >([]);
   const [strategyLookup, setStrategyLookup] = React.useState<Record<string, string>>({});
   const strategyRequests = React.useRef<Set<string>>(new Set());
+  const [saving, setSaving] = React.useState(false);
+  const [saveStatus, setSaveStatus] = React.useState<
+    { type: 'idle' | 'error' | 'success'; message?: string }
+  >({ type: 'idle' });
   const { user, loading: authLoading, supabaseConfigured } = useAuth();
   const supabase = React.useMemo(
     () => (supabaseConfigured ? tryGetSupabaseClient() : null),
@@ -583,9 +588,18 @@ export function StructureEntryOverlay({
   React.useEffect(() => {
     setForm(buildInitialPayload(position));
     setIncludeVenue(false);
+    setSaving(false);
+    setSaveStatus({ type: 'idle' });
   }, [position]);
 
+  React.useEffect(() => {
+    if (!open) return;
+    setSaving(false);
+    setSaveStatus({ type: 'idle' });
+  }, [open]);
+
   const updateField = React.useCallback((path: string, value: any) => {
+    setSaveStatus((prev) => (prev.type === 'idle' ? prev : { type: 'idle' }));
     setForm((prev) => {
       const parsed = parsePath(path);
       let next = setValue(prev, parsed, value);
@@ -1010,6 +1024,71 @@ export function StructureEntryOverlay({
   const supabaseUnavailable = !supabaseConfigured || !supabase;
   const supabaseChecking = !supabaseUnavailable && authLoading;
   const supabaseSignedOut = !supabaseUnavailable && !authLoading && !user;
+  const saveDisabled =
+    saving ||
+    missing.size > 0 ||
+    supabaseUnavailable ||
+    supabaseChecking ||
+    supabaseSignedOut;
+
+  const handleSave = React.useCallback(async () => {
+    if (saving) return;
+    if (missing.size > 0) {
+      setSaveStatus({
+        type: 'error',
+        message: 'Complete all required fields before saving.',
+      });
+      return;
+    }
+    if (supabaseUnavailable) {
+      setSaveStatus({
+        type: 'error',
+        message: 'Supabase is not configured. Configure environment variables to enable saving.',
+      });
+      return;
+    }
+    if (supabaseChecking) {
+      setSaveStatus({
+        type: 'error',
+        message: 'Supabase session is being restored. Try again in a moment.',
+      });
+      return;
+    }
+    if (!user) {
+      setSaveStatus({ type: 'error', message: 'Sign in to save this structure.' });
+      return;
+    }
+
+    setSaving(true);
+    setSaveStatus({ type: 'idle' });
+
+    try {
+      const payload = payloadForValidation as Partial<ImportPayload>;
+      const result = await importTrades(payload as ImportPayload);
+      if (result.ok) {
+        setSaveStatus({ type: 'success', message: 'Structure saved successfully.' });
+      } else {
+        setSaveStatus({ type: 'error', message: result.error || 'Failed to save structure.' });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save structure.';
+      setSaveStatus({ type: 'error', message });
+    } finally {
+      setSaving(false);
+    }
+  }, [
+    missing,
+    payloadForValidation,
+    saving,
+    supabaseChecking,
+    supabaseUnavailable,
+    user,
+  ]);
+
+  const handleToggleIncludeVenue = React.useCallback(() => {
+    setSaveStatus((prev) => (prev.type === 'idle' ? prev : { type: 'idle' }));
+    setIncludeVenue((prev) => !prev);
+  }, []);
 
   return (
     <Overlay open={open} onClose={onClose} title={`Structure entry for ${position.underlying}`}>
@@ -1048,6 +1127,18 @@ export function StructureEntryOverlay({
               )}
               <button
                 type="button"
+                onClick={handleSave}
+                disabled={saveDisabled}
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-slate-500 ${
+                  saveDisabled
+                    ? 'border-slate-200 bg-slate-100 text-slate-400'
+                    : 'border-slate-900 bg-slate-900 text-white hover:bg-slate-800'
+                }`}
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                type="button"
                 onClick={onClose}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100"
               >
@@ -1058,6 +1149,16 @@ export function StructureEntryOverlay({
           </header>
           <div className="flex-1 overflow-y-auto bg-slate-50 px-6 py-6">
             <div className="space-y-6">
+              {saveStatus.type === 'error' ? (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {saveStatus.message ?? 'Unable to save structure. Please try again.'}
+                </div>
+              ) : null}
+              {saveStatus.type === 'success' ? (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                  {saveStatus.message ?? 'Structure saved successfully.'}
+                </div>
+              ) : null}
               {(supabaseUnavailable || supabaseChecking || supabaseSignedOut) && (
                 <div className="space-y-2 rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
                   {supabaseUnavailable ? (
@@ -1256,7 +1357,7 @@ export function StructureEntryOverlay({
                 <span>Include venue details in payload</span>
                 <button
                   type="button"
-                  onClick={() => setIncludeVenue((prev) => !prev)}
+                  onClick={handleToggleIncludeVenue}
                   className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${
                     includeVenue ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-slate-200 bg-white text-slate-600'
                   }`}
