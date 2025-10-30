@@ -59,6 +59,7 @@ export async function importTrades(payload: ImportPayload): Promise<ImportTrades
   const supabaseUrl =
     (supabase as unknown as { supabaseUrl?: string }).supabaseUrl ??
     ((import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? null);
+  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
   const restUrl = supabaseUrl ? `${supabaseUrl.replace(/\/$/, "")}/rest/v1` : null;
   const authContext = {
     userId: user.id,
@@ -71,24 +72,82 @@ export async function importTrades(payload: ImportPayload): Promise<ImportTrades
 
   // 2) Upsert program
   {
-    const requestDebug = {
+    if (!restUrl || !supabaseKey) {
+      const missingConfig = !restUrl
+        ? "Supabase REST URL is not configured"
+        : "Supabase publishable key is not configured";
+      return {
+        ok: false as const,
+        error: missingConfig,
+        details: { authContext, restUrl, hasSupabaseKey: Boolean(supabaseKey) },
+      };
+    }
+
+    if (!accessToken) {
+      return {
+        ok: false as const,
+        error:
+          "Authenticated Supabase access token is not available. Verify the user session before retrying the import.",
+        details: { authContext },
+      };
+    }
+
+    const requestUrl = `${restUrl}/programs?on_conflict=program_id`;
+    const requestInit: RequestInit = {
       method: "POST",
-      url: restUrl ? `${restUrl}/programs?on_conflict=program_id` : null,
-      body: program,
       headers: {
         "Content-Type": "application/json",
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        apikey: supabaseKey,
+        Authorization: `Bearer ${accessToken}`,
+        Prefer: "resolution=merge-duplicates,return=minimal",
       },
+      body: JSON.stringify(program),
+    };
+    const requestDebug = {
+      url: requestUrl,
+      method: requestInit.method,
+      headers: {
+        "Content-Type": "application/json",
+        apikeyPreview: `${supabaseKey.slice(0, 6)}…${supabaseKey.slice(-4)}`,
+        authorizationPreview: `Bearer ${accessToken.slice(0, 10)}…${accessToken.slice(-6)}`,
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: program,
     };
 
-    const { error } = await supabase
-      .from("programs")
-      .upsert(program, { onConflict: "program_id" });
-    if (error) {
-      const debugPayload = { authContext, request: requestDebug };
-      const errorWithRequest = `${error.message}\n${JSON.stringify(debugPayload, null, 2)}`;
+    let response: Response;
+    try {
+      response = await fetch(requestUrl, requestInit);
+    } catch (networkError) {
+      const debugPayload = {
+        authContext,
+        request: requestDebug,
+        response: null,
+        networkError: networkError instanceof Error ? networkError.message : networkError,
+      };
+      const errorMessage = "Supabase programs upsert request failed before reaching the server";
+      const errorWithRequest = `${errorMessage}\n${JSON.stringify(debugPayload, null, 2)}`;
       if (import.meta.env.DEV) {
-        console.error("Supabase programs upsert failed", { error, authContext, requestDebug });
+        console.error(errorMessage, debugPayload);
+      }
+      return { ok: false as const, error: errorWithRequest, details: debugPayload };
+    }
+
+    if (!response.ok) {
+      const responseBody = await response.text();
+      const debugPayload = {
+        authContext,
+        request: requestDebug,
+        response: {
+          status: response.status,
+          statusText: response.statusText,
+          body: responseBody,
+        },
+      };
+      const errorMessage = `Supabase programs upsert failed (${response.status})`;
+      const errorWithRequest = `${errorMessage}\n${JSON.stringify(debugPayload, null, 2)}`;
+      if (import.meta.env.DEV) {
+        console.error(errorMessage, debugPayload);
       }
       return { ok: false as const, error: errorWithRequest, details: debugPayload };
     }
