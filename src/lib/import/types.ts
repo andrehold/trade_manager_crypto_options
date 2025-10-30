@@ -101,6 +101,7 @@ export type Position = {
   pricing_currency?: string | null;
   notes?: string | null;
   close_target_structure_id?: string | null;
+  linked_structure_ids?: string[] | null;
 };
 
 export type Leg = {
