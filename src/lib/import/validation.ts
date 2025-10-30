@@ -79,6 +79,7 @@ export const PositionSchema = z
     pricing_currency: z.string().length(3).optional().nullable(),
     notes: z.string().optional().nullable(),
     close_target_structure_id: z.string().optional().nullable(),
+    linked_structure_ids: z.array(z.string().min(1)).min(1).optional().nullable(),
   })
   .superRefine((position, ctx) => {
     if (

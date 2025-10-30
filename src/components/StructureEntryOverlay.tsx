@@ -319,6 +319,7 @@ function buildInitialPayload(position: Position): PartialPayload {
     pricing_currency: 'USD',
     notes: position.playbook ?? '',
     close_target_structure_id: undefined,
+    linked_structure_ids: undefined,
   };
 
   return {
@@ -612,7 +613,7 @@ export function StructureEntryOverlay({
   }, []);
 
   const lifecycle = (form.position?.lifecycle as (typeof STRUCTURE_LIFECYCLES)[number]) ?? 'open';
-  const openStructureOptions = React.useMemo(
+  const linkableStructureOptions = React.useMemo(
     () =>
       allPositions
         .filter((candidate) => candidate.status === 'OPEN' && candidate.id !== position.id)
@@ -634,11 +635,31 @@ export function StructureEntryOverlay({
   React.useEffect(() => {
     if (lifecycle !== 'close') return;
     if (form.position?.close_target_structure_id) return;
-    if (openStructureOptions.length !== 1) return;
-    const only = openStructureOptions[0];
+    if (linkableStructureOptions.length !== 1) return;
+    const only = linkableStructureOptions[0];
     if (!only) return;
     updateField('position.close_target_structure_id', only.value);
-  }, [form.position?.close_target_structure_id, lifecycle, openStructureOptions, updateField]);
+  }, [form.position?.close_target_structure_id, lifecycle, linkableStructureOptions, updateField]);
+
+  const linkedStructureIds = Array.isArray(form.position?.linked_structure_ids)
+    ? form.position?.linked_structure_ids
+    : [];
+
+  const [linkSectionOpen, setLinkSectionOpen] = React.useState(() => linkedStructureIds.length > 0);
+
+  React.useEffect(() => {
+    if (linkedStructureIds.length > 0) {
+      setLinkSectionOpen(true);
+    }
+  }, [linkedStructureIds]);
+
+  const handleLinkedStructureChange = React.useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      const selected = Array.from(event.target.selectedOptions).map((option) => option.value);
+      updateField('position.linked_structure_ids', selected.length > 0 ? selected : undefined);
+    },
+    [updateField],
+  );
 
   const payloadForValidation = React.useMemo(
     () => ensureVenue(form, includeVenue),
@@ -1035,6 +1056,20 @@ export function StructureEntryOverlay({
                     );
                   })}
                 </div>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setLinkSectionOpen((prev) => !prev)}
+                    aria-expanded={linkSectionOpen}
+                    className={`rounded-full border px-4 py-2 text-sm font-medium transition focus:outline-none focus:ring-2 ${
+                      linkSectionOpen
+                        ? 'border-slate-900 bg-slate-900 text-white shadow-sm focus:ring-slate-500'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 focus:ring-slate-300'
+                    }`}
+                  >
+                    Link
+                  </button>
+                </div>
                 {missing.has('position.lifecycle') ? (
                   <p className="text-xs text-rose-600">Select whether this entry opens or closes a structure.</p>
                 ) : (
@@ -1050,7 +1085,7 @@ export function StructureEntryOverlay({
                     <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
                       Link to open structure
                     </label>
-                    {openStructureOptions.length > 0 ? (
+                    {linkableStructureOptions.length > 0 ? (
                       <select
                         value={form.position?.close_target_structure_id ?? ''}
                         onChange={(event) =>
@@ -1066,7 +1101,7 @@ export function StructureEntryOverlay({
                         }`}
                       >
                         <option value="">Select an open structure…</option>
-                        {openStructureOptions.map((option) => (
+                        {linkableStructureOptions.map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.label}
                           </option>
@@ -1077,7 +1112,7 @@ export function StructureEntryOverlay({
                         No open structures available to link.
                       </div>
                     )}
-                    {openStructureOptions.length === 0 ? (
+                    {linkableStructureOptions.length === 0 ? (
                       <p className="text-xs text-slate-500">
                         Save at least one structure as open to link it when recording a close.
                       </p>
@@ -1085,6 +1120,37 @@ export function StructureEntryOverlay({
                     {missing.has('position.close_target_structure_id') ? (
                       <p className="text-xs text-rose-600">Select the open structure this close is paired with.</p>
                     ) : null}
+                  </div>
+                ) : null}
+
+                {linkSectionOpen ? (
+                  <div className="space-y-2 pt-3">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                      Related structures (optional)
+                    </label>
+                    {linkableStructureOptions.length > 0 ? (
+                      <>
+                        <select
+                          multiple
+                          value={linkedStructureIds}
+                          onChange={handleLinkedStructureChange}
+                          className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                        >
+                          {linkableStructureOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-slate-500">
+                          Hold Ctrl (Windows) or Cmd (macOS) to select multiple structures.
+                        </p>
+                      </>
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                        No open structures available to link.
+                      </div>
+                    )}
                   </div>
                 ) : null}
               </Section>
