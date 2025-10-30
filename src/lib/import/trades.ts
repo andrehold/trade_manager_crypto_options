@@ -24,15 +24,37 @@ export async function importTrades(payload: ImportPayload): Promise<ImportTrades
   const { program, venue, position, legs, fills } = parsed.data;
 
   // 1) Make sure user is signed in (RLS)
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return { ok: false as const, error: "Not signed in" };
+
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError && import.meta.env.DEV) {
+    console.warn("Failed to retrieve Supabase session", sessionError);
+  }
+
+  const authContext = {
+    userId: user.id,
+    hasAccessToken: Boolean(session?.access_token),
+    expiresAt: session?.expires_at ?? null,
+  };
 
   // 2) Upsert program
   {
     const { error } = await supabase
       .from("programs")
       .upsert(program, { onConflict: "program_id" });
-    if (error) return { ok: false as const, error: error.message };
+    if (error) {
+      if (import.meta.env.DEV) {
+        console.error("Supabase programs upsert failed", { error, authContext });
+      }
+      return { ok: false as const, error: error.message, details: authContext };
+    }
   }
 
   // 2b) Ensure strategy catalog + linkage
