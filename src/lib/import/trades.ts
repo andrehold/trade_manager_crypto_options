@@ -3,6 +3,23 @@ import { tryGetSupabaseClient } from "../supabase";
 import { payloadSchema } from "./validation";
 import type { ImportPayload } from "./types";
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const segments = token.split(".");
+  if (segments.length < 2) return null;
+  try {
+    const payload = segments[1];
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+    const json = atob(padded);
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn("Failed to decode Supabase access token", error);
+    }
+    return null;
+  }
+}
+
 type ImportTradesResult =
   | { ok: true; position_id: string }
   | { ok: false; error: string; details?: unknown };
@@ -38,22 +55,42 @@ export async function importTrades(payload: ImportPayload): Promise<ImportTrades
     console.warn("Failed to retrieve Supabase session", sessionError);
   }
 
+  const accessToken = session?.access_token ?? null;
+  const supabaseUrl =
+    (supabase as unknown as { supabaseUrl?: string }).supabaseUrl ??
+    ((import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? null);
+  const restUrl = supabaseUrl ? `${supabaseUrl.replace(/\/$/, "")}/rest/v1` : null;
   const authContext = {
     userId: user.id,
-    hasAccessToken: Boolean(session?.access_token),
+    hasAccessToken: Boolean(accessToken),
+    accessTokenPreview: accessToken ? `${accessToken.slice(0, 10)}…${accessToken.slice(-6)}` : null,
     expiresAt: session?.expires_at ?? null,
+    jwtClaims: accessToken ? decodeJwtPayload(accessToken) : null,
+    supabaseUrl,
   };
 
   // 2) Upsert program
   {
+    const requestDebug = {
+      method: "POST",
+      url: restUrl ? `${restUrl}/programs?on_conflict=program_id` : null,
+      body: program,
+      headers: {
+        "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+    };
+
     const { error } = await supabase
       .from("programs")
       .upsert(program, { onConflict: "program_id" });
     if (error) {
+      const debugPayload = { authContext, request: requestDebug };
+      const errorWithRequest = `${error.message}\n${JSON.stringify(debugPayload, null, 2)}`;
       if (import.meta.env.DEV) {
-        console.error("Supabase programs upsert failed", { error, authContext });
+        console.error("Supabase programs upsert failed", { error, authContext, requestDebug });
       }
-      return { ok: false as const, error: error.message, details: authContext };
+      return { ok: false as const, error: errorWithRequest, details: debugPayload };
     }
   }
 
