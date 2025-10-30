@@ -319,6 +319,7 @@ function buildInitialPayload(position: Position): PartialPayload {
     pricing_currency: 'USD',
     notes: position.playbook ?? '',
     close_target_structure_id: undefined,
+    linked_structure_ids: undefined,
   };
 
   return {
@@ -612,7 +613,7 @@ export function StructureEntryOverlay({
   }, []);
 
   const lifecycle = (form.position?.lifecycle as (typeof STRUCTURE_LIFECYCLES)[number]) ?? 'open';
-  const openStructureOptions = React.useMemo(
+  const linkableStructureOptions = React.useMemo(
     () =>
       allPositions
         .filter((candidate) => candidate.status === 'OPEN' && candidate.id !== position.id)
@@ -634,11 +635,23 @@ export function StructureEntryOverlay({
   React.useEffect(() => {
     if (lifecycle !== 'close') return;
     if (form.position?.close_target_structure_id) return;
-    if (openStructureOptions.length !== 1) return;
-    const only = openStructureOptions[0];
+    if (linkableStructureOptions.length !== 1) return;
+    const only = linkableStructureOptions[0];
     if (!only) return;
     updateField('position.close_target_structure_id', only.value);
-  }, [form.position?.close_target_structure_id, lifecycle, openStructureOptions, updateField]);
+  }, [form.position?.close_target_structure_id, lifecycle, linkableStructureOptions, updateField]);
+
+  const linkedStructureIds = Array.isArray(form.position?.linked_structure_ids)
+    ? form.position?.linked_structure_ids
+    : [];
+
+  const handleLinkedStructureChange = React.useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      const selected = Array.from(event.target.selectedOptions).map((option) => option.value);
+      updateField('position.linked_structure_ids', selected.length > 0 ? selected : undefined);
+    },
+    [updateField],
+  );
 
   const payloadForValidation = React.useMemo(
     () => ensureVenue(form, includeVenue),
@@ -1050,7 +1063,7 @@ export function StructureEntryOverlay({
                     <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
                       Link to open structure
                     </label>
-                    {openStructureOptions.length > 0 ? (
+                    {linkableStructureOptions.length > 0 ? (
                       <select
                         value={form.position?.close_target_structure_id ?? ''}
                         onChange={(event) =>
@@ -1066,7 +1079,7 @@ export function StructureEntryOverlay({
                         }`}
                       >
                         <option value="">Select an open structure…</option>
-                        {openStructureOptions.map((option) => (
+                        {linkableStructureOptions.map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.label}
                           </option>
@@ -1077,7 +1090,7 @@ export function StructureEntryOverlay({
                         No open structures available to link.
                       </div>
                     )}
-                    {openStructureOptions.length === 0 ? (
+                    {linkableStructureOptions.length === 0 ? (
                       <p className="text-xs text-slate-500">
                         Save at least one structure as open to link it when recording a close.
                       </p>
@@ -1085,6 +1098,29 @@ export function StructureEntryOverlay({
                     {missing.has('position.close_target_structure_id') ? (
                       <p className="text-xs text-rose-600">Select the open structure this close is paired with.</p>
                     ) : null}
+                  </div>
+                ) : null}
+
+                {linkableStructureOptions.length > 0 ? (
+                  <div className="space-y-2 pt-3">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                      Related structures (optional)
+                    </label>
+                    <select
+                      multiple
+                      value={linkedStructureIds}
+                      onChange={handleLinkedStructureChange}
+                      className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    >
+                      {linkableStructureOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-slate-500">
+                      Hold Ctrl (Windows) or Cmd (macOS) to select multiple structures.
+                    </p>
                   </div>
                 ) : null}
               </Section>
