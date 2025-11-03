@@ -63,9 +63,9 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   const [open, setOpen] = React.useState(false)
   const [showSaveOverlay, setShowSaveOverlay] = React.useState(false)
   const statusTone = p.status === 'OPEN' ? 'success' : p.status === 'ATTENTION' ? 'warning' : 'destructive'
-  const isReadOnly = readOnly || p.source === 'supabase'
-  const canOpenOverlay = !disableSave && (!readOnly || isUpdateMode)
   const isUpdateMode = p.source === 'supabase'
+  const isReadOnly = readOnly || isUpdateMode
+  const canOpenOverlay = (!disableSave || isUpdateMode) && (!readOnly || isUpdateMode)
 
   const legMarkData = React.useMemo(() => {
     const map = new Map<string, { ref: LegMarkRef | null; mark: MarkInfo | undefined }>()
