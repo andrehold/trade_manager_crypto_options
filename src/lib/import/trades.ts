@@ -144,12 +144,60 @@ export async function importTrades(payload: ImportPayload): Promise<ImportTrades
           body: responseBody,
         },
       };
-      const errorMessage = `Supabase programs upsert failed (${response.status})`;
-      const errorWithRequest = `${errorMessage}\n${JSON.stringify(debugPayload, null, 2)}`;
-      if (import.meta.env.DEV) {
-        console.error(errorMessage, debugPayload);
+
+      if (response.status === 403) {
+        const { data: programs, error: programLookupErr } = await supabase
+          .from("programs")
+          .select("program_id")
+          .eq("program_id", program.program_id);
+
+        if (programLookupErr) {
+          const errorMessage =
+            "Supabase programs upsert forbidden and existing program lookup failed";
+          const errorWithRequest = `${errorMessage}\n${JSON.stringify(
+            { ...debugPayload, programLookupErr },
+            null,
+            2,
+          )}`;
+          if (import.meta.env.DEV) {
+            console.error(errorMessage, { ...debugPayload, programLookupErr });
+          }
+          return {
+            ok: false as const,
+            error: errorWithRequest,
+            details: { ...debugPayload, programLookupErr },
+          };
+        }
+
+        const programExists = Array.isArray(programs) && programs.length > 0;
+        if (!programExists) {
+          const errorMessage =
+            "Supabase programs upsert forbidden and the referenced program does not exist";
+          const errorWithRequest = `${errorMessage}\n${JSON.stringify(debugPayload, null, 2)}`;
+          if (import.meta.env.DEV) {
+            console.error(errorMessage, debugPayload);
+          }
+          return {
+            ok: false as const,
+            error: errorWithRequest,
+            details: debugPayload,
+          };
+        }
+
+        if (import.meta.env.DEV) {
+          console.warn(
+            "Supabase programs upsert forbidden; continuing because the program already exists",
+            { ...debugPayload, programExists },
+          );
+        }
+      } else {
+        const errorMessage = `Supabase programs upsert failed (${response.status})`;
+        const errorWithRequest = `${errorMessage}\n${JSON.stringify(debugPayload, null, 2)}`;
+        if (import.meta.env.DEV) {
+          console.error(errorMessage, debugPayload);
+        }
+        return { ok: false as const, error: errorWithRequest, details: debugPayload };
       }
-      return { ok: false as const, error: errorWithRequest, details: debugPayload };
     }
   }
 
