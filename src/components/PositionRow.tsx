@@ -64,7 +64,8 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   const [showSaveOverlay, setShowSaveOverlay] = React.useState(false)
   const statusTone = p.status === 'OPEN' ? 'success' : p.status === 'ATTENTION' ? 'warning' : 'destructive'
   const isReadOnly = readOnly || p.source === 'supabase'
-  const isSaveDisabled = disableSave || isReadOnly
+  const overlayDisabled = disableSave || readOnly
+  const isUpdateMode = p.source === 'supabase'
 
   const legMarkData = React.useMemo(() => {
     const map = new Map<string, { ref: LegMarkRef | null; mark: MarkInfo | undefined }>()
@@ -185,18 +186,19 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           </button>
         </td>
         <td className="p-3 align-top text-right">
-          {isSaveDisabled ? (
+          {overlayDisabled ? (
             <span className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-500">
-              {p.source === 'supabase' ? 'Saved' : 'Save disabled'}
+              {isUpdateMode ? 'Saved' : 'Save disabled'}
             </span>
           ) : (
             <button
               type="button"
               onClick={() => setShowSaveOverlay(true)}
               className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
+              title={isUpdateMode ? 'Update saved structure' : 'Open save overlay'}
             >
               <Save className="h-4 w-4" />
-              <span className="sr-only">Open save overlay</span>
+              <span className="sr-only">{isUpdateMode ? 'Open update overlay' : 'Open save overlay'}</span>
             </button>
           )}
         </td>
@@ -322,13 +324,15 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           </td>
         </tr>
       )}
-      {!isSaveDisabled && showSaveOverlay ? (
+      {!overlayDisabled && showSaveOverlay ? (
         <StructureEntryOverlay
           open={showSaveOverlay}
           onClose={() => setShowSaveOverlay(false)}
           position={p}
           allPositions={allPositions}
           onSaved={onSaved}
+          mode={isUpdateMode ? 'update' : 'create'}
+          existingPositionId={isUpdateMode ? p.id : undefined}
         />
       ) : null}
     </>
