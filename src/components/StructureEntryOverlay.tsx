@@ -553,9 +553,6 @@ export function StructureEntryOverlay({
 
         const restBase = `${supabaseUrl.replace(/\/$/, '')}/rest/v1/programs`;
         const query = new URLSearchParams({ select: 'program_id,program_name', order: 'program_name' });
-        if (user?.id) {
-          query.set('account_id', `eq.${user.id}`);
-        }
         const requestUrl = `${restBase}?${query.toString()}`;
 
         const response = await fetch(requestUrl, {
@@ -563,6 +560,7 @@ export function StructureEntryOverlay({
             Accept: 'application/json',
             apikey: supabaseKey,
             Authorization: `Bearer ${accessToken}`,
+            Prefer: 'count=exact',
           },
         });
 
@@ -597,12 +595,16 @@ export function StructureEntryOverlay({
         if (!rows.length) {
           const sanitizedHeaders = {
             Accept: 'application/json',
+            Prefer: 'count=exact',
             apikeyPreview: `${supabaseKey.slice(0, 6)}…${supabaseKey.slice(-4)}`,
             authorizationPreview: `Bearer ${accessToken.slice(0, 10)}…${accessToken.slice(-6)}`,
           };
           console.info('Program lookup succeeded but returned no rows', {
             request: { url: requestUrl, headers: sanitizedHeaders },
-            response: { status: response.status, contentRange: response.headers.get('Content-Range') },
+            response: {
+              status: response.status,
+              contentRange: response.headers.get('Content-Range'),
+            },
             userId: user.id,
           });
         }
