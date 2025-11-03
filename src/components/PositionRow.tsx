@@ -23,6 +23,9 @@ type PositionRowProps = {
   marks?: MarkMap
   markLoading?: boolean
   allPositions: Position[]
+  readOnly?: boolean
+  disableSave?: boolean
+  onSaved?: (positionId: string) => void
 }
 
 function CellSpinner() {
@@ -53,10 +56,15 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   marks,
   markLoading,
   allPositions,
+  readOnly = false,
+  disableSave = false,
+  onSaved,
 }) => {
   const [open, setOpen] = React.useState(false)
   const [showSaveOverlay, setShowSaveOverlay] = React.useState(false)
   const statusTone = p.status === 'OPEN' ? 'success' : p.status === 'ATTENTION' ? 'warning' : 'destructive'
+  const isReadOnly = readOnly || p.source === 'supabase'
+  const isSaveDisabled = disableSave || isReadOnly
 
   const legMarkData = React.useMemo(() => {
     const map = new Map<string, { ref: LegMarkRef | null; mark: MarkInfo | undefined }>()
@@ -111,9 +119,14 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           <td className="p-3 align-top">
             <input
               value={p.strategy || ''}
-              onChange={(e) => onUpdate(p.id, { strategy: e.target.value })}
+              onChange={(e) => {
+                if (isReadOnly) return
+                onUpdate(p.id, { strategy: e.target.value })
+              }}
               placeholder="e.g., Iron Condor"
               className="border rounded-lg px-2 py-1 text-sm w-40"
+              disabled={isReadOnly}
+              readOnly={isReadOnly}
             />
           </td>
         )}
@@ -141,15 +154,21 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           <td className="p-3 align-top">
             <input
               value={p.playbook || ''}
-              onChange={(e) => onUpdate(p.id, { playbook: e.target.value })}
+              onChange={(e) => {
+                if (isReadOnly) return
+                onUpdate(p.id, { playbook: e.target.value })
+              }}
               placeholder="https://…"
               className="border rounded-lg px-2 py-1 text-sm w-44"
+              disabled={isReadOnly}
+              readOnly={isReadOnly}
             />
           </td>
         )}
         <td className="p-3 align-top text-right">
           <button
-            onClick={() =>
+            onClick={() => {
+              if (isReadOnly) return
               onUpdate(p.id, {
                 status:
                   p.status === 'OPEN'
@@ -158,21 +177,28 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                     ? ('ALERT' as Position['status'])
                     : ('OPEN' as Position['status']),
               })
-            }
-            className="text-slate-500"
+            }}
+            className={`text-slate-500 ${isReadOnly ? 'cursor-not-allowed opacity-50' : ''}`}
+            disabled={isReadOnly}
           >
             ⋯
           </button>
         </td>
         <td className="p-3 align-top text-right">
-          <button
-            type="button"
-            onClick={() => setShowSaveOverlay(true)}
-            className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
-          >
-            <Save className="h-4 w-4" />
-            <span className="sr-only">Open save overlay</span>
-          </button>
+          {isSaveDisabled ? (
+            <span className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-500">
+              {p.source === 'supabase' ? 'Saved' : 'Save disabled'}
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowSaveOverlay(true)}
+              className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
+            >
+              <Save className="h-4 w-4" />
+              <span className="sr-only">Open save overlay</span>
+            </button>
+          )}
         </td>
       </tr>
       {open && (
@@ -296,12 +322,13 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           </td>
         </tr>
       )}
-      {showSaveOverlay ? (
+      {!isSaveDisabled && showSaveOverlay ? (
         <StructureEntryOverlay
           open={showSaveOverlay}
           onClose={() => setShowSaveOverlay(false)}
           position={p}
           allPositions={allPositions}
+          onSaved={onSaved}
         />
       ) : null}
     </>
@@ -316,7 +343,10 @@ export const PositionRow = React.memo(
     prev.visibleCols === next.visibleCols &&
     prev.marks === next.marks &&
     prev.markLoading === next.markLoading &&
-    prev.allPositions === next.allPositions
+    prev.allPositions === next.allPositions &&
+    prev.readOnly === next.readOnly &&
+    prev.disableSave === next.disableSave &&
+    prev.onSaved === next.onSaved
 )
 
 PositionRow.displayName = 'PositionRow'
