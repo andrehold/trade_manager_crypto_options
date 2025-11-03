@@ -490,11 +490,13 @@ export function StructureEntryOverlay({
   onClose,
   position,
   allPositions,
+  onSaved,
 }: {
   open: boolean;
   onClose: () => void;
   position: Position;
   allPositions: Position[];
+  onSaved?: (positionId: string) => void;
 }) {
   const initialPayload = React.useMemo(() => buildInitialPayload(position), [position]);
   const [form, setForm] = React.useState<PartialPayload>(initialPayload);
@@ -1145,6 +1147,7 @@ export function StructureEntryOverlay({
       const result = await importTrades(payload as ImportPayload);
       if (result.ok) {
         setSaveStatus({ type: 'success', message: 'Structure saved successfully.' });
+        onSaved?.(result.position_id);
       } else {
         setSaveStatus({ type: 'error', message: result.error || 'Failed to save structure.' });
       }
@@ -1160,6 +1163,7 @@ export function StructureEntryOverlay({
     saving,
     supabaseChecking,
     supabaseUnavailable,
+    onSaved,
     user,
   ]);
 

@@ -17,6 +17,7 @@ import {
 import { PositionRow } from './components/PositionRow'
 import { ccGetBest } from './lib/venues/coincall'
 import { dbGetBest } from './lib/venues/deribit'
+import { fetchSavedStructures } from './lib/positions'
 
 export default function App() {
   React.useEffect(() => { devQuickTests(); }, []);
@@ -29,6 +30,10 @@ export default function App() {
 
   const [rawRows, setRawRows] = useLocalStorage<any[]>("deribit_raw_rows", []);
   const [positions, setPositions] = useLocalStorage<Position[]>("deribit_positions_v1", []);
+  const [savedStructures, setSavedStructures] = React.useState<Position[]>([]);
+  const [savedStructuresLoading, setSavedStructuresLoading] = React.useState(false);
+  const [savedStructuresError, setSavedStructuresError] = React.useState<string | null>(null);
+  const [savedStructuresVersion, setSavedStructuresVersion] = React.useState(0);
   const [showMapper, setShowMapper] = React.useState<{ headers: string[] } | null>(null);
   const [showReview, setShowReview] = React.useState<{ rows: TxnRow[]; excludedRows: TxnRow[] } | null>(null);
   const [alertsOnly, setAlertsOnly] = React.useState(false);
@@ -143,6 +148,47 @@ export default function App() {
     setShowReview(null);
   }
 
+  const refreshSavedStructures = React.useCallback(() => {
+    setSavedStructuresVersion((prev) => prev + 1);
+  }, []);
+
+  React.useEffect(() => {
+    if (!supabase || !user) {
+      setSavedStructures([]);
+      setSavedStructuresError(null);
+      setSavedStructuresLoading(false);
+      return;
+    }
+
+    let ignore = false;
+    setSavedStructuresLoading(true);
+    fetchSavedStructures(supabase)
+      .then((result) => {
+        if (ignore) return;
+        if (result.ok) {
+          setSavedStructures(result.positions);
+          setSavedStructuresError(null);
+        } else {
+          setSavedStructures([]);
+          setSavedStructuresError(result.error);
+        }
+      })
+      .catch((err) => {
+        if (ignore) return;
+        const message = err instanceof Error ? err.message : 'Failed to load saved structures.';
+        setSavedStructures([]);
+        setSavedStructuresError(message);
+      })
+      .finally(() => {
+        if (ignore) return;
+        setSavedStructuresLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [supabase, user, savedStructuresVersion]);
+
   function buildPositionsFromTransactions(rows: TxnRow[]): Position[] {
     const byPos = new Map<string, TxnRow[]>();
     for (const r of rows) {
@@ -222,24 +268,78 @@ export default function App() {
         playbook: undefined,
         structureId,
         exchange: exchange as Exchange,
+        source: 'local',
       });
     }
     out.sort((a, b) => a.dte - b.dte);
     return out;
   }
 
-  const filtered = React.useMemo(() => {
-    const q = query.toLowerCase().trim();
-    return positions.filter((p) => {
+  const normalizedQuery = query.toLowerCase().trim();
+  const matchesFilter = React.useCallback(
+    (p: Position) => {
       if (alertsOnly && p.status === "OPEN") return false;
-      if (!q) return true;
-      return (
-        p.underlying.toLowerCase().includes(q) ||
-        p.strategy?.toLowerCase().includes(q) ||
-        p.legs.some((l) => `${l.strike}${l.optionType}`.toLowerCase().includes(q))
-      );
-    });
-  }, [positions, alertsOnly, query]);
+      if (!normalizedQuery) return true;
+
+      const haystacks: string[] = [
+        p.underlying,
+        p.strategy ?? "",
+        p.structureId ?? "",
+        ...p.legs.map((l) => `${l.strike}${l.optionType}`),
+      ];
+
+      return haystacks.some((candidate) => candidate.toLowerCase().includes(normalizedQuery));
+    },
+    [alertsOnly, normalizedQuery],
+  );
+
+  const filteredLive = React.useMemo(
+    () => positions.filter(matchesFilter),
+    [matchesFilter, positions],
+  );
+
+  const filteredSaved = React.useMemo(
+    () => savedStructures.filter(matchesFilter),
+    [matchesFilter, savedStructures],
+  );
+
+  const noopUpdate = React.useCallback((_id: string, _updates: Partial<Position>) => {
+    // Saved structures are read-only in the UI.
+  }, []);
+
+  const positionsForMarks = React.useMemo(
+    () => [...savedStructures, ...positions],
+    [positions, savedStructures],
+  );
+
+  const tableHead = (
+    <thead className="bg-slate-50 text-slate-600">
+      <tr>
+        <th className="p-3 text-left w-10"> </th>
+        {visibleCols.includes("status") && <th className="p-3 text-left">Status</th>}
+        {visibleCols.includes("symbol") && <th className="p-3 text-left">Symbol</th>}
+        {visibleCols.includes("structure") && <th className="p-3 text-left">Structure</th>}
+        {visibleCols.includes("dte") && <th className="p-3 text-left">DTE</th>}
+        {visibleCols.includes("type") && <th className="p-3 text-left">Type</th>}
+        {visibleCols.includes("legs") && <th className="p-3 text-left">Legs</th>}
+        {visibleCols.includes("strategy") && <th className="p-3 text-left">Strategy</th>}
+        {visibleCols.includes("pnl") && <th className="p-3 text-left">PnL</th>}
+        {visibleCols.includes("pnlpct") && <th className="p-3 text-left">PnL %</th>}
+        {visibleCols.includes("delta") && <th className="p-3 text-left">Δ</th>}
+        {visibleCols.includes("gamma") && <th className="p-3 text-left">Γ</th>}
+        {visibleCols.includes("theta") && <th className="p-3 text-left">Θ</th>}
+        {visibleCols.includes("vega") && <th className="p-3 text-left">V</th>}
+        {visibleCols.includes("rho") && <th className="p-3 text-left">ρ</th>}
+        {visibleCols.includes("playbook") && <th className="p-3 text-left">Playbook</th>}
+        <th className="p-3 text-right w-12">
+          <span className="sr-only">Toggle status</span>
+        </th>
+        <th className="p-3 text-right w-12">
+          <span className="sr-only">Save position</span>
+        </th>
+      </tr>
+    </thead>
+  );
 
   const updatePosition = React.useCallback((id: string, updates: Partial<Position>) => {
     setPositions((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
@@ -489,7 +589,22 @@ export default function App() {
           <ColumnPicker />
           <button
             className="rounded-xl border px-3 py-2 text-sm inline-flex items-center gap-2 disabled:opacity-60"
-            onClick={() => fetchAllMarksForPositions(positions)}
+            onClick={refreshSavedStructures}
+            disabled={savedStructuresLoading || !supabase || !user}
+            title="Manually refresh saved structures from Supabase"
+          >
+            {savedStructuresLoading ? (
+              <>
+                <Spinner className="h-3.5 w-3.5" />
+                <span>Fetching…</span>
+              </>
+            ) : (
+              <>Fetch</>
+            )}
+          </button>
+          <button
+            className="rounded-xl border px-3 py-2 text-sm inline-flex items-center gap-2 disabled:opacity-60"
+            onClick={() => fetchAllMarksForPositions(positionsForMarks)}
             disabled={markFetch.inProgress}
             title="Fetch current mark/greeks for all visible legs (Coincall & Deribit)"
           >
@@ -528,6 +643,50 @@ export default function App() {
         </div>
       )}
 
+      <div className="px-6 py-3">
+        <div className="bg-white rounded-2xl shadow border overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b text-sm font-medium text-slate-700">
+            <span>Saved Structures</span>
+            {savedStructuresLoading ? (
+              <span className="text-xs text-slate-500">Refreshing…</span>
+            ) : null}
+          </div>
+          {savedStructuresError ? (
+            <div className="px-4 py-3 text-sm text-rose-600">{savedStructuresError}</div>
+          ) : null}
+          {filteredSaved.length === 0 ? (
+            <div className="px-4 py-3 text-sm text-slate-500">
+              {savedStructures.length > 0
+                ? 'No saved structures match your filters.'
+                : savedStructuresLoading
+                ? 'Loading saved structures…'
+                : 'No saved structures yet. Use the save action on a live position to create one.'}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                {tableHead}
+                <tbody>
+                  {filteredSaved.map((p) => (
+                    <PositionRow
+                      key={`saved-${p.id}`}
+                      p={p}
+                      onUpdate={noopUpdate}
+                      visibleCols={visibleCols}
+                      marks={legMarks}
+                      markLoading={markFetch.inProgress}
+                      allPositions={savedStructures}
+                      readOnly
+                      disableSave
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
       {positions.length === 0 && (
         <div className="px-6 pb-6">
           <UploadBox onFiles={handleFiles} />
@@ -541,34 +700,16 @@ export default function App() {
             <div className="px-4 py-3 border-b text-sm font-medium text-slate-700">Live Positions</div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-50 text-slate-600">
-                  <tr>
-                    <th className="p-3 text-left w-10"> </th>
-                    {visibleCols.includes("status") && <th className="p-3 text-left">Status</th>}
-                    {visibleCols.includes("symbol") && <th className="p-3 text-left">Symbol</th>}
-                    {visibleCols.includes("structure") && <th className="p-3 text-left">Structure</th>}
-                    {visibleCols.includes("dte") && <th className="p-3 text-left">DTE</th>}
-                    {visibleCols.includes("type") && <th className="p-3 text-left">Type</th>}
-                    {visibleCols.includes("legs") && <th className="p-3 text-left">Legs</th>}
-                    {visibleCols.includes("strategy") && <th className="p-3 text-left">Strategy</th>}
-                    {visibleCols.includes("pnl") && <th className="p-3 text-left">PnL</th>}
-                    {visibleCols.includes("pnlpct") && <th className="p-3 text-left">PnL %</th>}
-                    {visibleCols.includes("delta") && <th className="p-3 text-left">Δ</th>}
-                    {visibleCols.includes("gamma") && <th className="p-3 text-left">Γ</th>}
-                    {visibleCols.includes("theta") && <th className="p-3 text-left">Θ</th>}
-                    {visibleCols.includes("vega") && <th className="p-3 text-left">V</th>}
-                    {visibleCols.includes("rho") && <th className="p-3 text-left">ρ</th>}
-                    {visibleCols.includes("playbook") && <th className="p-3 text-left">Playbook</th>}
-                    <th className="p-3 text-right w-12">
-                      <span className="sr-only">Toggle status</span>
-                    </th>
-                    <th className="p-3 text-right w-12">
-                      <span className="sr-only">Save position</span>
-                    </th>
-                  </tr>
-                </thead>
+                {tableHead}
                 <tbody>
-                  {positions.map((p) => (
+                  {filteredLive.length === 0 ? (
+                    <tr>
+                      <td colSpan={visibleCols.length + 3} className="p-4 text-sm text-slate-500">
+                        No live positions match your filters.
+                      </td>
+                    </tr>
+                  ) : null}
+                  {filteredLive.map((p) => (
                     <PositionRow
                       key={p.id}
                       p={p}
@@ -577,6 +718,7 @@ export default function App() {
                       marks={legMarks}
                       markLoading={markFetch.inProgress}
                       allPositions={positions}
+                      onSaved={refreshSavedStructures}
                     />
                   ))}
                 </tbody>

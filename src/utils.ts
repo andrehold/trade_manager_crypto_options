@@ -55,6 +55,7 @@ export interface Position {
   playbook?: string;
   structureId?: string;
   exchange?: Exchange;
+  source?: 'local' | 'supabase';
 }
 
 export const EXPECTED_FIELDS = [
