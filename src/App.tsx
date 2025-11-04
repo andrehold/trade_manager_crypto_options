@@ -130,10 +130,14 @@ export default function App() {
   }
 
   function finalizeImport(selectedRows: TxnRow[]) {
-    const rows: TxnRow[] = selectedRows.map((r) => ({
-      ...r,
-      structureId: String(r.structureId ?? normalizeSecond(r.timestamp))
-    }));
+    const rows: TxnRow[] = selectedRows.map((r, index) => {
+      const normalized = normalizeSecond(r.timestamp);
+      const fallbackStructure = normalized === 'NO_TS' ? `NO_TS_${index + 1}` : normalized;
+      return {
+        ...r,
+        structureId: String(r.structureId ?? fallbackStructure)
+      };
+    });
     for (const row of rows) {
       const parsed = parseInstrumentByExchange(selectedExchange, row.instrument);
       if (parsed) {

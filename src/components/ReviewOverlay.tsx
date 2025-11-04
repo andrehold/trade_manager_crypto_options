@@ -1,38 +1,38 @@
 import React from 'react'
 import { TxnRow, normalizeSecond } from '../utils'
 
+const autoStructureKey = (row: TxnRow, index: number) => {
+  const normalized = normalizeSecond(row.timestamp)
+  return normalized === 'NO_TS' ? `NO_TS_${index}` : normalized
+}
+
 export function ReviewOverlay({ rows, excludedRows, onConfirm, onCancel }: { rows: TxnRow[]; excludedRows: TxnRow[]; onConfirm: (rows: TxnRow[]) => void; onCancel: () => void; }) {
   const [activeTab, setActiveTab] = React.useState<'included'|'excluded'>('included');
   const [selected, setSelected] = React.useState<boolean[]>(() => rows.map(() => true));
 
-  //per-row Kit #, defaulted by same-second grouping
-  const [structureNumbers, setStructureNumbers] = React.useState<number[]>(() => {
+  // per-row structure #, defaulted by same-second grouping (unique fallback when no timestamp is present)
+  const autoStructureDefaults = React.useMemo(() => {
     const map = new Map<string, number>();
     let c = 1;
-    return rows.map((r) => {
-      const k = normalizeSecond(r.timestamp);
+    return rows.map((r, idx) => {
+      const k = autoStructureKey(r, idx);
       if (!map.has(k)) map.set(k, c++);
       return map.get(k)!;
     });
-  });
+  }, [rows]);
+  const [structureNumbers, setStructureNumbers] = React.useState<number[]>(autoStructureDefaults);
 
   // recompute defaults anytime rows change
   React.useEffect(() => {
-    const map = new Map<string, number>();
-    let c = 1;
-    setStructureNumbers(rows.map((r) => {
-      const k = normalizeSecond(r.timestamp);
-      if (!map.has(k)) map.set(k, c++);
-      return map.get(k)!;
-    }));
-  }, [rows]);
+    setStructureNumbers(autoStructureDefaults);
+  }, [autoStructureDefaults]);
 
   const structures = React.useMemo(() => {
     const m = new Map<string, number>();
-    for (const r of rows) {
-      const k = normalizeSecond(r.timestamp);
+    rows.forEach((r, idx) => {
+      const k = autoStructureKey(r, idx);
       m.set(k, (m.get(k) || 0) + 1);
-    }
+    });
     return m;
   }, [rows]);
 
@@ -43,8 +43,8 @@ export function ReviewOverlay({ rows, excludedRows, onConfirm, onCancel }: { row
       <tr>
         <th className="p-2"></th>
         <th className="p-2 text-left">Timestamp</th>
-        <th className="p-2 text-left">Kit (auto)</th>
-        <th className="p-2 text-left">Kit #</th>
+        <th className="p-2 text-left">Structure (auto)</th>
+        <th className="p-2 text-left">Structure #</th>
         <th className="p-2 text-left">Instrument</th>
         <th className="p-2 text-left">Side</th>
         <th className="p-2 text-left">Amount</th>
@@ -84,8 +84,8 @@ export function ReviewOverlay({ rows, excludedRows, onConfirm, onCancel }: { row
                 onClick={() => {
                   const map = new Map<string, number>();
                   let c = 1;
-                  setStructureNumbers(rows.map((r) => {
-                    const k = normalizeSecond(r.timestamp);
+                  setStructureNumbers(rows.map((r, idx) => {
+                    const k = autoStructureKey(r, idx);
                     if (!map.has(k)) map.set(k, c++);
                     return map.get(k)!;
                   }));
@@ -157,6 +157,7 @@ export function ReviewOverlay({ rows, excludedRows, onConfirm, onCancel }: { row
                         <td className="p-2"><input type="checkbox" disabled checked={false} readOnly /></td>
                         <td className="p-2">{r.timestamp || '—'}</td>
                         <td className="p-2">{structure}</td>
+                        <td className="p-2">—</td>
                         <td className="p-2">{r.instrument}</td>
                         <td className="p-2">{(r.action ? r.action + ' ' : '') + r.side}</td>
                         <td className="p-2">{r.amount}</td>
