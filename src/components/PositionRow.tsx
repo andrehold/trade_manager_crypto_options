@@ -1,5 +1,5 @@
 import React from 'react'
-import { Save } from 'lucide-react'
+import { Pencil, Save } from 'lucide-react'
 import {
   Position,
   fmtPremium,
@@ -63,8 +63,9 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   const [open, setOpen] = React.useState(false)
   const [showSaveOverlay, setShowSaveOverlay] = React.useState(false)
   const statusTone = p.status === 'OPEN' ? 'success' : p.status === 'ATTENTION' ? 'warning' : 'destructive'
-  const isReadOnly = readOnly || p.source === 'supabase'
-  const isSaveDisabled = disableSave || isReadOnly
+  const isUpdateMode = p.source === 'supabase'
+  const isReadOnly = readOnly || isUpdateMode
+  const canOpenOverlay = (!disableSave || isUpdateMode) && (!readOnly || isUpdateMode)
 
   const legMarkData = React.useMemo(() => {
     const map = new Map<string, { ref: LegMarkRef | null; mark: MarkInfo | undefined }>()
@@ -185,19 +186,37 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           </button>
         </td>
         <td className="p-3 align-top text-right">
-          {isSaveDisabled ? (
-            <span className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-500">
-              {p.source === 'supabase' ? 'Saved' : 'Save disabled'}
-            </span>
-          ) : (
+          {isUpdateMode ? (
+            <div className="inline-flex items-center gap-2">
+              <span className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-500">
+                Saved
+              </span>
+              {canOpenOverlay ? (
+                <button
+                  type="button"
+                  onClick={() => setShowSaveOverlay(true)}
+                  className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
+                  title="Update saved structure"
+                >
+                  <Pencil className="h-4 w-4" />
+                  <span className="sr-only">Open update overlay</span>
+                </button>
+              ) : null}
+            </div>
+          ) : canOpenOverlay ? (
             <button
               type="button"
               onClick={() => setShowSaveOverlay(true)}
               className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
+              title="Open save overlay"
             >
               <Save className="h-4 w-4" />
               <span className="sr-only">Open save overlay</span>
             </button>
+          ) : (
+            <span className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-500">
+              Save disabled
+            </span>
           )}
         </td>
       </tr>
@@ -322,13 +341,15 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           </td>
         </tr>
       )}
-      {!isSaveDisabled && showSaveOverlay ? (
+      {canOpenOverlay && showSaveOverlay ? (
         <StructureEntryOverlay
           open={showSaveOverlay}
           onClose={() => setShowSaveOverlay(false)}
           position={p}
           allPositions={allPositions}
           onSaved={onSaved}
+          mode={isUpdateMode ? 'update' : 'create'}
+          existingPositionId={isUpdateMode ? p.id : undefined}
         />
       ) : null}
     </>

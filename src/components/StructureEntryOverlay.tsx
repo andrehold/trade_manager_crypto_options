@@ -7,6 +7,7 @@ import { importTrades } from '../lib/import';
 import type { ImportPayload } from '../lib/import';
 import { tryGetSupabaseClient } from '../lib/supabase';
 import { useAuth } from '../features/auth/useAuth';
+import { fetchStructurePayload } from '../lib/positions/fetchStructurePayload';
 import {
   OPTIONS_STRUCTURES,
   CONSTRUCTIONS,
@@ -48,6 +49,8 @@ type CheckboxMeta = {
   helperText?: string;
   required?: boolean;
 };
+
+type StructureEntryOverlayMode = 'create' | 'update';
 
 const REQUIRED_LEG_SUFFIXES = [
   'leg_seq',
@@ -491,12 +494,16 @@ export function StructureEntryOverlay({
   position,
   allPositions,
   onSaved,
+  mode = 'create',
+  existingPositionId,
 }: {
   open: boolean;
   onClose: () => void;
   position: Position;
   allPositions: Position[];
   onSaved?: (positionId: string) => void;
+  mode?: StructureEntryOverlayMode;
+  existingPositionId?: string;
 }) {
   const initialPayload = React.useMemo(() => buildInitialPayload(position), [position]);
   const [form, setForm] = React.useState<PartialPayload>(initialPayload);
@@ -513,11 +520,14 @@ export function StructureEntryOverlay({
   const [saveStatus, setSaveStatus] = React.useState<
     { type: 'idle' | 'error' | 'success'; message?: string }
   >({ type: 'idle' });
+  const [loadingExisting, setLoadingExisting] = React.useState(false);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
   const { user, loading: authLoading, supabaseConfigured } = useAuth();
   const supabase = React.useMemo(
     () => (supabaseConfigured ? tryGetSupabaseClient() : null),
     [supabaseConfigured],
   );
+  const isUpdateMode = mode === 'update' && Boolean(existingPositionId);
 
   React.useEffect(() => {
     if (!supabase || !user) return;
@@ -666,17 +676,68 @@ export function StructureEntryOverlay({
   }, [supabase, user]);
 
   React.useEffect(() => {
-    setForm(buildInitialPayload(position));
-    setIncludeVenue(false);
-    setSaving(false);
-    setSaveStatus({ type: 'idle' });
-  }, [position]);
-
-  React.useEffect(() => {
     if (!open) return;
     setSaving(false);
     setSaveStatus({ type: 'idle' });
-  }, [open]);
+    setLoadError(null);
+
+    if (!isUpdateMode) {
+      setForm(initialPayload);
+      setIncludeVenue(false);
+      setLoadingExisting(false);
+      return;
+    }
+
+    setForm(initialPayload);
+    setIncludeVenue(false);
+
+    if (!supabase) {
+      setLoadingExisting(false);
+      setLoadError('Supabase is not configured. Configure environment variables to edit saved structures.');
+      return;
+    }
+
+    if (!existingPositionId) {
+      setLoadingExisting(false);
+      setLoadError('Missing structure identifier for update.');
+      return;
+    }
+
+    let active = true;
+    setLoadingExisting(true);
+
+    const loadExisting = async () => {
+      try {
+        const result = await fetchStructurePayload(supabase, existingPositionId);
+        if (!active) return;
+        if (result.ok) {
+          setForm(result.payload);
+          setIncludeVenue(Boolean(result.payload.venue || result.payload.position?.venue_id));
+          const strategyCode = result.payload.position?.strategy_code;
+          const strategyName = result.payload.position?.strategy_name;
+          if (strategyCode && strategyName) {
+            setStrategyLookup((prevLookup) => ({ ...prevLookup, [strategyCode]: strategyName }));
+          }
+          setLoadError(null);
+        } else {
+          setLoadError(result.error);
+        }
+      } catch (err) {
+        if (!active) return;
+        setLoadError(err instanceof Error ? err.message : 'Failed to load saved structure.');
+      } finally {
+        if (active) {
+          setLoadingExisting(false);
+        }
+      }
+    };
+
+    void loadExisting();
+
+    return () => {
+      active = false;
+    };
+  }, [open, isUpdateMode, initialPayload, supabase, existingPositionId]);
 
   const updateField = React.useCallback((path: string, value: any) => {
     setSaveStatus((prev) => (prev.type === 'idle' ? prev : { type: 'idle' }));
@@ -1109,14 +1170,23 @@ export function StructureEntryOverlay({
     missing.size > 0 ||
     supabaseUnavailable ||
     supabaseChecking ||
-    supabaseSignedOut;
+    supabaseSignedOut ||
+    loadingExisting ||
+    (isUpdateMode && Boolean(loadError));
 
   const handleSave = React.useCallback(async () => {
-    if (saving) return;
+    if (saving || loadingExisting) return;
     if (missing.size > 0) {
       setSaveStatus({
         type: 'error',
         message: 'Complete all required fields before saving.',
+      });
+      return;
+    }
+    if (isUpdateMode && loadError) {
+      setSaveStatus({
+        type: 'error',
+        message: loadError,
       });
       return;
     }
@@ -1144,9 +1214,15 @@ export function StructureEntryOverlay({
 
     try {
       const payload = payloadForValidation as Partial<ImportPayload>;
-      const result = await importTrades(payload as ImportPayload);
+      const result = await importTrades(
+        payload as ImportPayload,
+        isUpdateMode && existingPositionId ? { positionId: existingPositionId } : undefined,
+      );
       if (result.ok) {
-        setSaveStatus({ type: 'success', message: 'Structure saved successfully.' });
+        setSaveStatus({
+          type: 'success',
+          message: isUpdateMode ? 'Structure updated successfully.' : 'Structure saved successfully.',
+        });
         onSaved?.(result.position_id);
       } else {
         setSaveStatus({ type: 'error', message: result.error || 'Failed to save structure.' });
@@ -1172,23 +1248,40 @@ export function StructureEntryOverlay({
     setIncludeVenue((prev) => !prev);
   }, []);
 
+  const overlayTitle = isUpdateMode
+    ? `Update structure for ${position.underlying}`
+    : `Structure entry for ${position.underlying}`;
+  const primaryButtonLabel = saving
+    ? isUpdateMode
+      ? 'Updating…'
+      : 'Saving…'
+    : isUpdateMode
+    ? 'Update'
+    : 'Save';
+
   return (
-    <Overlay open={open} onClose={onClose} title={`Structure entry for ${position.underlying}`}>
+    <Overlay open={open} onClose={onClose} title={overlayTitle}>
       <div
         className="flex max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white"
         style={{ width: 'min(960px, calc(100vw - 3rem))' }}
       >
-          <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-6 py-4">
-            <div>
-              <h2 className="text-base font-semibold text-slate-900">Structure entry for {position.underlying}</h2>
-              <p className="text-xs text-slate-500">
-                Fill in details for program, position, legs, and fills. Fields marked with * are required.
-              </p>
-            </div>
-            <div className="ml-auto flex items-center gap-3 text-xs text-slate-500">
-              {!supabaseUnavailable && user?.email ? (
-                <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">
-                  <span className="font-medium text-slate-700">{user.email}</span>
+        <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-6 py-4">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">
+              {isUpdateMode
+                ? `Update saved structure for ${position.underlying}`
+                : `Structure entry for ${position.underlying}`}
+            </h2>
+            <p className="text-xs text-slate-500">
+              {isUpdateMode
+                ? 'Review and update the saved program, position, legs, and fills. Fields marked with * are required.'
+                : 'Fill in details for program, position, legs, and fills. Fields marked with * are required.'}
+            </p>
+          </div>
+          <div className="ml-auto flex items-center gap-3 text-xs text-slate-500">
+            {!supabaseUnavailable && user?.email ? (
+              <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">
+                <span className="font-medium text-slate-700">{user.email}</span>
                   <button
                     type="button"
                     onClick={handleSignOut}
@@ -1217,7 +1310,7 @@ export function StructureEntryOverlay({
                     : 'border-slate-900 bg-slate-900 text-white hover:bg-slate-800'
                 }`}
               >
-                {saving ? 'Saving…' : 'Save'}
+                {primaryButtonLabel}
               </button>
               <button
                 type="button"
@@ -1231,6 +1324,16 @@ export function StructureEntryOverlay({
           </header>
           <div className="flex-1 overflow-y-auto bg-slate-50 px-6 py-6">
             <div className="space-y-6">
+              {loadingExisting ? (
+                <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+                  Loading saved structure details…
+                </div>
+              ) : null}
+              {loadError ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                  {loadError}
+                </div>
+              ) : null}
               {saveStatus.type === 'error' ? (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                   {saveStatus.message ?? 'Unable to save structure. Please try again.'}
