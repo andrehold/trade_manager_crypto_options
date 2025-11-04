@@ -185,6 +185,26 @@ function collectAllTrades(legs: Position['legs']): TxnRow[] {
   return trades;
 }
 
+function buildOpenStructureOptions(
+  allPositions: Position[],
+  activePositionId: string,
+): Array<{ value: string; label: string }> {
+  return allPositions
+    .filter((candidate) => candidate.status === 'OPEN' && candidate.id !== activePositionId)
+    .map((candidate) => {
+      const parts = [
+        candidate.structureId ? `#${candidate.structureId}` : 'No structure #',
+        candidate.underlying,
+      ];
+      if (candidate.expiryISO) parts.push(candidate.expiryISO);
+      if (candidate.exchange) parts.push(candidate.exchange.toUpperCase());
+      return {
+        value: candidate.structureId ?? candidate.id,
+        label: parts.join(' • '),
+      };
+    });
+}
+
 /** Timestamp helpers used for default entry/exit values in the overlay form. */
 function earliestTimestamp(trades: TxnRow[]): string | undefined {
   const sorted = trades
@@ -584,6 +604,13 @@ export function StructureEntryOverlay({
     setIncludeVenue(false);
   }, [position]);
 
+  const lifecycle =
+    (form.position?.lifecycle as (typeof STRUCTURE_LIFECYCLES)[number]) ?? 'open';
+  const openStructureOptions = React.useMemo(
+    () => buildOpenStructureOptions(allPositions, position.id),
+    [allPositions, position.id],
+  );
+
   const updateField = React.useCallback((path: string, value: any) => {
     setForm((prev) => {
       const parsed = parsePath(path);
@@ -611,34 +638,21 @@ export function StructureEntryOverlay({
     });
   }, []);
 
-  const lifecycle = (form.position?.lifecycle as (typeof STRUCTURE_LIFECYCLES)[number]) ?? 'open';
-  const openStructureOptions = React.useMemo(
-    () =>
-      allPositions
-        .filter((candidate) => candidate.status === 'OPEN' && candidate.id !== position.id)
-        .map((candidate) => {
-          const parts = [
-            candidate.structureId ? `#${candidate.structureId}` : 'No structure #',
-            candidate.underlying,
-          ];
-          if (candidate.expiryISO) parts.push(candidate.expiryISO);
-          if (candidate.exchange) parts.push(candidate.exchange.toUpperCase());
-          return {
-            value: candidate.structureId ?? candidate.id,
-            label: parts.join(' • '),
-          };
-        }),
-    [allPositions, position.id],
-  );
-
   React.useEffect(() => {
     if (lifecycle !== 'close') return;
     if (form.position?.close_target_structure_id) return;
-    if (openStructureOptions.length !== 1) return;
-    const only = openStructureOptions[0];
+    const options = buildOpenStructureOptions(allPositions, position.id);
+    if (options.length !== 1) return;
+    const only = options[0];
     if (!only) return;
     updateField('position.close_target_structure_id', only.value);
-  }, [form.position?.close_target_structure_id, lifecycle, openStructureOptions, updateField]);
+  }, [
+    allPositions,
+    form.position?.close_target_structure_id,
+    lifecycle,
+    position.id,
+    updateField,
+  ]);
 
   const payloadForValidation = React.useMemo(
     () => ensureVenue(form, includeVenue),
