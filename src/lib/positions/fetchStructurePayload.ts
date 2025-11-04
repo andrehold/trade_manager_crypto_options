@@ -265,10 +265,12 @@ export async function fetchStructurePayload(
       ts: row.ts ?? '',
       qty: row.qty ?? 0,
       price: row.price ?? 0,
-      leg_seq: row.leg_seq,
-      side: row.side,
-      liquidity_role: row.liquidity_role as ImportPayload['fills'][number]['liquidity_role'],
-      execution_mode: row.execution_mode as ImportPayload['fills'][number]['execution_mode'],
+      leg_seq: row.leg_seq ?? undefined,
+      side: (row.side ?? undefined) as ImportPayload['fills'][number]['side'],
+      liquidity_role:
+        (row.liquidity_role ?? undefined) as ImportPayload['fills'][number]['liquidity_role'],
+      execution_mode:
+        (row.execution_mode ?? undefined) as ImportPayload['fills'][number]['execution_mode'],
       provider: row.provider ?? undefined,
       venue_id: row.venue_id ?? undefined,
       order_id: row.order_id ?? undefined,
