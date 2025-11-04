@@ -327,7 +327,10 @@ export async function fetchStructurePayload(
       pricing_currency: position.pricing_currency ?? undefined,
       notes: position.notes ?? undefined,
       close_target_structure_id: position.close_target_structure_id ?? undefined,
-      linked_structure_ids: position.linked_structure_ids ?? undefined,
+      linked_structure_ids:
+        Array.isArray(position.linked_structure_ids) && position.linked_structure_ids.length > 0
+          ? position.linked_structure_ids
+          : undefined,
     },
     legs: legsPayload,
     fills: fillsPayload.length > 0 ? fillsPayload : undefined,
