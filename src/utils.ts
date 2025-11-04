@@ -253,7 +253,9 @@ export function isoToDMMMYY(iso: string): string {
 /** Build Coincall option symbol from your parsed fields */
 export function toCoincallSymbol(underlying: string, expiryISO: string, strike: number, optionType: string): string {
   // BTC -> BTCUSD, ETH -> ETHUSD, else <UNDERLYING>USD
-  const index = (underlying?.toUpperCase() || 'BTC')
+  const base = (underlying ?? '').trim().toUpperCase()
+  const normalizedUnderlying = base || 'BTC'
+  const index = normalizedUnderlying.endsWith('USD') ? normalizedUnderlying : `${normalizedUnderlying}USD`
   // Coincall shows various decimal places; keep raw number unless you need stricter formatting
   const strikeStr = String(strike)
   const ddmonyy = isoToDDMONYY(expiryISO)
