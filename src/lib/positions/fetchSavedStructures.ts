@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "../supabase";
 import type { Position, TxnRow } from "@/utils";
-import { classifyStatus, daysTo } from "@/utils";
+import { daysTo } from "@/utils";
 
 type RawLeg = {
   leg_seq: number | null;
@@ -157,7 +157,7 @@ function mapPosition(raw: RawPosition): Position {
   const netPremium =
     raw.net_fill ?? legs.reduce((sum, leg) => sum + (Number.isFinite(leg.netPremium) ? leg.netPremium : 0), 0);
 
-  const status = raw.lifecycle === "close" ? ("ALERT" as Position["status"]) : classifyStatus(dte, null, 0);
+  const status: Position["status"] = raw.lifecycle === "close" ? "ALERT" : "OPEN";
 
   return {
     id: raw.position_id,
