@@ -780,7 +780,6 @@ export function StructureEntryOverlay({
         .filter(
           (candidate) =>
             candidate.source === 'supabase' &&
-            candidate.status === 'OPEN' &&
             candidate.id !== position.id &&
             candidate.closedAt == null,
         )
