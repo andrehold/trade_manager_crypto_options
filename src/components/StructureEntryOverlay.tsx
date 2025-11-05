@@ -880,6 +880,12 @@ export function StructureEntryOverlay({
     updateField,
   ]);
 
+  React.useEffect(() => {
+    if (!closeTargetStructureId) return;
+    if (lifecycle === 'close') return;
+    updateField('position.lifecycle', 'close');
+  }, [closeTargetStructureId, lifecycle, updateField]);
+
   const handleLinkedStructureChange = React.useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
       if (usingDummyLinkOptions) {
@@ -910,10 +916,12 @@ export function StructureEntryOverlay({
         return;
       }
 
-      updateField(
-        'position.close_target_structure_id',
-        event.target.value ? event.target.value : undefined,
-      );
+      const nextValue = event.target.value ? event.target.value : undefined;
+      updateField('position.close_target_structure_id', nextValue);
+
+      if (nextValue) {
+        updateField('position.lifecycle', 'close');
+      }
     },
     [updateField, usingDummyLinkOptions],
   );
@@ -982,9 +990,8 @@ export function StructureEntryOverlay({
       }
 
       updateField('position.linked_structure_ids', desiredLinks.length > 0 ? desiredLinks : undefined);
-      if (lifecycle === 'close') {
-        updateField('position.close_target_structure_id', quickLinkTarget);
-      }
+      updateField('position.close_target_structure_id', quickLinkTarget);
+      updateField('position.lifecycle', 'close');
       setQuickLinkTarget('');
       setLinkStatus({ type: 'success', message: 'Structures linked successfully.' });
       onSaved?.(existingPositionId);
