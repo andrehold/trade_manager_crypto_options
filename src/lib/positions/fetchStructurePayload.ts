@@ -24,6 +24,7 @@ type PositionRow = {
   construction: Construction | null;
   risk_defined: boolean | null;
   lifecycle: StructureLifecycle | null;
+  closed_at: string | null;
   entry_ts: string | null;
   exit_ts: string | null;
   execution_route: ExecutionRoute | null;
@@ -127,6 +128,7 @@ export async function fetchStructurePayload(
        construction,
        risk_defined,
        lifecycle,
+       closed_at,
        entry_ts,
        exit_ts,
        execution_route,

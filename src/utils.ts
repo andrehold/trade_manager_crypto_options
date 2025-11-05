@@ -56,6 +56,7 @@ export interface Position {
   structureId?: string;
   exchange?: Exchange;
   source?: 'local' | 'supabase';
+  closedAt?: string | null;
 }
 
 export const EXPECTED_FIELDS = [

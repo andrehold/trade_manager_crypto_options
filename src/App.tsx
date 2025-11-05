@@ -273,6 +273,7 @@ export default function App() {
         structureId,
         exchange: exchange as Exchange,
         source: 'local',
+        closedAt: null,
       });
     }
     out.sort((a, b) => a.dte - b.dte);
@@ -315,6 +316,8 @@ export default function App() {
     () => [...savedStructures, ...positions],
     [positions, savedStructures],
   );
+
+  const positionsForLinking = positionsForMarks;
 
   const tableHead = (
     <thead className="bg-slate-50 text-slate-600">
@@ -679,7 +682,7 @@ export default function App() {
                       visibleCols={visibleCols}
                       marks={legMarks}
                       markLoading={markFetch.inProgress}
-                      allPositions={savedStructures}
+                      allPositions={positionsForLinking}
                       readOnly
                       disableSave
                     />
@@ -721,7 +724,7 @@ export default function App() {
                       visibleCols={visibleCols}
                       marks={legMarks}
                       markLoading={markFetch.inProgress}
-                      allPositions={positions}
+                      allPositions={positionsForLinking}
                       onSaved={refreshSavedStructures}
                     />
                   ))}

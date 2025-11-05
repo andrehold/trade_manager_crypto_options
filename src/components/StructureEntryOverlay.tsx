@@ -8,6 +8,7 @@ import type { ImportPayload } from '../lib/import';
 import { tryGetSupabaseClient } from '../lib/supabase';
 import { useAuth } from '../features/auth/useAuth';
 import { fetchStructurePayload } from '../lib/positions/fetchStructurePayload';
+import { syncLinkedStructures } from '../lib/positions/syncLinkedStructures';
 import {
   OPTIONS_STRUCTURES,
   CONSTRUCTIONS,
@@ -63,6 +64,15 @@ const REQUIRED_LEG_SUFFIXES = [
 ];
 
 const REQUIRED_FILL_SUFFIXES = ['ts', 'qty', 'price'];
+
+const DUMMY_LINKABLE_STRUCTURE_OPTIONS: ReadonlyArray<{
+  value: string;
+  label: string;
+}> = [
+  { value: 'demo-structure-1', label: '#101 • BTC-USD • 2024-06-28 • DERIBIT' },
+  { value: 'demo-structure-2', label: '#204 • ETH-USD • 2024-07-12 • CME' },
+  { value: 'demo-structure-3', label: '#305 • SOL-USD • 2024-08-30 • BINANCE' },
+];
 
 /**
  * Break a string path like `legs[0].qty` into discrete object/array segments
@@ -522,6 +532,11 @@ export function StructureEntryOverlay({
   >({ type: 'idle' });
   const [loadingExisting, setLoadingExisting] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [quickLinkTarget, setQuickLinkTarget] = React.useState('');
+  const [linking, setLinking] = React.useState(false);
+  const [linkStatus, setLinkStatus] = React.useState<
+    { type: 'idle' | 'error' | 'success'; message?: string }
+  >({ type: 'idle' });
   const { user, loading: authLoading, supabaseConfigured } = useAuth();
   const supabase = React.useMemo(
     () => (supabaseConfigured ? tryGetSupabaseClient() : null),
@@ -771,7 +786,12 @@ export function StructureEntryOverlay({
   const linkableStructureOptions = React.useMemo(
     () =>
       allPositions
-        .filter((candidate) => candidate.status === 'OPEN' && candidate.id !== position.id)
+        .filter(
+          (candidate) =>
+            candidate.source === 'supabase' &&
+            candidate.id !== position.id &&
+            candidate.closedAt == null,
+        )
         .map((candidate) => {
           const parts = [
             candidate.structureId ? `#${candidate.structureId}` : 'No structure #',
@@ -780,7 +800,7 @@ export function StructureEntryOverlay({
           if (candidate.expiryISO) parts.push(candidate.expiryISO);
           if (candidate.exchange) parts.push(candidate.exchange.toUpperCase());
           return {
-            value: candidate.structureId ?? candidate.id,
+            value: candidate.id,
             label: parts.join(' • '),
           };
         }),
@@ -813,6 +833,25 @@ export function StructureEntryOverlay({
     return Array.from(uniqueIds);
   }, [closeTargetStructureId, form.position?.linked_structure_ids]);
 
+  const quickLinkOptions = React.useMemo(
+    () => linkableStructureOptions.filter((option) => !linkedStructureIds.includes(option.value)),
+    [linkableStructureOptions, linkedStructureIds],
+  );
+
+  const usingDummyLinkOptions = linkableStructureOptions.length === 0;
+
+  const visibleQuickLinkOptions = usingDummyLinkOptions
+    ? [...DUMMY_LINKABLE_STRUCTURE_OPTIONS]
+    : quickLinkOptions;
+
+  const visibleLinkableStructureOptions = usingDummyLinkOptions
+    ? [...DUMMY_LINKABLE_STRUCTURE_OPTIONS]
+    : linkableStructureOptions;
+
+  const supabaseUnavailable = !supabaseConfigured || !supabase;
+  const supabaseChecking = !supabaseUnavailable && authLoading;
+  const supabaseSignedOut = !supabaseUnavailable && !authLoading && !user;
+
   React.useEffect(() => {
     if (lifecycle !== 'close') return;
     if (!closeTargetStructureId) {
@@ -843,6 +882,10 @@ export function StructureEntryOverlay({
 
   const handleLinkedStructureChange = React.useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
+      if (usingDummyLinkOptions) {
+        return;
+      }
+
       const selected = Array.from(event.target.selectedOptions).map((option) => option.value);
       const unique = Array.from(new Set(selected));
       updateField('position.linked_structure_ids', unique.length > 0 ? unique : undefined);
@@ -858,18 +901,130 @@ export function StructureEntryOverlay({
         }
       }
     },
-    [closeTargetStructureId, lifecycle, updateField],
+    [closeTargetStructureId, lifecycle, updateField, usingDummyLinkOptions],
   );
 
   const handleCloseTargetChange = React.useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
+      if (usingDummyLinkOptions) {
+        return;
+      }
+
       updateField(
         'position.close_target_structure_id',
         event.target.value ? event.target.value : undefined,
       );
     },
-    [updateField],
+    [updateField, usingDummyLinkOptions],
   );
+
+  const handleQuickLink = React.useCallback(async () => {
+    if (!quickLinkTarget) return;
+    if (usingDummyLinkOptions) {
+      setLinkStatus({
+        type: 'error',
+        message: 'Save an open structure first before linking with Supabase-backed data.',
+      });
+      return;
+    }
+    if (!isUpdateMode || !existingPositionId) {
+      setLinkStatus({
+        type: 'error',
+        message: 'Save this structure first before linking to another.',
+      });
+      return;
+    }
+    if (supabaseUnavailable) {
+      setLinkStatus({
+        type: 'error',
+        message: 'Supabase is not configured. Configure environment variables to enable linking.',
+      });
+      return;
+    }
+    if (supabaseChecking) {
+      setLinkStatus({
+        type: 'error',
+        message: 'Supabase session is being restored. Try again in a moment.',
+      });
+      return;
+    }
+    if (!supabase || !user) {
+      setLinkStatus({ type: 'error', message: 'Sign in to link structures.' });
+      return;
+    }
+
+    const desiredLinks = Array.from(
+      new Set(
+        [...linkedStructureIds, quickLinkTarget].filter(
+          (id): id is string => typeof id === 'string' && id.length > 0 && id !== existingPositionId,
+        ),
+      ),
+    );
+
+    const timestampForClosure =
+      lifecycle === 'close'
+        ? form.position?.exit_ts ?? form.position?.entry_ts ?? new Date().toISOString()
+        : undefined;
+
+    setLinking(true);
+    setLinkStatus({ type: 'idle' });
+
+    try {
+      const result = await syncLinkedStructures(supabase, {
+        sourceId: existingPositionId,
+        linkedIds: desiredLinks,
+        closedAt: timestampForClosure,
+      });
+
+      if (!result.ok) {
+        setLinkStatus({ type: 'error', message: result.error || 'Failed to link structures.' });
+        return;
+      }
+
+      updateField('position.linked_structure_ids', desiredLinks.length > 0 ? desiredLinks : undefined);
+      if (lifecycle === 'close') {
+        updateField('position.close_target_structure_id', quickLinkTarget);
+      }
+      setQuickLinkTarget('');
+      setLinkStatus({ type: 'success', message: 'Structures linked successfully.' });
+      onSaved?.(existingPositionId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to link structures.';
+      setLinkStatus({ type: 'error', message });
+    } finally {
+      setLinking(false);
+    }
+  }, [
+    existingPositionId,
+    form.position?.entry_ts,
+    form.position?.exit_ts,
+    isUpdateMode,
+    lifecycle,
+    linkedStructureIds,
+    onSaved,
+    quickLinkTarget,
+    supabase,
+    supabaseChecking,
+    supabaseUnavailable,
+    updateField,
+    user,
+    usingDummyLinkOptions,
+  ]);
+
+  React.useEffect(() => {
+    if (usingDummyLinkOptions) {
+      setQuickLinkTarget('');
+      setLinkStatus({ type: 'idle' });
+    }
+  }, [usingDummyLinkOptions]);
+
+  React.useEffect(() => {
+    if (usingDummyLinkOptions) return;
+    if (!quickLinkTarget) return;
+    if (!quickLinkOptions.some((option) => option.value === quickLinkTarget)) {
+      setQuickLinkTarget('');
+    }
+  }, [quickLinkOptions, quickLinkTarget, usingDummyLinkOptions]);
 
   const payloadForValidation = React.useMemo(
     () => ensureVenue(form, includeVenue),
@@ -1162,9 +1317,6 @@ export function StructureEntryOverlay({
   const missingLegPath = (index: number, suffix: string) => `legs[${index}].${suffix}`;
   const missingFillPath = (index: number, suffix: string) => `fills[${index}].${suffix}`;
 
-  const supabaseUnavailable = !supabaseConfigured || !supabase;
-  const supabaseChecking = !supabaseUnavailable && authLoading;
-  const supabaseSignedOut = !supabaseUnavailable && !authLoading && !user;
   const saveDisabled =
     saving ||
     missing.size > 0 ||
@@ -1411,7 +1563,73 @@ export function StructureEntryOverlay({
                   <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
                     Linked structures{lifecycle === 'open' ? ' (optional)' : ''}
                   </label>
-                  {linkableStructureOptions.length > 0 ? (
+                  {visibleQuickLinkOptions.length > 0 ? (
+                    <div className="space-y-2">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <select
+                          value={quickLinkTarget}
+                          onChange={(event) => {
+                            setQuickLinkTarget(event.target.value);
+                            setLinkStatus({ type: 'idle' });
+                          }}
+                          className={`mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-400 ${
+                            usingDummyLinkOptions ? 'opacity-80' : ''
+                          }`}
+                        >
+                          <option value="">Select open structure…</option>
+                          {visibleQuickLinkOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={handleQuickLink}
+                          disabled={
+                            linking ||
+                            !quickLinkTarget ||
+                            !isUpdateMode ||
+                            supabaseUnavailable ||
+                            supabaseChecking ||
+                            !user ||
+                            usingDummyLinkOptions
+                          }
+                          className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-slate-400 ${
+                            linking ||
+                            !quickLinkTarget ||
+                            !isUpdateMode ||
+                            supabaseUnavailable ||
+                            supabaseChecking ||
+                            !user ||
+                            usingDummyLinkOptions
+                              ? 'cursor-not-allowed bg-slate-300'
+                              : 'bg-slate-900 hover:bg-slate-800'
+                          }`}
+                        >
+                          {linking ? 'Linking…' : 'OK'}
+                        </button>
+                      </div>
+                      {usingDummyLinkOptions ? (
+                        <p className="text-xs text-slate-500">
+                          No open Supabase structures were found. Showing sample values so you can preview the linking
+                          controls.
+                        </p>
+                      ) : null}
+                      {linkStatus.type === 'error' ? (
+                        <p className="text-xs text-rose-600">{linkStatus.message}</p>
+                      ) : null}
+                      {linkStatus.type === 'success' ? (
+                        <p className="text-xs text-emerald-600">{linkStatus.message}</p>
+                      ) : null}
+                      {!isUpdateMode ? (
+                        <p className="text-xs text-slate-500">
+                          Save this structure first to enable quick linking with other saved structures.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {visibleLinkableStructureOptions.length > 0 ? (
                     <>
                       <select
                         multiple
@@ -1421,9 +1639,9 @@ export function StructureEntryOverlay({
                           lifecycle === 'close' && missing.has('position.close_target_structure_id')
                             ? 'border-rose-500 focus:ring-rose-400'
                             : 'border-slate-200 focus:ring-slate-400'
-                        }`}
+                        } ${usingDummyLinkOptions ? 'opacity-80' : ''}`}
                       >
-                        {linkableStructureOptions.map((option) => (
+                        {visibleLinkableStructureOptions.map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.label}
                           </option>
@@ -1434,7 +1652,7 @@ export function StructureEntryOverlay({
                           ? 'Select the open structure this close entry is paired with. You can add more related structures if needed.'
                           : 'Optionally link this structure to other open structures.'}
                       </p>
-                      {lifecycle === 'close' ? (
+                      {lifecycle === 'close' && !usingDummyLinkOptions ? (
                         <div className="space-y-1 pt-2">
                           <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
                             Closing target
@@ -1473,9 +1691,10 @@ export function StructureEntryOverlay({
                       No open structures available to link.
                     </div>
                   )}
-                  {linkableStructureOptions.length === 0 ? (
+                  {usingDummyLinkOptions ? (
                     <p className="text-xs text-slate-500">
-                      Save at least one structure as open to link it when recording a close.
+                      Save at least one structure as open to link it when recording a close. Once Supabase returns open
+                      structures, these sample values will be replaced automatically.
                     </p>
                   ) : null}
                 </div>
