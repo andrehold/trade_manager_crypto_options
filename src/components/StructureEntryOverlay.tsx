@@ -830,6 +830,10 @@ export function StructureEntryOverlay({
     [linkableStructureOptions, linkedStructureIds],
   );
 
+  const supabaseUnavailable = !supabaseConfigured || !supabase;
+  const supabaseChecking = !supabaseUnavailable && authLoading;
+  const supabaseSignedOut = !supabaseUnavailable && !authLoading && !user;
+
   React.useEffect(() => {
     if (lifecycle !== 'close') return;
     if (!closeTargetStructureId) {
@@ -1264,9 +1268,6 @@ export function StructureEntryOverlay({
   const missingLegPath = (index: number, suffix: string) => `legs[${index}].${suffix}`;
   const missingFillPath = (index: number, suffix: string) => `fills[${index}].${suffix}`;
 
-  const supabaseUnavailable = !supabaseConfigured || !supabase;
-  const supabaseChecking = !supabaseUnavailable && authLoading;
-  const supabaseSignedOut = !supabaseUnavailable && !authLoading && !user;
   const saveDisabled =
     saving ||
     missing.size > 0 ||
