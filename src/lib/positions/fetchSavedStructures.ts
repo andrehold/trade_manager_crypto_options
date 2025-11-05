@@ -144,6 +144,14 @@ function mapLeg(position: RawPosition, leg: RawLeg, index: number) {
   };
 }
 
+function normalizeClosedAt(rawClosedAt: string | null | undefined): string | null {
+  if (rawClosedAt == null) return null;
+  const trimmed = String(rawClosedAt).trim();
+  if (!trimmed) return null;
+  if (trimmed.toLowerCase() === "null" || trimmed.toLowerCase() === "undefined") return null;
+  return trimmed;
+}
+
 function mapPosition(raw: RawPosition): Position {
   const underlier = (raw.underlier ?? "").toUpperCase();
   const legs = (raw.legs ?? [])
@@ -159,7 +167,7 @@ function mapPosition(raw: RawPosition): Position {
     raw.net_fill ?? legs.reduce((sum, leg) => sum + (Number.isFinite(leg.netPremium) ? leg.netPremium : 0), 0);
 
   const lifecycle = raw.lifecycle ?? "open";
-  const closedAt = raw.closed_at ?? null;
+  const closedAt = normalizeClosedAt(raw.closed_at);
 
   let status: Position["status"];
   if (lifecycle === "close") {
