@@ -8,6 +8,7 @@ import type { ImportPayload } from '../lib/import';
 import { tryGetSupabaseClient } from '../lib/supabase';
 import { useAuth } from '../features/auth/useAuth';
 import { fetchStructurePayload } from '../lib/positions/fetchStructurePayload';
+import { syncLinkedStructures } from '../lib/positions/syncLinkedStructures';
 import {
   OPTIONS_STRUCTURES,
   CONSTRUCTIONS,
@@ -522,6 +523,11 @@ export function StructureEntryOverlay({
   >({ type: 'idle' });
   const [loadingExisting, setLoadingExisting] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [quickLinkTarget, setQuickLinkTarget] = React.useState('');
+  const [linking, setLinking] = React.useState(false);
+  const [linkStatus, setLinkStatus] = React.useState<
+    { type: 'idle' | 'error' | 'success'; message?: string }
+  >({ type: 'idle' });
   const { user, loading: authLoading, supabaseConfigured } = useAuth();
   const supabase = React.useMemo(
     () => (supabaseConfigured ? tryGetSupabaseClient() : null),
@@ -773,6 +779,7 @@ export function StructureEntryOverlay({
       allPositions
         .filter(
           (candidate) =>
+            candidate.source === 'supabase' &&
             candidate.status === 'OPEN' &&
             candidate.id !== position.id &&
             candidate.closedAt == null,
@@ -785,7 +792,7 @@ export function StructureEntryOverlay({
           if (candidate.expiryISO) parts.push(candidate.expiryISO);
           if (candidate.exchange) parts.push(candidate.exchange.toUpperCase());
           return {
-            value: candidate.structureId ?? candidate.id,
+            value: candidate.id,
             label: parts.join(' • '),
           };
         }),
@@ -817,6 +824,11 @@ export function StructureEntryOverlay({
     }
     return Array.from(uniqueIds);
   }, [closeTargetStructureId, form.position?.linked_structure_ids]);
+
+  const quickLinkOptions = React.useMemo(
+    () => linkableStructureOptions.filter((option) => !linkedStructureIds.includes(option.value)),
+    [linkableStructureOptions, linkedStructureIds],
+  );
 
   React.useEffect(() => {
     if (lifecycle !== 'close') return;
@@ -875,6 +887,91 @@ export function StructureEntryOverlay({
     },
     [updateField],
   );
+
+  const handleQuickLink = React.useCallback(async () => {
+    if (!quickLinkTarget) return;
+    if (!isUpdateMode || !existingPositionId) {
+      setLinkStatus({
+        type: 'error',
+        message: 'Save this structure first before linking to another.',
+      });
+      return;
+    }
+    if (supabaseUnavailable) {
+      setLinkStatus({
+        type: 'error',
+        message: 'Supabase is not configured. Configure environment variables to enable linking.',
+      });
+      return;
+    }
+    if (supabaseChecking) {
+      setLinkStatus({
+        type: 'error',
+        message: 'Supabase session is being restored. Try again in a moment.',
+      });
+      return;
+    }
+    if (!supabase || !user) {
+      setLinkStatus({ type: 'error', message: 'Sign in to link structures.' });
+      return;
+    }
+
+    const desiredLinks = Array.from(
+      new Set(
+        [...linkedStructureIds, quickLinkTarget].filter(
+          (id): id is string => typeof id === 'string' && id.length > 0 && id !== existingPositionId,
+        ),
+      ),
+    );
+
+    const timestampForClosure =
+      lifecycle === 'close'
+        ? form.position?.exit_ts ?? form.position?.entry_ts ?? new Date().toISOString()
+        : undefined;
+
+    setLinking(true);
+    setLinkStatus({ type: 'idle' });
+
+    try {
+      const result = await syncLinkedStructures(supabase, {
+        sourceId: existingPositionId,
+        linkedIds: desiredLinks,
+        closedAt: timestampForClosure,
+      });
+
+      if (!result.ok) {
+        setLinkStatus({ type: 'error', message: result.error || 'Failed to link structures.' });
+        return;
+      }
+
+      updateField('position.linked_structure_ids', desiredLinks.length > 0 ? desiredLinks : undefined);
+      if (lifecycle === 'close') {
+        updateField('position.close_target_structure_id', quickLinkTarget);
+      }
+      setQuickLinkTarget('');
+      setLinkStatus({ type: 'success', message: 'Structures linked successfully.' });
+      onSaved?.(existingPositionId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to link structures.';
+      setLinkStatus({ type: 'error', message });
+    } finally {
+      setLinking(false);
+    }
+  }, [
+    existingPositionId,
+    form.position?.entry_ts,
+    form.position?.exit_ts,
+    isUpdateMode,
+    lifecycle,
+    linkedStructureIds,
+    onSaved,
+    quickLinkTarget,
+    supabase,
+    supabaseChecking,
+    supabaseUnavailable,
+    updateField,
+    user,
+  ]);
 
   const payloadForValidation = React.useMemo(
     () => ensureVenue(form, includeVenue),
@@ -1416,6 +1513,62 @@ export function StructureEntryOverlay({
                   <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
                     Linked structures{lifecycle === 'open' ? ' (optional)' : ''}
                   </label>
+                  {quickLinkOptions.length > 0 ? (
+                    <div className="space-y-2">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <select
+                          value={quickLinkTarget}
+                          onChange={(event) => {
+                            setQuickLinkTarget(event.target.value);
+                            setLinkStatus({ type: 'idle' });
+                          }}
+                          className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                        >
+                          <option value="">Select open structure…</option>
+                          {quickLinkOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={handleQuickLink}
+                          disabled={
+                            linking ||
+                            !quickLinkTarget ||
+                            !isUpdateMode ||
+                            supabaseUnavailable ||
+                            supabaseChecking ||
+                            !user
+                          }
+                          className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-slate-400 ${
+                            linking ||
+                            !quickLinkTarget ||
+                            !isUpdateMode ||
+                            supabaseUnavailable ||
+                            supabaseChecking ||
+                            !user
+                              ? 'cursor-not-allowed bg-slate-300'
+                              : 'bg-slate-900 hover:bg-slate-800'
+                          }`}
+                        >
+                          {linking ? 'Linking…' : 'OK'}
+                        </button>
+                      </div>
+                      {linkStatus.type === 'error' ? (
+                        <p className="text-xs text-rose-600">{linkStatus.message}</p>
+                      ) : null}
+                      {linkStatus.type === 'success' ? (
+                        <p className="text-xs text-emerald-600">{linkStatus.message}</p>
+                      ) : null}
+                      {!isUpdateMode ? (
+                        <p className="text-xs text-slate-500">
+                          Save this structure first to enable quick linking with other saved structures.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                   {linkableStructureOptions.length > 0 ? (
                     <>
                       <select

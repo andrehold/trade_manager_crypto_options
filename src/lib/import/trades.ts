@@ -1,6 +1,7 @@
 // src/features/import/importTrades.ts
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { tryGetSupabaseClient } from "../supabase";
+import { syncLinkedStructures } from "../positions/syncLinkedStructures";
 import { payloadSchema } from "./validation";
 import type { ImportPayload } from "./types";
 
@@ -244,6 +245,24 @@ export async function importTrades(
       }
     }
 
+    const linkedIdsSet = new Set<string>();
+    if (Array.isArray(position.linked_structure_ids)) {
+      for (const id of position.linked_structure_ids) {
+        if (typeof id === "string" && id.trim().length > 0) {
+          linkedIdsSet.add(id.trim());
+        }
+      }
+    }
+    if (typeof position.close_target_structure_id === "string" && position.close_target_structure_id.trim().length > 0) {
+      linkedIdsSet.add(position.close_target_structure_id.trim());
+    }
+    linkedIdsSet.delete(positionId);
+
+    const closedAtCandidate =
+      position.lifecycle === "close"
+        ? position.exit_ts ?? position.entry_ts ?? new Date().toISOString()
+        : undefined;
+
     const syncResult = await syncClosedStructureState(supabase, {
       previousLifecycle: (existing.lifecycle as Lifecycle | null) ?? null,
       previousTargetId: (existing.close_target_structure_id as string | null) ?? null,
@@ -253,6 +272,16 @@ export async function importTrades(
 
     if (!syncResult.ok) {
       return { ok: false as const, error: syncResult.error };
+    }
+
+    const linkResult = await syncLinkedStructures(supabase, {
+      sourceId: positionId,
+      linkedIds: Array.from(linkedIdsSet),
+      closedAt: closedAtCandidate,
+    });
+
+    if (!linkResult.ok) {
+      return { ok: false as const, error: linkResult.error };
     }
 
     return { ok: true as const, position_id: positionId, mode: 'update' };
@@ -295,6 +324,24 @@ export async function importTrades(
     if (fillsErr) return { ok: false as const, error: fillsErr.message };
   }
 
+  const linkedIdsSet = new Set<string>();
+  if (Array.isArray(position.linked_structure_ids)) {
+    for (const id of position.linked_structure_ids) {
+      if (typeof id === "string" && id.trim().length > 0) {
+        linkedIdsSet.add(id.trim());
+      }
+    }
+  }
+  if (typeof position.close_target_structure_id === "string" && position.close_target_structure_id.trim().length > 0) {
+    linkedIdsSet.add(position.close_target_structure_id.trim());
+  }
+  linkedIdsSet.delete(position_id);
+
+  const closedAtCandidate =
+    position.lifecycle === "close"
+      ? position.exit_ts ?? position.entry_ts ?? new Date().toISOString()
+      : undefined;
+
   const syncResult = await syncClosedStructureState(supabase, {
     newLifecycle: position.lifecycle,
     newTargetId: position.close_target_structure_id ?? null,
@@ -302,6 +349,16 @@ export async function importTrades(
 
   if (!syncResult.ok) {
     return { ok: false as const, error: syncResult.error };
+  }
+
+  const linkResult = await syncLinkedStructures(supabase, {
+    sourceId: position_id,
+    linkedIds: Array.from(linkedIdsSet),
+    closedAt: closedAtCandidate,
+  });
+
+  if (!linkResult.ok) {
+    return { ok: false as const, error: linkResult.error };
   }
 
   return { ok: true as const, position_id, mode: 'insert' };
