@@ -317,6 +317,8 @@ export default function App() {
     [positions, savedStructures],
   );
 
+  const positionsForLinking = positionsForMarks;
+
   const tableHead = (
     <thead className="bg-slate-50 text-slate-600">
       <tr>
@@ -680,7 +682,7 @@ export default function App() {
                       visibleCols={visibleCols}
                       marks={legMarks}
                       markLoading={markFetch.inProgress}
-                      allPositions={savedStructures}
+                      allPositions={positionsForLinking}
                       readOnly
                       disableSave
                     />
@@ -722,7 +724,7 @@ export default function App() {
                       visibleCols={visibleCols}
                       marks={legMarks}
                       markLoading={markFetch.inProgress}
-                      allPositions={positions}
+                      allPositions={positionsForLinking}
                       onSaved={refreshSavedStructures}
                     />
                   ))}
