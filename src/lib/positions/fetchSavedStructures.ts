@@ -20,6 +20,7 @@ type RawPosition = {
   strategy_name: string | null;
   strategy_name_at_entry?: string | null;
   lifecycle: "open" | "close" | null;
+  closed_at?: string | null;
   entry_ts: string | null;
   exit_ts?: string | null;
   execution_route?: string | null;
@@ -157,7 +158,17 @@ function mapPosition(raw: RawPosition): Position {
   const netPremium =
     raw.net_fill ?? legs.reduce((sum, leg) => sum + (Number.isFinite(leg.netPremium) ? leg.netPremium : 0), 0);
 
-  const status: Position["status"] = raw.lifecycle === "close" ? "ALERT" : "OPEN";
+  const lifecycle = raw.lifecycle ?? "open";
+  const closedAt = raw.closed_at ?? null;
+
+  let status: Position["status"];
+  if (lifecycle === "close") {
+    status = "ALERT";
+  } else if (closedAt) {
+    status = "ATTENTION";
+  } else {
+    status = "OPEN";
+  }
 
   return {
     id: raw.position_id,
@@ -184,6 +195,7 @@ function mapPosition(raw: RawPosition): Position {
       raw.package_order_id ?? raw.order_id ?? raw.trade_id ?? raw.close_target_structure_id ?? raw.position_id,
     exchange: undefined,
     source: "supabase",
+    closedAt,
   };
 }
 
@@ -227,6 +239,7 @@ export async function fetchSavedStructures(
        counterparty,
        pricing_currency,
        notes,
+       closed_at,
        close_target_structure_id,
        linked_structure_ids,
        legs:legs(

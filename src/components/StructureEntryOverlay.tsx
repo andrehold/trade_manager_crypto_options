@@ -771,7 +771,12 @@ export function StructureEntryOverlay({
   const linkableStructureOptions = React.useMemo(
     () =>
       allPositions
-        .filter((candidate) => candidate.status === 'OPEN' && candidate.id !== position.id)
+        .filter(
+          (candidate) =>
+            candidate.status === 'OPEN' &&
+            candidate.id !== position.id &&
+            candidate.closedAt == null,
+        )
         .map((candidate) => {
           const parts = [
             candidate.structureId ? `#${candidate.structureId}` : 'No structure #',

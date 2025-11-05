@@ -273,6 +273,7 @@ export default function App() {
         structureId,
         exchange: exchange as Exchange,
         source: 'local',
+        closedAt: null,
       });
     }
     out.sort((a, b) => a.dte - b.dte);
