@@ -11,6 +11,7 @@ import {
   getLegMarkRef,
   type LegMarkRef,
 } from '../utils'
+import { getPlaybook } from '../features/playbooks/playbooks'
 import { StructureEntryOverlay } from './StructureEntryOverlay'
 
 type MarkInfo = { price: number | null; multiplier: number | null; greeks?: any }
@@ -26,6 +27,40 @@ type PositionRowProps = {
   readOnly?: boolean
   disableSave?: boolean
   onSaved?: (positionId: string) => void
+}
+
+type PlaybookLink = {
+  href: string
+  label: string
+  external: boolean
+}
+
+function resolvePlaybookLink(playbookValue?: string | null): PlaybookLink | null {
+  if (!playbookValue) return null
+  const raw = playbookValue.trim()
+  if (!raw) return null
+  if (/^https?:\/\//i.test(raw)) {
+    return { href: raw, label: 'Open playbook', external: true }
+  }
+  if (raw.startsWith('#/')) {
+    return { href: raw, label: 'Open playbook', external: false }
+  }
+  if (raw.startsWith('/playbooks/')) {
+    return { href: `#${raw}`, label: 'Open playbook', external: false }
+  }
+  if (raw.startsWith('playbooks/')) {
+    return { href: `#/${raw}`, label: 'Open playbook', external: false }
+  }
+  const normalized = raw.replace(/^#?\/?playbooks\//i, '')
+  const match = getPlaybook(raw) || getPlaybook(normalized)
+  if (match) {
+    return {
+      href: `#/playbooks/${match.slug}`,
+      label: `Open ${match.name} playbook`,
+      external: false,
+    }
+  }
+  return null
 }
 
 function CellSpinner() {
@@ -95,6 +130,8 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
     () => (marks ? positionGreeks(p, marks) : { delta: 0, gamma: 0, theta: 0, vega: 0, rho: 0 }),
     [marks, p]
   )
+
+  const playbookLink = React.useMemo(() => resolvePlaybookLink(p.playbook), [p.playbook])
 
   return (
     <>
@@ -177,6 +214,17 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
               disabled={isReadOnly}
               readOnly={isReadOnly}
             />
+            {playbookLink ? (
+              <a
+                href={playbookLink.href}
+                target={playbookLink.external ? '_blank' : undefined}
+                rel={playbookLink.external ? 'noreferrer' : undefined}
+                className="mt-2 block text-xs font-medium text-sky-600 hover:text-sky-500"
+              >
+                {playbookLink.label}
+                {playbookLink.external ? ' ↗' : ''}
+              </a>
+            ) : null}
           </td>
         )}
         <td className="p-3 align-top text-right">
