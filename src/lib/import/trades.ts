@@ -25,6 +25,11 @@ type Lifecycle = ImportPayload["position"]["lifecycle"];
 
 type SyncResult = { ok: true } | { ok: false; error: string };
 
+type DerivedLifecycleState = {
+  position: ImportPayload["position"];
+  status: "open" | "closed";
+};
+
 function sanitizeValue(value: unknown): unknown {
   if (value == null) return value;
 
@@ -53,6 +58,40 @@ function sanitizeValue(value: unknown): unknown {
 
 function sanitizePayload(payload: ImportPayload): ImportPayload {
   return sanitizeValue(payload) as ImportPayload;
+}
+
+function normalizeLifecycleState(position: ImportPayload["position"]): DerivedLifecycleState {
+  const linkedIds = Array.isArray(position.linked_structure_ids)
+    ? position.linked_structure_ids
+        .filter((id): id is string => typeof id === "string")
+        .map((id) => id.trim())
+        .filter((id) => id.length > 0)
+    : [];
+
+  let closeTarget: string | null =
+    typeof position.close_target_structure_id === "string" && position.close_target_structure_id.trim().length > 0
+      ? position.close_target_structure_id.trim()
+      : null;
+
+  if (position.lifecycle === "close") {
+    if (!closeTarget && linkedIds.length === 1) {
+      closeTarget = linkedIds[0];
+    }
+
+    if (closeTarget && !linkedIds.includes(closeTarget)) {
+      linkedIds.unshift(closeTarget);
+    }
+  }
+
+  const normalizedPosition: ImportPayload["position"] = {
+    ...position,
+    close_target_structure_id: closeTarget ?? null,
+    linked_structure_ids: linkedIds.length > 0 ? linkedIds : null,
+  };
+
+  const status: "open" | "closed" = position.lifecycle === "close" ? "closed" : "open";
+
+  return { position: normalizedPosition, status };
 }
 
 async function recalcClosedAt(
@@ -200,6 +239,8 @@ export async function importTrades(
     }
   }
 
+  const { position: normalizedPosition, status: derivedStatus } = normalizeLifecycleState(position);
+
   const { positionId } = options;
 
   if (positionId) {
@@ -218,7 +259,7 @@ export async function importTrades(
       return { ok: false as const, error: `Position ${positionId} does not exist.` };
     }
 
-    let venue_id = position.venue_id ?? (existing.venue_id as string | null) ?? null;
+    let venue_id = normalizedPosition.venue_id ?? (existing.venue_id as string | null) ?? null;
 
     if (venue) {
       const venueTargetId = venue.venue_id ?? (existing.venue_id as string | null) ?? null;
@@ -250,9 +291,10 @@ export async function importTrades(
     }
 
     const positionUpdate = nullifyUndefined({
-      ...position,
+      ...normalizedPosition,
       venue_id,
-      strategy_name_at_entry: position.strategy_name,
+      strategy_name_at_entry: normalizedPosition.strategy_name,
+      status: derivedStatus,
     });
 
     const { error: updatePositionErr } = await supabase
@@ -291,28 +333,31 @@ export async function importTrades(
     }
 
     const linkedIdsSet = new Set<string>();
-    if (Array.isArray(position.linked_structure_ids)) {
-      for (const id of position.linked_structure_ids) {
+    if (Array.isArray(normalizedPosition.linked_structure_ids)) {
+      for (const id of normalizedPosition.linked_structure_ids) {
         if (typeof id === "string" && id.trim().length > 0) {
           linkedIdsSet.add(id.trim());
         }
       }
     }
-    if (typeof position.close_target_structure_id === "string" && position.close_target_structure_id.trim().length > 0) {
-      linkedIdsSet.add(position.close_target_structure_id.trim());
+    if (
+      typeof normalizedPosition.close_target_structure_id === "string" &&
+      normalizedPosition.close_target_structure_id.trim().length > 0
+    ) {
+      linkedIdsSet.add(normalizedPosition.close_target_structure_id.trim());
     }
     linkedIdsSet.delete(positionId);
 
     const closedAtCandidate =
-      position.lifecycle === "close"
-        ? position.exit_ts ?? position.entry_ts ?? new Date().toISOString()
+      normalizedPosition.lifecycle === "close"
+        ? normalizedPosition.exit_ts ?? normalizedPosition.entry_ts ?? new Date().toISOString()
         : undefined;
 
     const syncResult = await syncClosedStructureState(supabase, {
       previousLifecycle: (existing.lifecycle as Lifecycle | null) ?? null,
       previousTargetId: (existing.close_target_structure_id as string | null) ?? null,
-      newLifecycle: position.lifecycle,
-      newTargetId: position.close_target_structure_id ?? null,
+      newLifecycle: normalizedPosition.lifecycle,
+      newTargetId: normalizedPosition.close_target_structure_id ?? null,
     });
 
     if (!syncResult.ok) {
@@ -333,7 +378,7 @@ export async function importTrades(
   }
 
   // 3) Optional venue when inserting
-  let venue_id = position.venue_id ?? null;
+  let venue_id = normalizedPosition.venue_id ?? null;
   if (venue && !venue_id) {
     const { data, error } = await supabase
       .from("venues")
@@ -348,9 +393,10 @@ export async function importTrades(
   const { data: pos, error: posErr } = await supabase
     .from("positions")
     .insert({
-      ...position,
+      ...normalizedPosition,
       venue_id,
-      strategy_name_at_entry: position.strategy_name,
+      strategy_name_at_entry: normalizedPosition.strategy_name,
+      status: derivedStatus,
     })
     .select("position_id")
     .single();
@@ -370,26 +416,29 @@ export async function importTrades(
   }
 
   const linkedIdsSet = new Set<string>();
-  if (Array.isArray(position.linked_structure_ids)) {
-    for (const id of position.linked_structure_ids) {
+  if (Array.isArray(normalizedPosition.linked_structure_ids)) {
+    for (const id of normalizedPosition.linked_structure_ids) {
       if (typeof id === "string" && id.trim().length > 0) {
         linkedIdsSet.add(id.trim());
       }
     }
   }
-  if (typeof position.close_target_structure_id === "string" && position.close_target_structure_id.trim().length > 0) {
-    linkedIdsSet.add(position.close_target_structure_id.trim());
+  if (
+    typeof normalizedPosition.close_target_structure_id === "string" &&
+    normalizedPosition.close_target_structure_id.trim().length > 0
+  ) {
+    linkedIdsSet.add(normalizedPosition.close_target_structure_id.trim());
   }
   linkedIdsSet.delete(position_id);
 
   const closedAtCandidate =
-    position.lifecycle === "close"
-      ? position.exit_ts ?? position.entry_ts ?? new Date().toISOString()
+    normalizedPosition.lifecycle === "close"
+      ? normalizedPosition.exit_ts ?? normalizedPosition.entry_ts ?? new Date().toISOString()
       : undefined;
 
   const syncResult = await syncClosedStructureState(supabase, {
-    newLifecycle: position.lifecycle,
-    newTargetId: position.close_target_structure_id ?? null,
+    newLifecycle: normalizedPosition.lifecycle,
+    newTargetId: normalizedPosition.close_target_structure_id ?? null,
   });
 
   if (!syncResult.ok) {
