@@ -464,7 +464,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     }
 
     setMarkFetch(prev => ({ ...prev, inProgress: false }));
-  }, [legMarks]);
+  }, [setLegMarks, setMarkFetch]);
 
   function Spinner({ className = "h-4 w-4" }: { className?: string }) {
     return (
