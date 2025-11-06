@@ -50,7 +50,7 @@ export interface Position {
   realizedPnl: number;
   netPremium: number;
   pnlPct?: number | null;
-  status: 'OPEN' | 'ATTENTION' | 'ALERT';
+  status: 'OPEN' | 'ATTENTION' | 'ALERT' | 'CLOSED';
   greeks: { delta?: number | null; gamma?: number | null; theta?: number | null; vega?: number | null; rho?: number | null; };
   playbook?: string;
   structureId?: string;

@@ -167,16 +167,10 @@ function mapPosition(raw: RawPosition): Position {
     raw.net_fill ?? legs.reduce((sum, leg) => sum + (Number.isFinite(leg.netPremium) ? leg.netPremium : 0), 0);
 
   const lifecycle = raw.lifecycle ?? "open";
-  const closedAt = normalizeClosedAt(raw.closed_at);
+  const closedAt = normalizeClosedAt(raw.closed_at ?? raw.exit_ts ?? null);
+  const isClosed = lifecycle === "close" || Boolean(closedAt);
 
-  let status: Position["status"];
-  if (lifecycle === "close") {
-    status = "ALERT";
-  } else if (closedAt) {
-    status = "ATTENTION";
-  } else {
-    status = "OPEN";
-  }
+  const status: Position["status"] = isClosed ? "CLOSED" : "OPEN";
 
   return {
     id: raw.position_id,

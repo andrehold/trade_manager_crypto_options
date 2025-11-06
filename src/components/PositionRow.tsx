@@ -62,7 +62,14 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
 }) => {
   const [open, setOpen] = React.useState(false)
   const [showSaveOverlay, setShowSaveOverlay] = React.useState(false)
-  const statusTone = p.status === 'OPEN' ? 'success' : p.status === 'ATTENTION' ? 'warning' : 'destructive'
+  const statusTone =
+    p.status === 'OPEN'
+      ? 'success'
+      : p.status === 'ATTENTION'
+      ? 'warning'
+      : p.status === 'ALERT'
+      ? 'destructive'
+      : 'muted'
   const isUpdateMode = p.source === 'supabase'
   const isReadOnly = readOnly || isUpdateMode
   const canOpenOverlay = (!disableSave || isUpdateMode) && (!readOnly || isUpdateMode)
@@ -102,7 +109,13 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
             <div className="flex items-center gap-2">
               <span
                 className={`w-2.5 h-2.5 rounded-full ${
-                  statusTone === 'success' ? 'bg-emerald-500' : statusTone === 'warning' ? 'bg-amber-500' : 'bg-rose-500'
+                  statusTone === 'success'
+                    ? 'bg-emerald-500'
+                    : statusTone === 'warning'
+                    ? 'bg-amber-500'
+                    : statusTone === 'destructive'
+                    ? 'bg-rose-500'
+                    : 'bg-slate-400'
                 }`}
               />
               <span className="text-slate-700 text-sm">{p.status}</span>
@@ -176,7 +189,9 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                     ? ('ATTENTION' as Position['status'])
                     : p.status === 'ATTENTION'
                     ? ('ALERT' as Position['status'])
-                    : ('OPEN' as Position['status']),
+                    : p.status === 'ALERT'
+                    ? ('OPEN' as Position['status'])
+                    : p.status,
               })
             }}
             className={`text-slate-500 ${isReadOnly ? 'cursor-not-allowed opacity-50' : ''}`}
