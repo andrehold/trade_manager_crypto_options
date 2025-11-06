@@ -25,6 +25,36 @@ type Lifecycle = ImportPayload["position"]["lifecycle"];
 
 type SyncResult = { ok: true } | { ok: false; error: string };
 
+function sanitizeValue(value: unknown): unknown {
+  if (value == null) return value;
+
+  if (Array.isArray(value)) {
+    const sanitized = value
+      .map((item) => sanitizeValue(item))
+      .filter((item) => item !== undefined);
+    return sanitized;
+  }
+
+  if (typeof value === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [key, nested] of Object.entries(value)) {
+      result[key] = sanitizeValue(nested);
+    }
+    return result;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  return value;
+}
+
+function sanitizePayload(payload: ImportPayload): ImportPayload {
+  return sanitizeValue(payload) as ImportPayload;
+}
+
 async function recalcClosedAt(
   client: SupabaseClient,
   targetId: string,
@@ -96,9 +126,24 @@ export async function importTrades(
   }
 
   // 0) Validate
-  const parsed = payloadSchema.safeParse(payload);
+  const sanitizedPayload = sanitizePayload(payload);
+  const parsed = payloadSchema.safeParse(sanitizedPayload);
   if (!parsed.success) {
-    return { ok: false as const, error: "Invalid payload", details: parsed.error.flatten() };
+    const issues = parsed.error.issues.map((issue) => ({
+      path: issue.path,
+      message: issue.message,
+      code: issue.code,
+      expected: "expected" in issue ? (issue as { expected?: unknown }).expected : undefined,
+      received: "received" in issue ? (issue as { received?: unknown }).received : undefined,
+    }));
+
+    return {
+      ok: false as const,
+      error: "Invalid payload",
+      details: {
+        issues,
+      },
+    };
   }
   const { program, venue, position, legs, fills } = parsed.data;
 
