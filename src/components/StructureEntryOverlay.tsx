@@ -74,6 +74,58 @@ const DUMMY_LINKABLE_STRUCTURE_OPTIONS: ReadonlyArray<{
   { value: 'demo-structure-3', label: '#305 • SOL-USD • 2024-08-30 • BINANCE' },
 ];
 
+function formatSaveErrorDetails(details: unknown): string | null {
+  if (!details) return null;
+
+  if (typeof details === 'string') {
+    return details;
+  }
+
+  if (
+    details &&
+    typeof details === 'object' &&
+    'fieldErrors' in details &&
+    'formErrors' in details
+  ) {
+    const fieldErrors = (details as {
+      fieldErrors?: Record<string, unknown>;
+      formErrors?: unknown;
+    }).fieldErrors;
+    const formErrors = (details as { formErrors?: unknown }).formErrors;
+    const lines: string[] = [];
+
+    if (Array.isArray(formErrors) && formErrors.length > 0) {
+      for (const message of formErrors) {
+        if (typeof message === 'string' && message.trim().length > 0) {
+          lines.push(`• ${message}`);
+        }
+      }
+    }
+
+    if (fieldErrors && typeof fieldErrors === 'object') {
+      for (const [path, messages] of Object.entries(fieldErrors)) {
+        if (!Array.isArray(messages)) continue;
+        const filtered = messages.filter(
+          (message): message is string => typeof message === 'string' && message.trim().length > 0,
+        );
+        if (!filtered.length) continue;
+        const suffix = filtered.length === 1 ? filtered[0] : filtered.join('; ');
+        lines.push(`${path}: ${suffix}`);
+      }
+    }
+
+    if (lines.length > 0) {
+      return lines.join('\n');
+    }
+  }
+
+  try {
+    return JSON.stringify(details, null, 2);
+  } catch (err) {
+    return String(details);
+  }
+}
+
 /**
  * Break a string path like `legs[0].qty` into discrete object/array segments
  * so the value can be read or written in a type-safe way later on.
@@ -528,7 +580,7 @@ export function StructureEntryOverlay({
   const strategyRequests = React.useRef<Set<string>>(new Set());
   const [saving, setSaving] = React.useState(false);
   const [saveStatus, setSaveStatus] = React.useState<
-    { type: 'idle' | 'error' | 'success'; message?: string }
+    { type: 'idle' | 'error' | 'success'; message?: string; details?: string }
   >({ type: 'idle' });
   const [loadingExisting, setLoadingExisting] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
@@ -1384,7 +1436,12 @@ export function StructureEntryOverlay({
         });
         onSaved?.(result.position_id);
       } else {
-        setSaveStatus({ type: 'error', message: result.error || 'Failed to save structure.' });
+        const details = formatSaveErrorDetails((result as { details?: unknown }).details);
+        setSaveStatus({
+          type: 'error',
+          message: result.error || 'Failed to save structure.',
+          details: details ?? undefined,
+        });
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save structure.';
@@ -1494,8 +1551,15 @@ export function StructureEntryOverlay({
                 </div>
               ) : null}
               {saveStatus.type === 'error' ? (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                  {saveStatus.message ?? 'Unable to save structure. Please try again.'}
+                <div className="space-y-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  <p className="font-medium">
+                    {saveStatus.message ?? 'Unable to save structure. Please try again.'}
+                  </p>
+                  {saveStatus.details ? (
+                    <pre className="whitespace-pre-wrap text-xs leading-5 text-rose-600">
+                      {saveStatus.details}
+                    </pre>
+                  ) : null}
                 </div>
               ) : null}
               {saveStatus.type === 'success' ? (
