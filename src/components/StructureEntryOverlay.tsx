@@ -121,6 +121,7 @@ function describeIssueValue(value: unknown): string {
 
 type FormatSaveErrorDetailsOptions = {
   getLabel?: (path: string, segments: PathSegment[]) => string | undefined;
+  getValue?: (path: string, segments: PathSegment[]) => unknown;
 };
 
 const DUMMY_LINKABLE_STRUCTURE_OPTIONS: ReadonlyArray<{
@@ -176,8 +177,15 @@ function formatSaveErrorDetails(
         if (expected !== undefined) {
           expectationParts.push(`expected ${describeIssueValue(expected)}`);
         }
-        if (received !== undefined) {
-          expectationParts.push(`received ${describeIssueValue(received)}`);
+        const actualValue =
+          received !== undefined ? received : options.getValue?.(pathString, pathSegments);
+        if (actualValue !== undefined) {
+          expectationParts.push(`received ${describeIssueValue(actualValue)}`);
+        }
+        const isIsoIssue =
+          code === 'invalid_format' && typeof message === 'string' && message.toLowerCase().includes('iso datetime');
+        if (isIsoIssue && !expectationParts.some((part) => part.startsWith('expected'))) {
+          expectationParts.push('expected ISO 8601 datetime like 2024-06-01T15:30:00Z');
         }
         const formattedMessage = expectationParts.length
           ? `${message} (${expectationParts.join(', ')})`
@@ -322,9 +330,83 @@ function ensureVenue(payload: PartialPayload, include: boolean): PartialPayload 
 /** Convert a timestamp to ISO 8601 when we can, otherwise preserve the input. */
 function safeIso(ts?: string | null): string | undefined {
   if (!ts) return undefined;
-  const parsed = Date.parse(ts);
-  if (Number.isNaN(parsed)) return ts;
-  return new Date(parsed).toISOString();
+  const trimmed = ts.trim();
+  if (!trimmed) return undefined;
+
+  const queue: string[] = [trimmed];
+  const seen = new Set<string>();
+  const candidates: string[] = [];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current) continue;
+    if (seen.has(current)) continue;
+    seen.add(current);
+    candidates.push(current);
+
+    if (/\s/.test(current)) {
+      queue.push(current.replace(/\s+/, 'T'));
+    }
+
+    const normalizedTzSpacing = current.replace(/\s*([+-]\d{2}:?\d{2})$/, '$1');
+    if (normalizedTzSpacing !== current) {
+      queue.push(normalizedTzSpacing);
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(current)) {
+      queue.push(`${current}:00`);
+    }
+
+    const tzCompact = current.match(/([+-]\d{2})(\d{2})$/);
+    if (tzCompact) {
+      queue.push(`${current.slice(0, -tzCompact[0].length)}${tzCompact[1]}:${tzCompact[2]}`);
+    }
+
+    if (!/(Z|[+-]\d{2}:?\d{2})$/i.test(current)) {
+      queue.push(`${current}Z`);
+    }
+  }
+
+  for (const candidate of candidates) {
+    const parsed = Date.parse(candidate);
+    if (!Number.isNaN(parsed)) {
+      return new Date(parsed).toISOString();
+    }
+  }
+
+  return undefined;
+}
+
+function normalizeTimestampFields(payload: PartialPayload): PartialPayload {
+  let next = payload;
+
+  const updatePath = (path: string) => {
+    const segments = parsePath(path);
+    const value = getValue(next, segments);
+
+    let iso: string | undefined;
+    if (value instanceof Date && !Number.isNaN(value.valueOf())) {
+      iso = value.toISOString();
+    } else if (typeof value === 'number' && Number.isFinite(value)) {
+      iso = new Date(value).toISOString();
+    } else if (typeof value === 'string') {
+      iso = safeIso(value);
+    }
+
+    if (iso && typeof iso === 'string' && iso !== value) {
+      next = setValue(next, segments, iso);
+    }
+  };
+
+  updatePath('position.entry_ts');
+  updatePath('position.exit_ts');
+  updatePath('position.mark_ts');
+
+  if (Array.isArray(payload.fills)) {
+    payload.fills.forEach((_, idx) => updatePath(`fills[${idx}].ts`));
+  }
+
+  return next;
 }
 
 /** Total fees incurred across every leg in the position. */
@@ -1203,7 +1285,7 @@ export function StructureEntryOverlay({
   }, [quickLinkOptions, quickLinkTarget, usingDummyLinkOptions]);
 
   const payloadForValidation = React.useMemo(
-    () => ensureVenue(form, includeVenue),
+    () => normalizeTimestampFields(ensureVenue(form, includeVenue)),
     [form, includeVenue],
   );
   const missing = React.useMemo(
@@ -1642,6 +1724,7 @@ export function StructureEntryOverlay({
       } else {
         const details = formatSaveErrorDetails((result as { details?: unknown }).details, {
           getLabel: getFieldLabel,
+          getValue: (_path, segments) => getValue(payload, segments),
         });
         setSaveStatus({
           type: 'error',
