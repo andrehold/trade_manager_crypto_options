@@ -129,7 +129,21 @@ export async function importTrades(
   const sanitizedPayload = sanitizePayload(payload);
   const parsed = payloadSchema.safeParse(sanitizedPayload);
   if (!parsed.success) {
-    return { ok: false as const, error: "Invalid payload", details: parsed.error.flatten() };
+    const issues = parsed.error.issues.map((issue) => ({
+      path: issue.path,
+      message: issue.message,
+      code: issue.code,
+      expected: "expected" in issue ? (issue as { expected?: unknown }).expected : undefined,
+      received: "received" in issue ? (issue as { received?: unknown }).received : undefined,
+    }));
+
+    return {
+      ok: false as const,
+      error: "Invalid payload",
+      details: {
+        issues,
+      },
+    };
   }
   const { program, venue, position, legs, fills } = parsed.data;
 

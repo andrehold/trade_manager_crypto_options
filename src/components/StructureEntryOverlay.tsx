@@ -65,6 +65,64 @@ const REQUIRED_LEG_SUFFIXES = [
 
 const REQUIRED_FILL_SUFFIXES = ['ts', 'qty', 'price'];
 
+const LEG_FIELD_LABELS: Record<string, string> = {
+  leg_seq: 'Leg Sequence',
+  side: 'Side',
+  option_type: 'Option Type',
+  expiry: 'Expiry (YYYY-MM-DD)',
+  strike: 'Strike',
+  qty: 'Quantity',
+  price: 'Price',
+};
+
+const FILL_FIELD_LABELS: Record<string, string> = {
+  ts: 'Timestamp',
+  qty: 'Quantity',
+  price: 'Price',
+  leg_seq: 'Leg Sequence',
+  side: 'Side',
+  liquidity_role: 'Liquidity Role',
+  execution_mode: 'Execution Mode',
+  provider: 'Provider',
+  venue_id: 'Venue ID',
+  order_id: 'Order ID',
+  trade_id: 'Trade ID',
+  rfq_id: 'RFQ ID',
+  deal_id: 'Deal ID',
+  fees: 'Fees',
+  notes: 'Notes',
+};
+
+function joinPathSegments(path: PathSegment[]): string {
+  if (!path.length) return '';
+  return path.reduce<string>((acc, segment) => {
+    if (typeof segment === 'number') {
+      return `${acc}[${segment}]`;
+    }
+    return acc ? `${acc}.${segment}` : segment;
+  }, '');
+}
+
+function describeIssueValue(value: unknown): string {
+  if (value === undefined) return 'undefined';
+  if (value === null) return 'null';
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => describeIssueValue(item)).join(', ');
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+type FormatSaveErrorDetailsOptions = {
+  getLabel?: (path: string, segments: PathSegment[]) => string | undefined;
+};
+
 const DUMMY_LINKABLE_STRUCTURE_OPTIONS: ReadonlyArray<{
   value: string;
   label: string;
@@ -74,48 +132,107 @@ const DUMMY_LINKABLE_STRUCTURE_OPTIONS: ReadonlyArray<{
   { value: 'demo-structure-3', label: '#305 • SOL-USD • 2024-08-30 • BINANCE' },
 ];
 
-function formatSaveErrorDetails(details: unknown): string | null {
+function formatSaveErrorDetails(
+  details: unknown,
+  options: FormatSaveErrorDetailsOptions = {},
+): string | null {
   if (!details) return null;
 
   if (typeof details === 'string') {
     return details;
   }
 
-  if (
-    details &&
-    typeof details === 'object' &&
-    'fieldErrors' in details &&
-    'formErrors' in details
-  ) {
-    const fieldErrors = (details as {
-      fieldErrors?: Record<string, unknown>;
-      formErrors?: unknown;
-    }).fieldErrors;
-    const formErrors = (details as { formErrors?: unknown }).formErrors;
-    const lines: string[] = [];
+  if (details && typeof details === 'object') {
+    if ('issues' in details && Array.isArray((details as { issues?: unknown }).issues)) {
+      const issues = (details as { issues?: unknown }).issues;
+      const grouped = new Map<string, { label?: string; path?: string; messages: string[] }>();
 
-    if (Array.isArray(formErrors) && formErrors.length > 0) {
-      for (const message of formErrors) {
-        if (typeof message === 'string' && message.trim().length > 0) {
-          lines.push(`• ${message}`);
+      for (const issue of issues as unknown[]) {
+        if (!issue || typeof issue !== 'object') continue;
+        const message = typeof (issue as { message?: unknown }).message === 'string'
+          ? (issue as { message?: string }).message.trim()
+          : '';
+        if (!message) continue;
+        const code = typeof (issue as { code?: unknown }).code === 'string'
+          ? (issue as { code?: string }).code
+          : undefined;
+        const expected = (issue as { expected?: unknown }).expected;
+        const received = (issue as { received?: unknown }).received;
+        const rawPath = Array.isArray((issue as { path?: unknown }).path)
+          ? ((issue as { path?: PathSegment[] }).path ?? [])
+          : [];
+        const pathSegments = rawPath.filter(
+          (segment): segment is PathSegment => typeof segment === 'string' || typeof segment === 'number',
+        );
+        const pathString = joinPathSegments(pathSegments);
+        const label = options.getLabel?.(pathString, pathSegments);
+        const key = pathString || label || message;
+        const entry = grouped.get(key) ?? {
+          label,
+          path: pathString,
+          messages: [],
+        };
+        const expectationParts: string[] = [];
+        if (expected !== undefined) {
+          expectationParts.push(`expected ${describeIssueValue(expected)}`);
+        }
+        if (received !== undefined) {
+          expectationParts.push(`received ${describeIssueValue(received)}`);
+        }
+        const formattedMessage = expectationParts.length
+          ? `${message} (${expectationParts.join(', ')})`
+          : message;
+        entry.messages.push(code && code !== 'custom' ? `${formattedMessage} [${code}]` : formattedMessage);
+        grouped.set(key, entry);
+      }
+
+      if (grouped.size > 0) {
+        return Array.from(grouped.values())
+          .map((entry) => {
+            const subject = entry.label || entry.path || 'Payload';
+            const suffix = entry.messages.length === 1
+              ? entry.messages[0]
+              : entry.messages.join('; ');
+            return `• ${subject}: ${suffix}`;
+          })
+          .join('\n');
+      }
+    }
+
+    if ('fieldErrors' in details && 'formErrors' in details) {
+      const fieldErrors = (details as {
+        fieldErrors?: Record<string, unknown>;
+        formErrors?: unknown;
+      }).fieldErrors;
+      const formErrors = (details as { formErrors?: unknown }).formErrors;
+      const lines: string[] = [];
+
+      if (Array.isArray(formErrors) && formErrors.length > 0) {
+        for (const message of formErrors) {
+          if (typeof message === 'string' && message.trim().length > 0) {
+            lines.push(`• ${message}`);
+          }
         }
       }
-    }
 
-    if (fieldErrors && typeof fieldErrors === 'object') {
-      for (const [path, messages] of Object.entries(fieldErrors)) {
-        if (!Array.isArray(messages)) continue;
-        const filtered = messages.filter(
-          (message): message is string => typeof message === 'string' && message.trim().length > 0,
-        );
-        if (!filtered.length) continue;
-        const suffix = filtered.length === 1 ? filtered[0] : filtered.join('; ');
-        lines.push(`${path}: ${suffix}`);
+      if (fieldErrors && typeof fieldErrors === 'object') {
+        for (const [path, messages] of Object.entries(fieldErrors)) {
+          if (!Array.isArray(messages)) continue;
+          const filtered = messages.filter(
+            (message): message is string => typeof message === 'string' && message.trim().length > 0,
+          );
+          if (!filtered.length) continue;
+          const suffix = filtered.length === 1 ? filtered[0] : filtered.join('; ');
+          const segments = parsePath(path);
+          const label = options.getLabel?.(path, segments);
+          const subject = label || path;
+          lines.push(`• ${subject}: ${suffix}`);
+        }
       }
-    }
 
-    if (lines.length > 0) {
-      return lines.join('\n');
+      if (lines.length > 0) {
+        return lines.join('\n');
+      }
     }
   }
 
@@ -1373,6 +1490,93 @@ export function StructureEntryOverlay({
     required: true,
   };
 
+  const fieldLabelMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    const register = (path: string, label: string) => {
+      map.set(path, label);
+      const normalized = path.replace(/\[\d+\]/g, '[]');
+      if (normalized !== path) {
+        map.set(normalized, label);
+      }
+    };
+    const registerFields = (fields: FieldMeta[]) => {
+      for (const field of fields) {
+        register(field.path, field.label);
+      }
+    };
+
+    registerFields(programFields);
+    registerFields(positionFields);
+    registerFields(positionSecondaryFields);
+    registerFields(venueFields);
+    register('position.risk_defined', 'Risk defined structure');
+
+    for (const [suffix, label] of Object.entries(LEG_FIELD_LABELS)) {
+      register(`legs[].${suffix}`, label);
+    }
+
+    for (const [suffix, label] of Object.entries(FILL_FIELD_LABELS)) {
+      register(`fills[].${suffix}`, label);
+    }
+
+    register('program', 'Program');
+    register('position', 'Position');
+    register('venue', 'Venue');
+    register('legs', 'Legs');
+    register('fills', 'Fills');
+
+    return map;
+  }, [programFields, positionFields, positionSecondaryFields, venueFields]);
+
+  const getFieldLabel = React.useCallback(
+    (path: string, segments: PathSegment[]) => {
+      if (!path) return undefined;
+
+      const normalizedPath = path.replace(/\[\d+\]/g, '[]');
+      const directLabel = fieldLabelMap.get(path) ?? fieldLabelMap.get(normalizedPath);
+
+      if (directLabel) {
+        const firstIndex = segments.findIndex((segment) => typeof segment === 'number');
+        if (firstIndex > 0) {
+          const parent = segments[firstIndex - 1];
+          const index = segments[firstIndex];
+          if (typeof parent === 'string' && typeof index === 'number') {
+            const groupLabel =
+              parent === 'legs'
+                ? `Leg ${index + 1}`
+                : parent === 'fills'
+                ? `Fill ${index + 1}`
+                : `${parent}[${index}]`;
+            return `${groupLabel} • ${directLabel}`;
+          }
+        }
+
+        return directLabel;
+      }
+
+      if (segments.length > 0) {
+        const parts: string[] = [];
+        for (const segment of segments) {
+          if (typeof segment === 'number') {
+            parts.push(`#${segment + 1}`);
+          } else {
+            const formatted = segment
+              .replace(/\[\d+\]/g, '')
+              .split('_')
+              .filter((chunk) => chunk.length > 0)
+              .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1))
+              .join(' ');
+            parts.push(formatted);
+          }
+        }
+        return parts.join(' › ');
+      }
+
+      return undefined;
+    },
+    [fieldLabelMap],
+  );
+
   const missingLegPath = (index: number, suffix: string) => `legs[${index}].${suffix}`;
   const missingFillPath = (index: number, suffix: string) => `fills[${index}].${suffix}`;
 
@@ -1436,7 +1640,9 @@ export function StructureEntryOverlay({
         });
         onSaved?.(result.position_id);
       } else {
-        const details = formatSaveErrorDetails((result as { details?: unknown }).details);
+        const details = formatSaveErrorDetails((result as { details?: unknown }).details, {
+          getLabel: getFieldLabel,
+        });
         setSaveStatus({
           type: 'error',
           message: result.error || 'Failed to save structure.',
