@@ -1034,29 +1034,46 @@ export function StructureEntryOverlay({
   }, []);
 
   const lifecycle = (form.position?.lifecycle as (typeof STRUCTURE_LIFECYCLES)[number]) ?? 'open';
-  const linkableStructureOptions = React.useMemo(
-    () =>
-      allPositions
-        .filter(
-          (candidate) =>
-            candidate.source === 'supabase' &&
-            candidate.id !== position.id &&
-            candidate.closedAt == null,
+  const linkableStructureOptions = React.useMemo(() => {
+    const closeTargetId =
+      typeof form.position?.close_target_structure_id === 'string'
+        ? form.position.close_target_structure_id
+        : undefined;
+    const explicitLinkedIds = Array.isArray(form.position?.linked_structure_ids)
+      ? form.position.linked_structure_ids.filter(
+          (id): id is string => typeof id === 'string' && id.length > 0,
         )
-        .map((candidate) => {
-          const parts = [
-            candidate.structureId ? `#${candidate.structureId}` : 'No structure #',
-            candidate.underlying,
-          ];
-          if (candidate.expiryISO) parts.push(candidate.expiryISO);
-          if (candidate.exchange) parts.push(candidate.exchange.toUpperCase());
-          return {
-            value: candidate.id,
-            label: parts.join(' • '),
-          };
-        }),
-    [allPositions, position.id],
-  );
+      : [];
+    const allowedClosedIds = new Set(explicitLinkedIds);
+    if (closeTargetId) {
+      allowedClosedIds.add(closeTargetId);
+    }
+
+    return allPositions
+      .filter((candidate) => {
+        if (candidate.source !== 'supabase') return false;
+        if (candidate.id === position.id) return false;
+        if (candidate.closedAt == null) return true;
+        return allowedClosedIds.has(candidate.id);
+      })
+      .map((candidate) => {
+        const parts = [
+          candidate.structureId ? `#${candidate.structureId}` : 'No structure #',
+          candidate.underlying,
+        ];
+        if (candidate.expiryISO) parts.push(candidate.expiryISO);
+        if (candidate.exchange) parts.push(candidate.exchange.toUpperCase());
+        return {
+          value: candidate.id,
+          label: parts.join(' • '),
+        };
+      });
+  }, [
+    allPositions,
+    form.position?.close_target_structure_id,
+    form.position?.linked_structure_ids,
+    position.id,
+  ]);
 
   const linkableStructureLookup = React.useMemo(
     () =>
