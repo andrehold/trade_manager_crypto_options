@@ -108,6 +108,11 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   const isUpdateMode = p.source === 'supabase'
   const isReadOnly = readOnly || isUpdateMode
   const canOpenOverlay = (!disableSave || isUpdateMode) && (!readOnly || isUpdateMode)
+  const hasMultipleExpiries = (p.expiries?.length ?? 0) > 1
+  const expirySummary = React.useMemo(() => {
+    if (!p.expiries || p.expiries.length <= 1) return p.expiryISO
+    return `${p.expiries[0]} (+${p.expiries.length - 1} more)`
+  }, [p.expiries, p.expiryISO])
 
   const legMarkData = React.useMemo(() => {
     const map = new Map<string, { ref: LegMarkRef | null; mark: MarkInfo | undefined }>()
@@ -292,7 +297,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                 <div className="text-xs text-slate-500">Underlying</div>
                 <div className="text-sm font-medium">{p.underlying}</div>
                 <div className="mt-2 text-xs text-slate-500">Expiry</div>
-                <div className="text-sm font-medium">{p.expiryISO} ({p.dte} DTE)</div>
+                <div className="text-sm font-medium">{expirySummary} ({p.dte} DTE)</div>
                 <div className="mt-2 text-xs text-slate-500">Exchange</div>
                 <div className="text-sm font-medium capitalize">{p.exchange ?? '—'}</div>
                 <div className="mt-2 text-xs text-slate-500">Net Premium</div>
@@ -347,7 +352,14 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                           <React.Fragment key={l.key}>
                             <tr className="border-t">
                               <td className="p-2">
-                                {l.strike} {l.optionType}
+                                {hasMultipleExpiries && l.expiry ? (
+                                  <div>
+                                    <div>{l.strike} {l.optionType}</div>
+                                    <div className="text-[11px] text-slate-500">{l.expiry}</div>
+                                  </div>
+                                ) : (
+                                  <>{l.strike} {l.optionType}</>
+                                )}
                               </td>
                               <td className="p-2">{l.qtyNet}</td>
                               <td className={`p-2 ${l.realizedPnl < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>

@@ -36,6 +36,7 @@ export interface Leg {
   qtyNet: number;
   trades: TxnRow[];
   exchange?: Exchange;
+  expiry?: string;
 }
 
 export interface Position {
@@ -57,6 +58,7 @@ export interface Position {
   exchange?: Exchange;
   source?: 'local' | 'supabase';
   closedAt?: string | null;
+  expiries?: string[];
 }
 
 export const EXPECTED_FIELDS = [
@@ -287,13 +289,16 @@ export function getLegMarkRef(position: Position, leg: Leg): LegMarkRef | null {
   const exchange = (leg.exchange ?? position.exchange) as Exchange | undefined;
   if (!exchange) return null;
 
+  const expiryISO = leg.expiry ?? position.expiryISO;
+  if (!expiryISO) return null;
+
   if (exchange === 'coincall') {
-    const symbol = toCoincallSymbol(position.underlying, position.expiryISO, leg.strike, leg.optionType);
+    const symbol = toCoincallSymbol(position.underlying, expiryISO, leg.strike, leg.optionType);
     return { key: `coincall:${symbol}`, symbol, exchange, defaultMultiplier: 1 };
   }
 
   if (exchange === 'deribit') {
-    const symbol = toDeribitInstrument(position.underlying, position.expiryISO, leg.strike, leg.optionType);
+    const symbol = toDeribitInstrument(position.underlying, expiryISO, leg.strike, leg.optionType);
     return { key: `deribit:${symbol}`, symbol, exchange, defaultMultiplier: 1 };
   }
 

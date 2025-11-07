@@ -203,26 +203,34 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       if (!r.underlying || !r.expiry || r.strike == null || !r.optionType) continue;
       const ex = (r.exchange ?? 'deribit') as Exchange;
       const structureKey = String(r.structureId ?? 'auto');
-      const key = `${ex}__${r.underlying}__${r.expiry}__${structureKey}`;
+      const key = `${ex}__${r.underlying}__${structureKey}`;
       if (!byPos.has(key)) byPos.set(key, []);
       byPos.get(key)!.push(r);
     }
 
     const out: Position[] = [];
     for (const [key, txns] of byPos.entries()) {
-      const [exchange, underlying, expiryISO, structureId] = key.split("__");
+      const [exchange, underlying, structureId] = key.split("__");
+
+      const uniqueExpiries = Array.from(new Set(txns.map((t) => t.expiry).filter(Boolean))) as string[];
+      const sortedExpiries = [...uniqueExpiries].sort();
+      const fallbackExpiry = txns[0]?.expiry ?? null;
+      const primaryExpiry = sortedExpiries[0] ?? fallbackExpiry ?? '';
 
       const byLeg = new Map<string, TxnRow[]>();
       for (const t of txns) {
-        const lkey = `${t.strike}-${t.optionType}`;
+        const expiryKey = t.expiry ?? 'NO_EXPIRY';
+        const lkey = `${expiryKey}__${t.strike}-${t.optionType}`;
         if (!byLeg.has(lkey)) byLeg.set(lkey, []);
         byLeg.get(lkey)!.push(t);
       }
 
       const legs: any[] = [];
       for (const [lkey, ltx] of byLeg.entries()) {
-        const [strikeStr, opt] = lkey.split("-");
+        const [legExpiryRaw, strikeOpt] = lkey.split("__");
+        const [strikeStr, opt] = strikeOpt.split("-");
         const strike = Number(strikeStr);
+        const legExpiry = legExpiryRaw === 'NO_EXPIRY' ? undefined : legExpiryRaw;
         const openLots: any[] = [];
         let realizedPnl = 0;
         let netPremium = 0;
@@ -241,13 +249,19 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
           }
           qtyNet += sign * Math.abs(tr.amount);
         }
-        
+
         const legExchange = (ltx[0].exchange || exchange) as Exchange;
-        legs.push({ 
-          key: lkey, strike, optionType: opt as any, 
-          openLots, realizedPnl, netPremium, qtyNet, 
-          trades: ltx, 
-          exchange: legExchange 
+        legs.push({
+          key: lkey,
+          strike,
+          optionType: opt as any,
+          openLots,
+          realizedPnl,
+          netPremium,
+          qtyNet,
+          trades: ltx,
+          exchange: legExchange,
+          expiry: legExpiry,
         });
       }
 
@@ -256,13 +270,13 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       const netPremium = legs.reduce((a: number, l: any) => a + l.netPremium, 0);
       const absClosedCash = Math.abs(realizedPnl) > 0 ? Math.abs(realizedPnl) + Math.max(1, Math.abs(netPremium)) / 10 : Math.abs(netPremium);
       const pnlPct = absClosedCash ? (realizedPnl / absClosedCash) * 100 : null;
-      const dte = daysTo(expiryISO);
+      const dte = primaryExpiry ? daysTo(primaryExpiry) : 0;
       const status = classifyStatus(dte, pnlPct, realizedPnl);
 
       out.push({
         id: key,
         underlying,
-        expiryISO,
+        expiryISO: primaryExpiry,
         dte,
         legs,
         legsCount,
@@ -278,6 +292,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         exchange: exchange as Exchange,
         source: 'local',
         closedAt: null,
+        expiries: sortedExpiries,
       });
     }
     out.sort((a, b) => a.dte - b.dte);
