@@ -219,8 +219,9 @@ function mapPosition(raw: RawPosition): Position {
     raw.net_fill ?? legs.reduce((sum, leg) => sum + (Number.isFinite(leg.netPremium) ? leg.netPremium : 0), 0);
 
   const lifecycle = normalizeLifecycle(raw.lifecycle) ?? "open";
-  const closedAt = normalizeClosedAt(raw.closed_at ?? raw.exit_ts ?? null);
-  const isClosed = lifecycle === "close" || Boolean(closedAt);
+  const closedAt = normalizeClosedAt(raw.closed_at ?? null);
+  const hasLinkedClosure = Boolean(closedAt || raw.close_target_structure_id);
+  const isClosed = lifecycle === "close" || hasLinkedClosure;
 
   const status: Position["status"] = isClosed ? "CLOSED" : "OPEN";
 
