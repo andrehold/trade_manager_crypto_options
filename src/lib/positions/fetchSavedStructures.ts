@@ -194,6 +194,15 @@ function normalizeClosedAt(rawClosedAt: string | null | undefined): string | nul
   return trimmed;
 }
 
+function normalizeLifecycle(raw: string | null | undefined): "open" | "close" | null {
+  if (!raw) return null;
+  const normalized = raw.trim().toLowerCase();
+  if (!normalized) return null;
+  if (normalized === "open") return "open";
+  if (normalized === "close" || normalized === "closed") return "close";
+  return null;
+}
+
 function mapPosition(raw: RawPosition): Position {
   const underlier = (raw.underlier ?? "").toUpperCase();
   const exchange = inferExchange(raw);
@@ -209,9 +218,10 @@ function mapPosition(raw: RawPosition): Position {
   const netPremium =
     raw.net_fill ?? legs.reduce((sum, leg) => sum + (Number.isFinite(leg.netPremium) ? leg.netPremium : 0), 0);
 
-  const lifecycle = raw.lifecycle ?? "open";
-  const closedAt = normalizeClosedAt(raw.closed_at ?? raw.exit_ts ?? null);
-  const isClosed = lifecycle === "close" || Boolean(closedAt);
+  const lifecycle = normalizeLifecycle(raw.lifecycle) ?? "open";
+  const closedAt = normalizeClosedAt(raw.closed_at ?? null);
+  const hasLinkedClosure = Boolean(closedAt || raw.close_target_structure_id);
+  const isClosed = lifecycle === "close" || hasLinkedClosure;
 
   const status: Position["status"] = isClosed ? "CLOSED" : "OPEN";
 
