@@ -60,6 +60,42 @@ function sanitizePayload(payload: ImportPayload): ImportPayload {
   return sanitizeValue(payload) as ImportPayload;
 }
 
+function toSupabaseNumeric(value: number | null | undefined): string | null {
+  if (value == null) return null;
+  if (!Number.isFinite(value)) return null;
+  const fixed = value.toFixed(8);
+  const trimmed = fixed.replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
+  const normalized = trimmed === "-0" ? "0" : trimmed;
+  return normalized.length > 0 ? normalized : "0";
+}
+
+function prepareLegRow(
+  leg: ImportPayload["legs"][number],
+  positionId: string,
+): Record<string, unknown> {
+  const row: Record<string, unknown> = {
+    ...leg,
+    position_id: positionId,
+  };
+  row.strike = toSupabaseNumeric(leg.strike);
+  row.qty = toSupabaseNumeric(leg.qty);
+  row.price = toSupabaseNumeric(leg.price);
+  return row;
+}
+
+function prepareFillRow(
+  fill: NonNullable<ImportPayload["fills"]>[number],
+  positionId: string,
+): Record<string, unknown> {
+  const base: Record<string, unknown> = {
+    ...fill,
+    position_id: positionId,
+  };
+  base.qty = toSupabaseNumeric(fill.qty);
+  base.price = toSupabaseNumeric(fill.price);
+  return nullifyUndefined(base);
+}
+
 function normalizeLifecycleState(position: ImportPayload["position"]): DerivedLifecycleState {
   const linkedIds = Array.isArray(position.linked_structure_ids)
     ? position.linked_structure_ids
@@ -317,7 +353,7 @@ export async function importTrades(
     }
 
     if (legs.length) {
-      const legsRows = legs.map((l) => ({ ...l, position_id: positionId }));
+      const legsRows = legs.map((leg) => prepareLegRow(leg, positionId));
       const { error: legsErr } = await supabase.from("legs").insert(legsRows);
       if (legsErr) {
         return { ok: false as const, error: legsErr.message };
@@ -325,7 +361,7 @@ export async function importTrades(
     }
 
     if (fills?.length) {
-      const fillsRows = fills.map((f) => nullifyUndefined({ ...f, position_id: positionId }));
+      const fillsRows = fills.map((fill) => prepareFillRow(fill, positionId));
       const { error: fillsErr } = await supabase.from("fills").insert(fillsRows);
       if (fillsErr) {
         return { ok: false as const, error: fillsErr.message };
@@ -404,13 +440,13 @@ export async function importTrades(
   const position_id = pos.position_id as string;
 
   // 5) Insert legs
-  const legsRows = legs.map((l) => ({ ...l, position_id }));
+  const legsRows = legs.map((leg) => prepareLegRow(leg, position_id));
   const { error: legsErr } = await supabase.from("legs").insert(legsRows);
   if (legsErr) return { ok: false as const, error: legsErr.message };
 
   // 6) Insert fills (optional)
   if (fills?.length) {
-    const fillsRows = fills.map((f) => nullifyUndefined({ ...f, position_id }));
+    const fillsRows = fills.map((fill) => prepareFillRow(fill, position_id));
     const { error: fillsErr } = await supabase.from("fills").insert(fillsRows);
     if (fillsErr) return { ok: false as const, error: fillsErr.message };
   }
