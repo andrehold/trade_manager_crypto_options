@@ -61,15 +61,15 @@ type LegRow = {
   side: 'buy' | 'sell' | null;
   option_type: 'call' | 'put' | null;
   expiry: string | null;
-  strike: number | null;
-  qty: number | null;
-  price: number | null;
+  strike: number | string | null;
+  qty: number | string | null;
+  price: number | string | null;
 };
 
 type FillRow = {
   ts: string | null;
-  qty: number | null;
-  price: number | null;
+  qty: number | string | null;
+  price: number | string | null;
   leg_seq: number | null;
   side: 'buy' | 'sell' | null;
   liquidity_role: string | null;
@@ -110,6 +110,12 @@ function coalesceString(value: string | null | undefined): string | undefined {
   if (value == null) return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function coalesceNumber(value: number | string | null | undefined): number | undefined {
+  if (value == null) return undefined;
+  const numeric = typeof value === 'string' ? Number(value) : value;
+  return Number.isFinite(numeric) ? numeric : undefined;
 }
 
 export async function fetchStructurePayload(
@@ -255,9 +261,9 @@ export async function fetchStructurePayload(
       side: (row.side ?? 'buy') as ImportPayload['legs'][number]['side'],
       option_type: (row.option_type ?? 'call') as ImportPayload['legs'][number]['option_type'],
       expiry: row.expiry ?? '',
-      strike: row.strike ?? 0,
-      qty: row.qty ?? 0,
-      price: row.price ?? 0,
+      strike: coalesceNumber(row.strike) ?? 0,
+      qty: coalesceNumber(row.qty) ?? 0,
+      price: coalesceNumber(row.price) ?? 0,
     } satisfies ImportPayload['legs'][number];
   });
 
@@ -265,8 +271,8 @@ export async function fetchStructurePayload(
     const row = fill as FillRow;
     return {
       ts: row.ts ?? '',
-      qty: row.qty ?? 0,
-      price: row.price ?? 0,
+      qty: coalesceNumber(row.qty) ?? 0,
+      price: coalesceNumber(row.price) ?? 0,
       leg_seq: row.leg_seq ?? undefined,
       side: (row.side ?? undefined) as ImportPayload['fills'][number]['side'],
       liquidity_role:

@@ -93,7 +93,7 @@ export function parseInstrumentByExchange(exchange: Exchange, instr: string) {
 }
 
 export function parseInstrument(instr: string) {
-  const m = instr?.match(/^([A-Z]+)-(\d{2})([A-Z]{3})(\d{2})-(\d+)-(C|P)$/i);
+  const m = instr?.match(/^([A-Z]+)-(\d{1,2})([A-Z]{3})(\d{2})-(\d+)-(C|P)$/i);
   if (!m) return null;
   const [, underlying, dd, monText, yy, strike, opt] = m;
   const month = MONTHS_MAP[monText.toUpperCase()];
@@ -203,6 +203,8 @@ export function devQuickTests() {
     console.assert(p3 === null, 'parseInstrument should return null for non-option');
     const px = parseInstrumentByExchange('deribit', 'BTC-27DEC25-50000-C');
     console.assert(!!px && px.underlying === 'BTC', 'parseInstrumentByExchange deribit passthrough');
+    const psd = parseInstrument('BTC-7JUN24-50000-C');
+    console.assert(!!psd && psd.expiryISO === '2024-06-07', 'parseInstrument handles single digit day');
 
     console.assert(normalizeSecond('2025-09-01 10:11:12') === '2025-09-01T10:11:12', 'normalizeSecond space');
     console.assert(normalizeSecond('2025-09-01T10:11:12.123') === '2025-09-01T10:11:12', 'normalizeSecond ms');
