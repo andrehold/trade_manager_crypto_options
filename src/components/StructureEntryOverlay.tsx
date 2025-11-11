@@ -620,7 +620,16 @@ function Field({
         onChange(undefined);
         return;
       }
-      const parsed = Number(raw);
+      const trimmed = raw.replace(/\s+/g, '');
+      // Support locales that use comma as the decimal separator by
+      // treating a solitary comma as a decimal point. Multiple commas
+      // are assumed to be thousands separators and stripped instead.
+      const hasDot = trimmed.includes('.');
+      const commaCount = (trimmed.match(/,/g) ?? []).length;
+      const normalized = hasDot || commaCount !== 1
+        ? trimmed.replace(/,/g, '')
+        : trimmed.replace(',', '.');
+      const parsed = Number(normalized);
       if (Number.isNaN(parsed)) {
         onChange(undefined);
         return;
@@ -2283,6 +2292,8 @@ export function StructureEntryOverlay({
                                   valueType: 'number',
                                   type: 'number',
                                   required: true,
+                                  step: 'any',
+                                  inputMode: 'decimal',
                                 }
                               : suffix === 'price'
                               ? {

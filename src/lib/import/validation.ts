@@ -100,13 +100,13 @@ export const LegSchema = z.object({
   option_type: z.enum(OPTION_TYPES),
   expiry: ISO_DATE,
   strike: z.number().positive(),
-  qty: z.number().int().positive(),
+  qty: z.number().positive(),
   price: z.number(),
 });
 
 export const FillSchema = z.object({
   ts: ISO_DATETIME,
-  qty: z.number().int().positive(),
+  qty: z.number().positive(),
   price: z.number(),
   leg_seq: z.number().int().positive().optional(),
   side: z.enum(SIDES).optional(),
