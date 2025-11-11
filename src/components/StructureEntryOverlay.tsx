@@ -2292,6 +2292,8 @@ export function StructureEntryOverlay({
                                   valueType: 'number',
                                   type: 'number',
                                   required: true,
+                                  step: 'any',
+                                  inputMode: 'decimal',
                                 }
                               : suffix === 'price'
                               ? {
