@@ -78,7 +78,9 @@ function formatInstrument(underlier: string, expiryISO: string, strike: number, 
   const monthIdx = Number(monthStr) - 1;
   const monthText = MONTHS[monthIdx] ?? monthStr;
   const yearShort = yearStr.slice(-2);
-  return `${underlier}-${dayStr}${monthText}${yearShort}-${strike}-${optionType}`;
+  const dayNum = Number(dayStr);
+  const dayText = Number.isFinite(dayNum) ? String(dayNum) : dayStr;
+  return `${underlier}-${dayText}${monthText}${yearShort}-${strike}-${optionType}`;
 }
 
 function normalizeExpiry(expiry: string | null | undefined): string | null {
