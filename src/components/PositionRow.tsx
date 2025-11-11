@@ -27,6 +27,8 @@ type PositionRowProps = {
   readOnly?: boolean
   disableSave?: boolean
   onSaved?: (positionId: string) => void
+  onArchive?: (positionId: string) => void
+  archiving?: boolean
 }
 
 type PlaybookLink = {
@@ -94,6 +96,8 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   readOnly = false,
   disableSave = false,
   onSaved,
+  onArchive,
+  archiving = false,
 }) => {
   const [open, setOpen] = React.useState(false)
   const [showSaveOverlay, setShowSaveOverlay] = React.useState(false)
@@ -255,10 +259,28 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
         </td>
         <td className="p-3 align-top text-right">
           {isUpdateMode ? (
-            <div className="inline-flex items-center gap-2">
+            <div className="inline-flex flex-wrap items-center gap-2 justify-end">
               <span className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-500">
                 Saved
               </span>
+              {onArchive ? (
+                <button
+                  type="button"
+                  onClick={() => onArchive(p.id)}
+                  className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  title="Archive this saved structure"
+                  disabled={archiving}
+                >
+                  {archiving ? (
+                    <>
+                      <CellSpinner />
+                      <span className="ml-1">Archiving…</span>
+                    </>
+                  ) : (
+                    <>Archive</>
+                  )}
+                </button>
+              ) : null}
               {canOpenOverlay ? (
                 <button
                   type="button"
@@ -442,7 +464,9 @@ export const PositionRow = React.memo(
     prev.allPositions === next.allPositions &&
     prev.readOnly === next.readOnly &&
     prev.disableSave === next.disableSave &&
-    prev.onSaved === next.onSaved
+    prev.onSaved === next.onSaved &&
+    prev.onArchive === next.onArchive &&
+    prev.archiving === next.archiving
 )
 
 PositionRow.displayName = 'PositionRow'

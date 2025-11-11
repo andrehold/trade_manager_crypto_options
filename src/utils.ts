@@ -59,6 +59,9 @@ export interface Position {
   source?: 'local' | 'supabase';
   closedAt?: string | null;
   expiries?: string[];
+  archived?: boolean;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
 }
 
 export const EXPECTED_FIELDS = [
