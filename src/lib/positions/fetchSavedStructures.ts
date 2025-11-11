@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "../supabase";
-import type { Position, TxnRow } from "@/utils";
+import type { Position, TxnRow, Exchange } from "@/utils";
 import { daysTo } from "@/utils";
 
 type RawLeg = {
@@ -96,7 +96,38 @@ function toOptionType(raw: string | null | undefined): "C" | "P" | null {
   return null;
 }
 
-function mapLeg(position: RawPosition, leg: RawLeg, index: number) {
+function normalizeExchangeCandidate(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  return trimmed.toLowerCase();
+}
+
+function inferExchange(position: RawPosition): Exchange | undefined {
+  const candidates = [
+    normalizeExchangeCandidate(position.provider),
+    normalizeExchangeCandidate(position.venue_id),
+    normalizeExchangeCandidate(position.mark_source),
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const normalized = candidate.replace(/[^a-z]/g, "");
+    if (!normalized) continue;
+
+    if (normalized.includes("coincall") || normalized === "cc") {
+      return "coincall";
+    }
+
+    if (normalized.includes("deribit") || normalized === "db") {
+      return "deribit";
+    }
+  }
+
+  return undefined;
+}
+
+function mapLeg(position: RawPosition, leg: RawLeg, index: number, exchange: Exchange | undefined) {
   const strike = leg.strike ?? undefined;
   const qtyRaw = leg.qty ?? undefined;
   const price = leg.price ?? undefined;
@@ -128,7 +159,7 @@ function mapLeg(position: RawPosition, leg: RawLeg, index: number) {
     strike,
     optionType,
     structureId: position.position_id,
-    exchange: undefined,
+    exchange,
   };
 
   return {
@@ -140,7 +171,7 @@ function mapLeg(position: RawPosition, leg: RawLeg, index: number) {
     netPremium: sign === -1 ? price * qty : -price * qty,
     qtyNet: sign * qty,
     trades: [trade],
-    exchange: undefined,
+    exchange,
   };
 }
 
@@ -154,8 +185,9 @@ function normalizeClosedAt(rawClosedAt: string | null | undefined): string | nul
 
 function mapPosition(raw: RawPosition): Position {
   const underlier = (raw.underlier ?? "").toUpperCase();
+  const exchange = inferExchange(raw);
   const legs = (raw.legs ?? [])
-    .map((leg, index) => mapLeg(raw, leg, index))
+    .map((leg, index) => mapLeg(raw, leg, index, exchange))
     .filter((leg): leg is NonNullable<typeof leg> => Boolean(leg));
 
   const expiryFromLeg = legs.find((leg) => leg.trades?.[0]?.expiry)?.trades?.[0]?.expiry ?? null;
@@ -195,7 +227,7 @@ function mapPosition(raw: RawPosition): Position {
     playbook: raw.notes ?? undefined,
     structureId:
       raw.package_order_id ?? raw.order_id ?? raw.trade_id ?? raw.close_target_structure_id ?? raw.position_id,
-    exchange: undefined,
+    exchange,
     source: "supabase",
     closedAt,
   };
