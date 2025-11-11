@@ -4,3 +4,8 @@ export {
   type SyncLinkedStructuresParams,
   type SyncLinkedStructuresResult,
 } from "./syncLinkedStructures";
+export {
+  archiveStructure,
+  type ArchiveStructureParams,
+  type ArchiveStructureResult,
+} from "./archiveStructure";

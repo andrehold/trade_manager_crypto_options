@@ -17,7 +17,7 @@ import {
 import { PositionRow } from './components/PositionRow'
 import { ccGetBest } from './lib/venues/coincall'
 import { dbGetBest } from './lib/venues/deribit'
-import { fetchSavedStructures } from './lib/positions'
+import { archiveStructure, fetchSavedStructures } from './lib/positions'
 
 type DashboardAppProps = {
   onOpenPlaybookIndex?: () => void
@@ -38,6 +38,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   const [savedStructuresLoading, setSavedStructuresLoading] = React.useState(false);
   const [savedStructuresError, setSavedStructuresError] = React.useState<string | null>(null);
   const [savedStructuresVersion, setSavedStructuresVersion] = React.useState(0);
+  const [archiving, setArchiving] = React.useState<Record<string, boolean>>({});
   const [showMapper, setShowMapper] = React.useState<{ headers: string[] } | null>(null);
   const [showReview, setShowReview] = React.useState<{ rows: TxnRow[]; excludedRows: TxnRow[] } | null>(null);
   const [alertsOnly, setAlertsOnly] = React.useState(false);
@@ -159,6 +160,50 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   const refreshSavedStructures = React.useCallback(() => {
     setSavedStructuresVersion((prev) => prev + 1);
   }, []);
+
+  const handleArchiveStructure = React.useCallback(
+    async (positionId: string) => {
+      if (!supabase) {
+        alert('Supabase is not configured. Configure environment variables to archive saved structures.');
+        return;
+      }
+
+      if (!user) {
+        alert('Sign in to Supabase to archive saved structures.');
+        return;
+      }
+
+      const target = savedStructures.find((s) => s.id === positionId);
+      const label = target ? `${target.underlying} • ${target.structureId ?? positionId}` : positionId;
+      const confirmed = window.confirm(`Archive saved structure ${label}?\n\nArchived structures are hidden from this list.`);
+      if (!confirmed) return;
+
+      setArchiving((prev) => ({ ...prev, [positionId]: true }));
+      try {
+        const result = await archiveStructure(supabase, {
+          positionId,
+          archivedBy: user.id,
+        });
+
+        if (!result.ok) {
+          alert(`Failed to archive structure: ${result.error}`);
+          return;
+        }
+
+        refreshSavedStructures();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to archive structure.';
+        alert(message);
+      } finally {
+        setArchiving((prev) => {
+          const next = { ...prev };
+          delete next[positionId];
+          return next;
+        });
+      }
+    },
+    [supabase, user, savedStructures, refreshSavedStructures],
+  );
 
   React.useEffect(() => {
     if (!supabase || !user) {
@@ -713,6 +758,8 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
                       allPositions={positionsForLinking}
                       readOnly
                       disableSave
+                      onArchive={handleArchiveStructure}
+                      archiving={Boolean(archiving[p.id])}
                     />
                   ))}
                 </tbody>

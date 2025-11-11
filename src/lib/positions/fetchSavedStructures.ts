@@ -51,6 +51,9 @@ type RawPosition = {
   close_target_structure_id?: string | null;
   linked_structure_ids?: string[] | null;
   legs?: RawLeg[] | null;
+  archived?: boolean | null;
+  archived_at?: string | null;
+  archived_by?: string | null;
 };
 
 type FetchSavedStructuresOk = { ok: true; positions: Position[] };
@@ -238,6 +241,9 @@ function mapPosition(raw: RawPosition): Position {
     exchange,
     source: "supabase",
     closedAt,
+    archived: Boolean(raw.archived),
+    archivedAt: raw.archived_at ?? null,
+    archivedBy: raw.archived_by ?? null,
   };
 }
 
@@ -284,6 +290,9 @@ export async function fetchSavedStructures(
        closed_at,
        close_target_structure_id,
        linked_structure_ids,
+       archived,
+       archived_at,
+       archived_by,
        legs:legs(
          leg_seq,
          side,
@@ -294,6 +303,7 @@ export async function fetchSavedStructures(
          price
        )`
     )
+    .eq("archived", false)
     .order("entry_ts", { ascending: false });
 
   if (error) {
