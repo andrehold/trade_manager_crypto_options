@@ -7,9 +7,9 @@ type RawLeg = {
   side: string | null;
   option_type: string | null;
   expiry: string | null;
-  strike: number | null;
-  qty: number | null;
-  price: number | null;
+  strike: number | string | null;
+  qty: number | string | null;
+  price: number | string | null;
 };
 
 type RawPosition = {
@@ -83,6 +83,12 @@ function formatInstrument(underlier: string, expiryISO: string, strike: number, 
   return `${underlier}-${dayText}${monthText}${yearShort}-${strike}-${optionType}`;
 }
 
+function parseNumeric(value: number | string | null | undefined): number | null {
+  if (value == null) return null;
+  const numeric = typeof value === "string" ? Number(value) : value;
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
 function normalizeExpiry(expiry: string | null | undefined): string | null {
   if (!expiry) return null;
   const trimmed = expiry.trim();
@@ -130,9 +136,9 @@ function inferExchange(position: RawPosition): Exchange | undefined {
 }
 
 function mapLeg(position: RawPosition, leg: RawLeg, index: number, exchange: Exchange | undefined) {
-  const strike = leg.strike ?? undefined;
-  const qtyRaw = leg.qty ?? undefined;
-  const price = leg.price ?? undefined;
+  const strike = parseNumeric(leg.strike) ?? undefined;
+  const qtyRaw = parseNumeric(leg.qty) ?? undefined;
+  const price = parseNumeric(leg.price) ?? undefined;
   const optionType = toOptionType(leg.option_type);
   const side = leg.side === "sell" ? "sell" : leg.side === "buy" ? "buy" : null;
 
