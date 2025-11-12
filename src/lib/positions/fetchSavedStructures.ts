@@ -92,10 +92,20 @@ function parseNumeric(value: number | string | null | undefined): number | null 
   return Number.isFinite(numeric) ? numeric : null;
 }
 
-function normalizeExpiry(expiry: string | null | undefined): string | null {
-  if (!expiry) return null;
-  const trimmed = expiry.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+function normalizeDateOnly(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = String(raw).trim();
+  if (!trimmed) return null;
+
+  const directMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (directMatch) return directMatch[1];
+
+  const normalized = trimmed.includes("T") ? trimmed : trimmed.replace(" ", "T");
+  const parsed = new Date(normalized);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+
   return null;
 }
 
@@ -151,9 +161,10 @@ function mapLeg(position: RawPosition, leg: RawLeg, index: number, exchange: Exc
 
   const qty = Math.abs(qtyRaw);
   const sign = side === "sell" ? -1 : 1;
-  const expiryISO = normalizeExpiry(leg.expiry) ?? normalizeExpiry(position.entry_ts ?? undefined) ?? "";
+  const expiryISO =
+    normalizeDateOnly(leg.expiry) ?? normalizeDateOnly(position.entry_ts ?? undefined) ?? null;
   const instrumentUnderlier = (position.underlier ?? "").toUpperCase() || "UNDERLIER";
-  const instrument = formatInstrument(instrumentUnderlier, expiryISO || "", strike, optionType);
+  const instrument = formatInstrument(instrumentUnderlier, expiryISO ?? "", strike, optionType);
 
   const trade: TxnRow = {
     instrument,
@@ -183,6 +194,7 @@ function mapLeg(position: RawPosition, leg: RawLeg, index: number, exchange: Exc
     qtyNet: sign * qty,
     trades: [trade],
     exchange,
+    expiry: expiryISO ?? undefined,
   };
 }
 
@@ -210,9 +222,10 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
     .map((leg, index) => mapLeg(raw, leg, index, exchange))
     .filter((leg): leg is NonNullable<typeof leg> => Boolean(leg));
 
-  const expiryFromLeg = legs.find((leg) => leg.trades?.[0]?.expiry)?.trades?.[0]?.expiry ?? null;
-  const normalizedExpiry = normalizeExpiry(expiryFromLeg) ?? normalizeExpiry(raw.entry_ts ?? undefined);
-  const expiryISO = normalizedExpiry ?? (expiryFromLeg || raw.entry_ts?.slice(0, 10) || "—");
+  const expiryFromLeg = legs.find((leg) => leg.expiry)?.expiry ?? null;
+  const normalizedEntry = normalizeDateOnly(raw.entry_ts ?? undefined);
+  const normalizedExpiry = expiryFromLeg ?? normalizedEntry;
+  const expiryISO = normalizedExpiry ?? raw.entry_ts?.slice(0, 10) ?? "—";
   const dte = normalizedExpiry ? daysTo(normalizedExpiry) : 0;
 
   const netPremium =
