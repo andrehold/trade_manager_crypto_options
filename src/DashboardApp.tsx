@@ -312,9 +312,9 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
 
       const legsCount = legs.length;
       const realizedPnl = legs.reduce((a: number, l: any) => a + l.realizedPnl, 0);
-      const netPremium = legs.reduce((a: number, l: any) => a + l.netPremium, 0);
-      const absClosedCash = Math.abs(realizedPnl) > 0 ? Math.abs(realizedPnl) + Math.max(1, Math.abs(netPremium)) / 10 : Math.abs(netPremium);
-      const pnlPct = absClosedCash ? (realizedPnl / absClosedCash) * 100 : null;
+      const netPremiumSigned = legs.reduce((a: number, l: any) => a + l.netPremium, 0);
+      const netPremium = Math.abs(netPremiumSigned);
+      const pnlPct = netPremium > 0 ? (realizedPnl / netPremium) * 100 : null;
       const dte = primaryExpiry ? daysTo(primaryExpiry) : 0;
       const status = classifyStatus(dte, pnlPct, realizedPnl);
 

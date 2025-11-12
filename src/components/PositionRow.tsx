@@ -135,6 +135,16 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
 
   const posTotalPnl = p.realizedPnl + posUnrealized
 
+  const netPremiumForPct = React.useMemo(
+    () => (Number.isFinite(p.netPremium) ? Math.abs(p.netPremium) : 0),
+    [p.netPremium],
+  )
+
+  const markAwarePnlPct = React.useMemo(() => {
+    if (netPremiumForPct <= 0) return null
+    return (posTotalPnl / netPremiumForPct) * 100
+  }, [netPremiumForPct, posTotalPnl])
+
   const structureGreeks = React.useMemo(
     () => (marks ? positionGreeks(p, marks) : { delta: 0, gamma: 0, theta: 0, vega: 0, rho: 0 }),
     [marks, p]
@@ -204,8 +214,8 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           </td>
         )}
         {visibleCols.includes('pnlpct') && (
-          <td className={`p-3 align-top ${p.pnlPct && p.pnlPct < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-            {p.pnlPct == null ? '—' : `${p.pnlPct.toFixed(2)}%`}
+          <td className={`p-3 align-top ${markAwarePnlPct && markAwarePnlPct < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+            {markAwarePnlPct == null ? '—' : `${markAwarePnlPct.toFixed(2)}%`}
           </td>
         )}
         {visibleCols.includes('delta') && <td className="p-3 align-top">{fmtNumber(structureGreeks.delta)}</td>}
