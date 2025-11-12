@@ -54,6 +54,8 @@ export interface Position {
   status: 'OPEN' | 'ATTENTION' | 'ALERT' | 'CLOSED';
   greeks: { delta?: number | null; gamma?: number | null; theta?: number | null; vega?: number | null; rho?: number | null; };
   playbook?: string;
+  programId?: string;
+  programName?: string;
   structureId?: string;
   exchange?: Exchange;
   source?: 'local' | 'supabase';

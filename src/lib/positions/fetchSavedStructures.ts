@@ -203,7 +203,7 @@ function normalizeLifecycle(raw: string | null | undefined): "open" | "close" | 
   return null;
 }
 
-function mapPosition(raw: RawPosition): Position {
+function mapPosition(raw: RawPosition, programNames: Map<string, string>): Position {
   const underlier = (raw.underlier ?? "").toUpperCase();
   const exchange = inferExchange(raw);
   const legs = (raw.legs ?? [])
@@ -246,6 +246,8 @@ function mapPosition(raw: RawPosition): Position {
       rho: null,
     },
     playbook: raw.notes ?? undefined,
+    programId: raw.program_id ?? undefined,
+    programName: raw.program_id ? programNames.get(raw.program_id) ?? undefined : undefined,
     structureId:
       raw.package_order_id ?? raw.order_id ?? raw.trade_id ?? raw.close_target_structure_id ?? raw.position_id,
     exchange,
@@ -320,6 +322,30 @@ export async function fetchSavedStructures(
     return { ok: false, error: error.message };
   }
 
-  const positions = (data as RawPosition[] | null | undefined)?.map(mapPosition) ?? [];
+  const rows = (data as RawPosition[] | null | undefined) ?? [];
+
+  const programNameMap = new Map<string, string>();
+  const programIds = Array.from(new Set(rows.map((row) => row.program_id).filter((id): id is string => Boolean(id))));
+
+  if (programIds.length > 0) {
+    const { data: programRows, error: programError } = await client
+      .from("programs")
+      .select("program_id, program_name")
+      .in("program_id", programIds);
+
+    if (programError) {
+      return { ok: false, error: programError.message };
+    }
+
+    for (const row of programRows ?? []) {
+      const programId = typeof row?.program_id === "string" ? row.program_id : null;
+      const programName = typeof row?.program_name === "string" ? row.program_name : null;
+      if (programId && programName) {
+        programNameMap.set(programId, programName);
+      }
+    }
+  }
+
+  const positions = rows.map((raw) => mapPosition(raw, programNameMap));
   return { ok: true, positions };
 }

@@ -140,7 +140,10 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
     [marks, p]
   )
 
-  const playbookLink = React.useMemo(() => resolvePlaybookLink(p.playbook), [p.playbook])
+  const playbookLink = React.useMemo(
+    () => (p.source === 'supabase' ? null : resolvePlaybookLink(p.playbook)),
+    [p.playbook, p.source],
+  )
 
   return (
     <>
@@ -223,7 +226,11 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
               disabled={isReadOnly}
               readOnly={isReadOnly}
             />
-            {playbookLink ? (
+            {p.source === 'supabase' ? (
+              <div className="mt-2 text-xs text-slate-500">
+                Program: {p.programName ?? '—'}
+              </div>
+            ) : playbookLink ? (
               <a
                 href={playbookLink.href}
                 target={playbookLink.external ? '_blank' : undefined}
