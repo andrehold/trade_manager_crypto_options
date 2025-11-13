@@ -11,7 +11,7 @@ import {
   Position, TxnRow, Lot,
   useLocalStorage, devQuickTests,
   parseActionSide, toNumber, parseInstrumentByExchange, normalizeSecond,
-  daysTo, fifoMatchAndRealize, classifyStatus,
+  daysTo, daysSince, fifoMatchAndRealize, classifyStatus,
   Exchange, getLegMarkRef
 } from './utils'
 import { PositionRow } from './components/PositionRow'
@@ -43,8 +43,8 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   const [showReview, setShowReview] = React.useState<{ rows: TxnRow[]; excludedRows: TxnRow[] } | null>(null);
   const [alertsOnly, setAlertsOnly] = React.useState(false);
   const [query, setQuery] = React.useState("");
-  const [visibleCols, setVisibleCols] = useLocalStorage<string[]>("visible_cols_v1", [
-    "status","symbol","structure","dte","type","legs","strategy","pnl","pnlpct","delta","gamma","theta","vega","rho","playbook"
+  const [visibleCols, setVisibleCols] = useLocalStorage<string[]>("visible_cols_v2", [
+    "status","symbol","structure","dte","openSince","legs","strategy","pnl","pnlpct","delta","gamma","theta","vega","rho","playbook"
   ]);
   const [selectedExchange, setSelectedExchange] = React.useState<Exchange>('deribit');
   // price per unique leg "exchange:symbol"
@@ -271,6 +271,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       }
 
       const legs: any[] = [];
+      let earliestTimestamp: string | null = null;
       for (const [lkey, ltx] of byLeg.entries()) {
         const [legExpiryRaw, strikeOpt] = lkey.split("__");
         const [strikeStr, opt] = strikeOpt.split("-");
@@ -285,6 +286,15 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
           const sign: 1 | -1 = tr.side === "buy" ? 1 : -1;
           const lot = { qty: Math.abs(tr.amount), price: tr.price, sign };
           netPremium += (sign === -1 ? +1 : -1) * (tr.price * Math.abs(tr.amount));
+          if (tr.timestamp) {
+            const currentEarliest = earliestTimestamp ? new Date(earliestTimestamp) : null;
+            const candidate = new Date(tr.timestamp);
+            if (!Number.isNaN(candidate.getTime())) {
+              if (!currentEarliest || candidate.getTime() < currentEarliest.getTime()) {
+                earliestTimestamp = tr.timestamp;
+              }
+            }
+          }
           if (openLots.length === 0 || openLots[0].sign === sign) {
             openLots.push({ ...lot });
           } else {
@@ -318,6 +328,8 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       const dte = primaryExpiry ? daysTo(primaryExpiry) : 0;
       const status = classifyStatus(dte, pnlPct, realizedPnl);
 
+      const openSinceDays = earliestTimestamp ? daysSince(earliestTimestamp) : null;
+
       out.push({
         id: key,
         underlying,
@@ -326,6 +338,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         legs,
         legsCount,
         type: legsCount > 1 ? "Multi-leg" : "Single",
+        openSinceDays,
         strategy: undefined,
         realizedPnl,
         netPremium,
@@ -391,7 +404,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         {visibleCols.includes("symbol") && <th className="p-3 text-left">Symbol</th>}
         {visibleCols.includes("structure") && <th className="p-3 text-left">Structure</th>}
         {visibleCols.includes("dte") && <th className="p-3 text-left">DTE</th>}
-        {visibleCols.includes("type") && <th className="p-3 text-left">Type</th>}
+        {visibleCols.includes("openSince") && <th className="p-3 text-left">Open Since (days)</th>}
         {visibleCols.includes("legs") && <th className="p-3 text-left">Legs</th>}
         {visibleCols.includes("strategy") && <th className="p-3 text-left">Strategy</th>}
         {visibleCols.includes("pnl") && <th className="p-3 text-left">PnL</th>}
@@ -422,7 +435,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       { key: "symbol", label: "Symbol" },
       { key: "structure", label: "Structure" },
       { key: "dte", label: "DTE" },
-      { key: "type", label: "Type" },
+      { key: "openSince", label: "Open Since (days)" },
       { key: "legs", label: "Legs" },
       { key: "strategy", label: "Strategy" },
       { key: "pnl", label: "PnL $" },

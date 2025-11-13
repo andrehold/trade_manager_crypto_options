@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "../supabase";
 import type { Position, TxnRow, Exchange } from "@/utils";
-import { daysTo } from "@/utils";
+import { daysTo, daysSince } from "@/utils";
 
 type RawLeg = {
   leg_seq: number | null;
@@ -227,6 +227,7 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
   const normalizedExpiry = expiryFromLeg ?? normalizedEntry;
   const expiryISO = normalizedExpiry ?? raw.entry_ts?.slice(0, 10) ?? "—";
   const dte = normalizedExpiry ? daysTo(normalizedExpiry) : 0;
+  const openSinceDays = daysSince(normalizedEntry ?? raw.entry_ts ?? null);
 
   const netPremium =
     raw.net_fill ?? legs.reduce((sum, leg) => sum + (Number.isFinite(leg.netPremium) ? leg.netPremium : 0), 0);
@@ -246,6 +247,7 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
     legs,
     legsCount: legs.length,
     type: legs.length > 1 ? "Multi-leg" : "Single",
+    openSinceDays,
     strategy: raw.strategy_name_at_entry || raw.strategy_name || raw.strategy_code || undefined,
     realizedPnl: 0,
     netPremium,
