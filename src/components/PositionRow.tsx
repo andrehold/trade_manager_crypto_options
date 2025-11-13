@@ -421,17 +421,12 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                               <td colSpan={7} className="p-2 text-left">
                                 <div className="flex flex-wrap gap-2">
                                   {l.trades?.map((t, i) => {
-                                    const exchangeLabel = (t.exchange ?? p.exchange ?? '').toUpperCase()
                                     return (
                                       <span
                                         key={i}
                                         className="inline-flex items-center gap-2 rounded-full border px-2 py-1 bg-slate-50"
                                         title={t.timestamp || ''}
                                       >
-                                        <span className="text-[10px] rounded-full px-2 py-[2px] border bg-white text-slate-700">
-                                          Structure #{t.structureId ?? '—'}{' '}
-                                          {exchangeLabel || '—'}
-                                        </span>
                                         <span className="text-[11px] text-slate-500">
                                           {(t.timestamp || '').slice(11, 19) || '—'}
                                         </span>
