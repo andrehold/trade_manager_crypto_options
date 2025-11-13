@@ -115,26 +115,14 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
     [marks, p]
   )
 
-  const strategyChips = React.useMemo(() => {
-    const chips: string[] = []
-    const seen = new Set<string>()
+  const programLabel = React.useMemo(() => {
+    if (p.source !== 'supabase') return ''
+    return (p.programName ?? '').trim()
+  }, [p.programName, p.source])
 
-    const addChip = (raw: string | null | undefined) => {
-      const label = (raw ?? '').trim()
-      if (!label) return
-      const key = label.toLowerCase()
-      if (seen.has(key)) return
-      seen.add(key)
-      chips.push(label)
-    }
-
-    addChip(p.strategy)
-    if (p.source === 'supabase') {
-      addChip(p.programName)
-    }
-
-    return chips
-  }, [p.programName, p.source, p.strategy])
+  const strategyLabel = React.useMemo(() => {
+    return (p.strategy ?? '').trim()
+  }, [p.strategy])
 
   const hasPlaybookValue = React.useMemo(() => {
     if (typeof p.playbook !== 'string') return false
@@ -176,16 +164,18 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
         {visibleCols.includes('legs') && <td className="p-3 align-top">{p.legsCount}</td>}
         {visibleCols.includes('strategy') && (
           <td className="p-3 align-top">
-            {strategyChips.length ? (
-              <div className="flex flex-wrap gap-2">
-                {strategyChips.map((chip) => (
-                  <span
-                    key={chip}
-                    className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm"
-                  >
-                    {chip}
+            {programLabel || strategyLabel ? (
+              <div className="flex flex-col gap-1">
+                {programLabel && (
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm">
+                    {programLabel}
                   </span>
-                ))}
+                )}
+                {strategyLabel && (
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm">
+                    {strategyLabel}
+                  </span>
+                )}
               </div>
             ) : (
               <span className="inline-flex min-h-[2.25rem] items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-400">
