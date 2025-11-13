@@ -1,5 +1,5 @@
 import React from 'react'
-import { Pencil, Save } from 'lucide-react'
+import { Link as LinkIcon, Pencil, Save } from 'lucide-react'
 import {
   Position,
   fmtPremium,
@@ -11,7 +11,6 @@ import {
   getLegMarkRef,
   type LegMarkRef,
 } from '../utils'
-import { getPlaybook } from '../features/playbooks/playbooks'
 import { StructureEntryOverlay } from './StructureEntryOverlay'
 
 type MarkInfo = { price: number | null; multiplier: number | null; greeks?: any }
@@ -29,40 +28,6 @@ type PositionRowProps = {
   onSaved?: (positionId: string) => void
   onArchive?: (positionId: string) => void
   archiving?: boolean
-}
-
-type PlaybookLink = {
-  href: string
-  label: string
-  external: boolean
-}
-
-function resolvePlaybookLink(playbookValue?: string | null): PlaybookLink | null {
-  if (!playbookValue) return null
-  const raw = playbookValue.trim()
-  if (!raw) return null
-  if (/^https?:\/\//i.test(raw)) {
-    return { href: raw, label: 'Open playbook', external: true }
-  }
-  if (raw.startsWith('#/')) {
-    return { href: raw, label: 'Open playbook', external: false }
-  }
-  if (raw.startsWith('/playbooks/')) {
-    return { href: `#${raw}`, label: 'Open playbook', external: false }
-  }
-  if (raw.startsWith('playbooks/')) {
-    return { href: `#/${raw}`, label: 'Open playbook', external: false }
-  }
-  const normalized = raw.replace(/^#?\/?playbooks\//i, '')
-  const match = getPlaybook(raw) || getPlaybook(normalized)
-  if (match) {
-    return {
-      href: `#/playbooks/${match.slug}`,
-      label: `Open ${match.name} playbook`,
-      external: false,
-    }
-  }
-  return null
 }
 
 function CellSpinner() {
@@ -150,10 +115,17 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
     [marks, p]
   )
 
-  const playbookLink = React.useMemo(
-    () => (p.source === 'supabase' ? null : resolvePlaybookLink(p.playbook)),
-    [p.playbook, p.source],
-  )
+  const strategyLabel = React.useMemo(() => {
+    if (p.source === 'supabase') {
+      return p.programName || p.strategy || ''
+    }
+    return p.strategy || ''
+  }, [p.programName, p.source, p.strategy])
+
+  const hasPlaybookValue = React.useMemo(() => {
+    if (typeof p.playbook !== 'string') return false
+    return p.playbook.trim().length > 0
+  }, [p.playbook])
 
   return (
     <>
@@ -190,17 +162,13 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
         {visibleCols.includes('legs') && <td className="p-3 align-top">{p.legsCount}</td>}
         {visibleCols.includes('strategy') && (
           <td className="p-3 align-top">
-            <input
-              value={p.strategy || ''}
-              onChange={(e) => {
-                if (isReadOnly) return
-                onUpdate(p.id, { strategy: e.target.value })
-              }}
-              placeholder="e.g., Iron Condor"
-              className="border rounded-lg px-2 py-1 text-sm w-40"
-              disabled={isReadOnly}
-              readOnly={isReadOnly}
-            />
+            <div
+              className={`inline-flex min-h-[2.25rem] items-center rounded-lg border px-3 text-sm ${
+                strategyLabel ? 'text-slate-700 bg-white border-slate-200 shadow-sm' : 'text-slate-400 border-slate-200 bg-slate-50'
+              }`}
+            >
+              {strategyLabel || '—'}
+            </div>
           </td>
         )}
         {visibleCols.includes('pnl') && (
@@ -225,55 +193,18 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
         {visibleCols.includes('rho') && <td className="p-3 align-top">{fmtNumber(structureGreeks.rho)}</td>}
         {visibleCols.includes('playbook') && (
           <td className="p-3 align-top">
-            <input
-              value={p.playbook || ''}
-              onChange={(e) => {
-                if (isReadOnly) return
-                onUpdate(p.id, { playbook: e.target.value })
-              }}
-              placeholder="https://…"
-              className="border rounded-lg px-2 py-1 text-sm w-44"
-              disabled={isReadOnly}
-              readOnly={isReadOnly}
-            />
-            {p.source === 'supabase' ? (
-              <div className="mt-2 text-xs text-slate-500">
-                Program: {p.programName ?? '—'}
-              </div>
-            ) : playbookLink ? (
-              <a
-                href={playbookLink.href}
-                target={playbookLink.external ? '_blank' : undefined}
-                rel={playbookLink.external ? 'noreferrer' : undefined}
-                className="mt-2 block text-xs font-medium text-sky-600 hover:text-sky-500"
-              >
-                {playbookLink.label}
-                {playbookLink.external ? ' ↗' : ''}
-              </a>
-            ) : null}
+            <button
+              type="button"
+              className={`inline-flex items-center justify-center rounded-md border px-2 py-1 text-slate-600 shadow-sm ${
+                hasPlaybookValue ? 'border-slate-200 bg-white hover:bg-slate-100' : 'border-slate-200 bg-slate-50 opacity-60'
+              }`}
+              disabled={!hasPlaybookValue}
+            >
+              <LinkIcon className="h-4 w-4" />
+              <span className="sr-only">Open playbook link</span>
+            </button>
           </td>
         )}
-        <td className="p-3 align-top text-right">
-          <button
-            onClick={() => {
-              if (isReadOnly) return
-              onUpdate(p.id, {
-                status:
-                  p.status === 'OPEN'
-                    ? ('ATTENTION' as Position['status'])
-                    : p.status === 'ATTENTION'
-                    ? ('ALERT' as Position['status'])
-                    : p.status === 'ALERT'
-                    ? ('OPEN' as Position['status'])
-                    : p.status,
-              })
-            }}
-            className={`text-slate-500 ${isReadOnly ? 'cursor-not-allowed opacity-50' : ''}`}
-            disabled={isReadOnly}
-          >
-            ⋯
-          </button>
-        </td>
         <td className="p-3 align-top text-right">
           {isUpdateMode ? (
             <div className="inline-flex flex-wrap items-center gap-2 justify-end">

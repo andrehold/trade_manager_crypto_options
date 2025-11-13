@@ -403,9 +403,6 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         {visibleCols.includes("rho") && <th className="p-3 text-left">ρ</th>}
         {visibleCols.includes("playbook") && <th className="p-3 text-left">Playbook</th>}
         <th className="p-3 text-right w-12">
-          <span className="sr-only">Toggle status</span>
-        </th>
-        <th className="p-3 text-right w-12">
           <span className="sr-only">Save position</span>
         </th>
       </tr>
