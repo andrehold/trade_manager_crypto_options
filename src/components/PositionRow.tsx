@@ -115,11 +115,25 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
     [marks, p]
   )
 
-  const strategyLabel = React.useMemo(() => {
-    if (p.source === 'supabase') {
-      return p.programName || p.strategy || ''
+  const strategyChips = React.useMemo(() => {
+    const chips: string[] = []
+    const seen = new Set<string>()
+
+    const addChip = (raw: string | null | undefined) => {
+      const label = (raw ?? '').trim()
+      if (!label) return
+      const key = label.toLowerCase()
+      if (seen.has(key)) return
+      seen.add(key)
+      chips.push(label)
     }
-    return p.strategy || ''
+
+    addChip(p.strategy)
+    if (p.source === 'supabase') {
+      addChip(p.programName)
+    }
+
+    return chips
   }, [p.programName, p.source, p.strategy])
 
   const hasPlaybookValue = React.useMemo(() => {
@@ -162,13 +176,22 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
         {visibleCols.includes('legs') && <td className="p-3 align-top">{p.legsCount}</td>}
         {visibleCols.includes('strategy') && (
           <td className="p-3 align-top">
-            <div
-              className={`inline-flex min-h-[2.25rem] items-center rounded-lg border px-3 text-sm ${
-                strategyLabel ? 'text-slate-700 bg-white border-slate-200 shadow-sm' : 'text-slate-400 border-slate-200 bg-slate-50'
-              }`}
-            >
-              {strategyLabel || '—'}
-            </div>
+            {strategyChips.length ? (
+              <div className="flex flex-wrap gap-2">
+                {strategyChips.map((chip) => (
+                  <span
+                    key={chip}
+                    className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm"
+                  >
+                    {chip}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="inline-flex min-h-[2.25rem] items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-400">
+                —
+              </span>
+            )}
           </td>
         )}
         {visibleCols.includes('pnl') && (
