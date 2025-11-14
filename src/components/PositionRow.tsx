@@ -363,24 +363,6 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                                   : '—'}
                               </td>
                             </tr>
-                            <tr className="border-t-0">
-                              <td colSpan={7} className="p-2 text-left">
-                                <div className="flex flex-col gap-1">
-                                  {l.trades?.map((t, i) => {
-                                    return (
-                                      <div key={i} className="flex items-center gap-2 text-xs" title={t.timestamp || ''}>
-                                        <span className="text-[11px] text-slate-500">
-                                          {(t.timestamp || '').slice(11, 19) || '—'}
-                                        </span>
-                                        <span className="text-slate-800">
-                                          {(t.action ? `${t.action} ` : '') + t.side} {t.amount}@{fmtNumber(t.price)}
-                                        </span>
-                                      </div>
-                                    )
-                                  })}
-                                </div>
-                              </td>
-                            </tr>
                           </React.Fragment>
                         )
                       })}
