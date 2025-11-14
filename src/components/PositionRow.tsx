@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link as LinkIcon, Pencil, Save } from 'lucide-react'
+import { getPlaybook } from '../features/playbooks/playbooks'
 import {
   Position,
   fmtPremium,
@@ -129,6 +130,60 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
     return p.playbook.trim().length > 0
   }, [p.playbook])
 
+  const playbookLink = React.useMemo(() => {
+    if (!hasPlaybookValue) return null
+
+    const raw = (p.playbook ?? '').trim()
+    if (!raw) return null
+
+    if (/^https?:\/\//i.test(raw)) {
+      return { href: raw, external: true as const }
+    }
+
+    if (raw.startsWith('#')) {
+      return { href: raw, external: false as const }
+    }
+
+    if (raw.startsWith('/')) {
+      return { href: `#${raw.replace(/^#/, '')}`, external: false as const }
+    }
+
+    if (raw.toLowerCase().startsWith('playbooks/')) {
+      return { href: `#/${raw.replace(/^#?\/?/, '')}`, external: false as const }
+    }
+
+    const matched = getPlaybook(raw)
+    const slug = matched?.slug
+    if (slug) {
+      return { href: `#/playbooks/${slug}`, external: false as const }
+    }
+
+    const fallbackSlug = raw
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+    if (fallbackSlug) {
+      return { href: `#/playbooks/${fallbackSlug}`, external: false as const }
+    }
+
+    return null
+  }, [hasPlaybookValue, p.playbook])
+
+  const handleOpenPlaybook = React.useCallback(() => {
+    if (!playbookLink) return
+
+    if (playbookLink.external) {
+      window.open(playbookLink.href, '_blank', 'noopener,noreferrer')
+      return
+    }
+
+    if (playbookLink.href.startsWith('#')) {
+      window.location.hash = playbookLink.href
+    } else {
+      window.location.assign(playbookLink.href)
+    }
+  }, [playbookLink])
+
   return (
     <>
       <tr className="border-b last:border-0 hover:bg-slate-50">
@@ -208,10 +263,12 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           <td className="p-3 align-top">
             <button
               type="button"
+              onClick={handleOpenPlaybook}
               className={`inline-flex items-center justify-center rounded-md border px-2 py-1 text-slate-600 shadow-sm ${
                 hasPlaybookValue ? 'border-slate-200 bg-white hover:bg-slate-100' : 'border-slate-200 bg-slate-50 opacity-60'
               }`}
-              disabled={!hasPlaybookValue}
+              disabled={!playbookLink}
+              title={playbookLink ? 'Open playbook link' : undefined}
             >
               <LinkIcon className="h-4 w-4" />
               <span className="sr-only">Open playbook link</span>
