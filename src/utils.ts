@@ -47,6 +47,7 @@ export interface Position {
   legs: Leg[];
   legsCount: number;
   type: 'Single' | 'Multi-leg';
+  openSinceDays?: number | null;
   strategy?: string;
   realizedPnl: number;
   netPremium: number;
@@ -118,6 +119,32 @@ export function daysTo(dateISO: string) {
   const target = new Date(dateISO + "T00:00:00Z");
   const diff = target.getTime() - today.getTime();
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+export function daysSince(dateInput: string | Date | null | undefined): number | null {
+  if (!dateInput) return null;
+
+  const normalize = (value: string | Date): Date => {
+    if (value instanceof Date) return value;
+    const trimmed = value.trim();
+    if (!trimmed) return new Date('invalid');
+    const asDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(trimmed)
+      ? `${trimmed}T00:00:00Z`
+      : trimmed.includes('T')
+      ? trimmed
+      : trimmed.replace(' ', 'T');
+    return new Date(asDateOnly);
+  };
+
+  const target = normalize(dateInput);
+  if (Number.isNaN(target.getTime())) return null;
+
+  const now = new Date();
+  const diff = now.getTime() - target.getTime();
+  if (!Number.isFinite(diff)) return null;
+
+  const dayMs = 1000 * 60 * 60 * 24;
+  return Math.max(0, Math.floor(diff / dayMs));
 }
 
 export function toNumber(v: any): number {

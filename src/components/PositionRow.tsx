@@ -186,7 +186,9 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
         )}
         {visibleCols.includes('structure') && <td className="p-3 align-top">{p.structureId}</td>}
         {visibleCols.includes('dte') && <td className="p-3 align-top">{p.dte}</td>}
-        {visibleCols.includes('type') && <td className="p-3 align-top">{p.type}</td>}
+        {visibleCols.includes('openSince') && (
+          <td className="p-3 align-top">{p.openSinceDays != null ? p.openSinceDays : '—'}</td>
+        )}
         {visibleCols.includes('legs') && <td className="p-3 align-top">{p.legsCount}</td>}
         {visibleCols.includes('strategy') && (
           <td className="p-3 align-top">
