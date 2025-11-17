@@ -1,7 +1,9 @@
 // src/features/import/importTrades.ts
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { resolveClientAccess } from "@/features/auth/access";
 import { tryGetSupabaseClient } from "../supabase";
 import { syncLinkedStructures } from "../positions/syncLinkedStructures";
+import type { SupabaseClientScope } from "../positions/clientScope";
 import { payloadSchema } from "./validation";
 import type { ImportPayload } from "./types";
 
@@ -19,6 +21,7 @@ function nullifyUndefined<T extends Record<string, any>>(row: T): T {
 
 type ImportTradesOptions = {
   positionId?: string;
+  clientScope?: SupabaseClientScope;
 };
 
 type Lifecycle = ImportPayload["position"]["lifecycle"];
@@ -133,8 +136,12 @@ function normalizeLifecycleState(position: ImportPayload["position"]): DerivedLi
 async function recalcClosedAt(
   client: SupabaseClient,
   targetId: string,
+  scope?: SupabaseClientScope,
 ): Promise<SyncResult> {
-  const { data, error } = await client
+  const clientName = scope?.clientName?.trim();
+  const restrictByClient = Boolean(clientName) && !scope?.isAdmin;
+
+  let selectQuery = client
     .from("positions")
     .select("entry_ts")
     .eq("close_target_structure_id", targetId)
@@ -142,15 +149,27 @@ async function recalcClosedAt(
     .order("entry_ts", { ascending: true })
     .limit(1);
 
+  if (restrictByClient && clientName) {
+    selectQuery = selectQuery.eq("client_name", clientName);
+  }
+
+  const { data, error } = await selectQuery;
+
   if (error) {
     return { ok: false as const, error: error.message };
   }
 
   const closedAt = data?.[0]?.entry_ts ?? null;
-  const { error: updateErr } = await client
+  let updateQuery = client
     .from("positions")
     .update({ closed_at: closedAt })
     .eq("position_id", targetId);
+
+  if (restrictByClient && clientName) {
+    updateQuery = updateQuery.eq("client_name", clientName);
+  }
+
+  const { error: updateErr } = await updateQuery;
 
   if (updateErr) {
     return { ok: false as const, error: updateErr.message };
@@ -166,6 +185,7 @@ async function syncClosedStructureState(
     previousTargetId?: string | null;
     newLifecycle: Lifecycle;
     newTargetId: string | null;
+    clientScope?: SupabaseClientScope;
   },
 ): Promise<SyncResult> {
   const targets = new Set<string>();
@@ -179,7 +199,7 @@ async function syncClosedStructureState(
   }
 
   for (const targetId of targets) {
-    const result = await recalcClosedAt(client, targetId);
+    const result = await recalcClosedAt(client, targetId, params.clientScope);
     if (!result.ok) {
       return result;
     }
@@ -235,6 +255,9 @@ export async function importTrades(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false as const, error: "Not signed in" };
 
+  const access = resolveClientAccess(user);
+  const effectiveIsAdmin = options.clientScope?.isAdmin ?? access.isAdmin;
+
   // 2) Verify program exists without modifying the catalog
   {
     const { data, error } = await supabase
@@ -277,15 +300,42 @@ export async function importTrades(
 
   const { position: normalizedPosition, status: derivedStatus } = normalizeLifecycleState(position);
 
+  const payloadClientName =
+    typeof normalizedPosition.client_name === "string" ? normalizedPosition.client_name.trim() : "";
+  const requestedClientName = options.clientScope?.clientName?.trim() || "";
+  const lockedClientName = requestedClientName || access.clientName || null;
+  const resolvedClientName = effectiveIsAdmin
+    ? payloadClientName || requestedClientName || access.clientName || null
+    : lockedClientName;
+
+  if (!resolvedClientName) {
+    return {
+      ok: false as const,
+      error: "Client assignment is required. Ask an admin to configure your workspace client.",
+    };
+  }
+
+  const normalizedClientName = resolvedClientName.trim();
+  normalizedPosition.client_name = normalizedClientName;
+  const supabaseClientScope: SupabaseClientScope = {
+    clientName: normalizedClientName,
+    isAdmin: effectiveIsAdmin,
+  };
+
   const { positionId } = options;
 
   if (positionId) {
     // Updating an existing structure
-    const { data: existing, error: existingErr } = await supabase
+    let existingQuery = supabase
       .from("positions")
-      .select("position_id, venue_id, lifecycle, close_target_structure_id")
-      .eq("position_id", positionId)
-      .maybeSingle();
+      .select("position_id, venue_id, lifecycle, close_target_structure_id, client_name")
+      .eq("position_id", positionId);
+
+    if (!effectiveIsAdmin) {
+      existingQuery = existingQuery.eq("client_name", normalizedClientName);
+    }
+
+    const { data: existing, error: existingErr } = await existingQuery.maybeSingle();
 
     if (existingErr) {
       return { ok: false as const, error: existingErr.message };
@@ -333,10 +383,16 @@ export async function importTrades(
       status: derivedStatus,
     });
 
-    const { error: updatePositionErr } = await supabase
+    let updatePositionQuery = supabase
       .from("positions")
       .update(positionUpdate)
       .eq("position_id", positionId);
+
+    if (!effectiveIsAdmin) {
+      updatePositionQuery = updatePositionQuery.eq("client_name", normalizedClientName);
+    }
+
+    const { error: updatePositionErr } = await updatePositionQuery;
 
     if (updatePositionErr) {
       return { ok: false as const, error: updatePositionErr.message };
@@ -394,6 +450,7 @@ export async function importTrades(
       previousTargetId: (existing.close_target_structure_id as string | null) ?? null,
       newLifecycle: normalizedPosition.lifecycle,
       newTargetId: normalizedPosition.close_target_structure_id ?? null,
+      clientScope: supabaseClientScope,
     });
 
     if (!syncResult.ok) {
@@ -404,6 +461,7 @@ export async function importTrades(
       sourceId: positionId,
       linkedIds: Array.from(linkedIdsSet),
       closedAt: closedAtCandidate,
+      clientScope: supabaseClientScope,
     });
 
     if (!linkResult.ok) {
@@ -475,6 +533,7 @@ export async function importTrades(
   const syncResult = await syncClosedStructureState(supabase, {
     newLifecycle: normalizedPosition.lifecycle,
     newTargetId: normalizedPosition.close_target_structure_id ?? null,
+    clientScope: supabaseClientScope,
   });
 
   if (!syncResult.ok) {
@@ -485,6 +544,7 @@ export async function importTrades(
     sourceId: position_id,
     linkedIds: Array.from(linkedIdsSet),
     closedAt: closedAtCandidate,
+    clientScope: supabaseClientScope,
   });
 
   if (!linkResult.ok) {

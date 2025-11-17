@@ -65,6 +65,7 @@ export interface Position {
   archived?: boolean;
   archivedAt?: string | null;
   archivedBy?: string | null;
+  clientName?: string | null;
 }
 
 export const EXPECTED_FIELDS = [

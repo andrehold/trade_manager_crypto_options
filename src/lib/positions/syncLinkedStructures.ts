@@ -1,9 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClientScope } from "./clientScope";
 
 export type SyncLinkedStructuresParams = {
   sourceId: string;
   linkedIds: string[];
   closedAt?: string;
+  clientScope?: SupabaseClientScope;
 };
 
 export type SyncLinkedStructuresResult = { ok: true } | { ok: false; error: string };
@@ -52,6 +54,9 @@ export async function syncLinkedStructures(
     return { ok: false, error: "Missing source structure identifier." };
   }
 
+  const clientName = params.clientScope?.clientName?.trim();
+  const restrictByClient = Boolean(clientName) && !params.clientScope?.isAdmin;
+
   const desiredLinked = Array.from(
     new Set(
       params.linkedIds
@@ -61,11 +66,16 @@ export async function syncLinkedStructures(
     ),
   );
 
-  const { data: sourceRow, error: sourceErr } = await client
+  let sourceQuery = client
     .from("positions")
     .select("linked_structure_ids, closed_at")
-    .eq("position_id", sourceId)
-    .maybeSingle();
+    .eq("position_id", sourceId);
+
+  if (restrictByClient && clientName) {
+    sourceQuery = sourceQuery.eq("client_name", clientName);
+  }
+
+  const { data: sourceRow, error: sourceErr } = await sourceQuery.maybeSingle();
 
   if (sourceErr) {
     return { ok: false, error: sourceErr.message };
@@ -81,10 +91,16 @@ export async function syncLinkedStructures(
 
   let targets: Array<{ position_id: string; linked_structure_ids?: unknown; closed_at?: string | null }> = [];
   if (affectedTargets.length > 0) {
-    const { data: targetRows, error: targetErr } = await client
+    let targetsQuery = client
       .from("positions")
       .select("position_id, linked_structure_ids, closed_at")
       .in("position_id", affectedTargets);
+
+    if (restrictByClient && clientName) {
+      targetsQuery = targetsQuery.eq("client_name", clientName);
+    }
+
+    const { data: targetRows, error: targetErr } = await targetsQuery;
 
     if (targetErr) {
       return { ok: false, error: targetErr.message };
@@ -118,10 +134,16 @@ export async function syncLinkedStructures(
     sourceUpdate.closed_at = nextSourceClosedAt;
   }
 
-  const { error: sourceUpdateErr } = await client
+  let sourceUpdateQuery = client
     .from("positions")
     .update(sourceUpdate)
     .eq("position_id", sourceId);
+
+  if (restrictByClient && clientName) {
+    sourceUpdateQuery = sourceUpdateQuery.eq("client_name", clientName);
+  }
+
+  const { error: sourceUpdateErr } = await sourceUpdateQuery;
 
   if (sourceUpdateErr) {
     return { ok: false, error: sourceUpdateErr.message };
@@ -159,10 +181,16 @@ export async function syncLinkedStructures(
       normalizedClosedAt !== undefined && update.closed_at !== (target.closed_at ?? null);
 
     if (needsUpdate || closedAtChanged) {
-      const { error: targetUpdateErr } = await client
+      let targetUpdateQuery = client
         .from("positions")
         .update(update)
         .eq("position_id", targetId);
+
+      if (restrictByClient && clientName) {
+        targetUpdateQuery = targetUpdateQuery.eq("client_name", clientName);
+      }
+
+      const { error: targetUpdateErr } = await targetUpdateQuery;
 
       if (targetUpdateErr) {
         return { ok: false, error: targetUpdateErr.message };

@@ -42,6 +42,7 @@ type FieldMeta = {
   required?: boolean;
   step?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
+  disabled?: boolean;
 };
 
 type CheckboxMeta = {
@@ -552,6 +553,7 @@ function buildInitialPayload(position: Position): PartialPayload {
     underlier: position.underlying,
     strategy_code: position.strategy ?? '',
     strategy_name: position.strategy ?? '',
+    client_name: position.clientName ?? '',
     options_structure: position.legs.length > 1 ? 'strangle' : 'single_option',
     construction: position.legs.length > 1 ? 'balanced' : 'outright',
     risk_defined: position.legs.length > 1,
@@ -607,9 +609,11 @@ function Field({
   onChange: (value: any) => void;
   missing: boolean;
 }) {
-  const { label, type = 'text', options, placeholder, helperText, required, step, inputMode } = meta;
+  const { label, type = 'text', options, placeholder, helperText, required, step, inputMode, disabled } = meta;
   const displayValue = value ?? '';
-  const baseClass = `mt-1 block w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 ${missing ? 'border-rose-500 focus:ring-rose-400' : 'border-slate-200 focus:ring-slate-400'}`;
+  const baseClass = `mt-1 block w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 ${
+    missing ? 'border-rose-500 focus:ring-rose-400' : 'border-slate-200 focus:ring-slate-400'
+  } ${disabled ? 'cursor-not-allowed bg-slate-50 text-slate-500' : ''}`;
 
   const handleChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
@@ -661,6 +665,7 @@ function Field({
           value={displayValue}
           onChange={handleChange}
           placeholder={placeholder}
+          disabled={disabled}
         />
         {helperText ? <p className="text-[11px] text-slate-500">{helperText}</p> : null}
       </label>
@@ -671,7 +676,7 @@ function Field({
     return (
       <label className="flex flex-col gap-1">
         {labelText}
-        <select className={baseClass} value={displayValue} onChange={handleChange}>
+        <select className={baseClass} value={displayValue} onChange={handleChange} disabled={disabled}>
           <option value="">Select…</option>
           {options?.map((opt) => (
             <option key={opt} value={opt}>
@@ -695,6 +700,7 @@ function Field({
         placeholder={placeholder}
         step={type === 'number' ? step : undefined}
         inputMode={inputMode}
+        disabled={disabled}
       />
       {helperText ? <p className="text-[11px] text-slate-500">{helperText}</p> : null}
     </label>
@@ -766,6 +772,7 @@ export function StructureEntryOverlay({
   onSaved,
   mode = 'create',
   existingPositionId,
+  clientScope,
 }: {
   open: boolean;
   onClose: () => void;
@@ -774,8 +781,15 @@ export function StructureEntryOverlay({
   onSaved?: (positionId: string) => void;
   mode?: StructureEntryOverlayMode;
   existingPositionId?: string;
+  clientScope: { activeClient: string | null; isAdmin: boolean };
 }) {
-  const initialPayload = React.useMemo(() => buildInitialPayload(position), [position]);
+  const initialPayload = React.useMemo(() => {
+    const base = buildInitialPayload(position);
+    if (clientScope.activeClient) {
+      return setValue(base, parsePath('position.client_name'), clientScope.activeClient);
+    }
+    return base;
+  }, [position, clientScope]);
   const [form, setForm] = React.useState<PartialPayload>(initialPayload);
   const [includeVenue, setIncludeVenue] = React.useState(false);
   const [programOptions, setProgramOptions] = React.useState<
@@ -803,6 +817,12 @@ export function StructureEntryOverlay({
     [supabaseConfigured],
   );
   const isUpdateMode = mode === 'update' && Boolean(existingPositionId);
+
+  React.useEffect(() => {
+    if (clientScope.isAdmin) return;
+    if (!clientScope.activeClient) return;
+    setForm((prev) => setValue(prev, parsePath('position.client_name'), clientScope.activeClient));
+  }, [clientScope, setForm]);
 
   React.useEffect(() => {
     if (!supabase || !user) return;
@@ -983,7 +1003,9 @@ export function StructureEntryOverlay({
 
     const loadExisting = async () => {
       try {
-        const result = await fetchStructurePayload(supabase, existingPositionId);
+        const result = await fetchStructurePayload(supabase, existingPositionId, {
+          clientScope: { clientName: clientScope.activeClient, isAdmin: clientScope.isAdmin },
+        });
         if (!active) return;
         if (result.ok) {
           setForm(result.payload);
@@ -1012,7 +1034,7 @@ export function StructureEntryOverlay({
     return () => {
       active = false;
     };
-  }, [open, isUpdateMode, initialPayload, supabase, existingPositionId]);
+  }, [open, isUpdateMode, initialPayload, supabase, existingPositionId, clientScope]);
 
   const updateField = React.useCallback((path: string, value: any) => {
     setSaveStatus((prev) => (prev.type === 'idle' ? prev : { type: 'idle' }));
@@ -1259,6 +1281,7 @@ export function StructureEntryOverlay({
         sourceId: existingPositionId,
         linkedIds: desiredLinks,
         closedAt: timestampForClosure,
+        clientScope: { clientName: clientScope.activeClient, isAdmin: clientScope.isAdmin },
       });
 
       if (!result.ok) {
@@ -1293,6 +1316,7 @@ export function StructureEntryOverlay({
     updateField,
     user,
     usingDummyLinkOptions,
+    clientScope,
   ]);
 
   React.useEffect(() => {
@@ -1455,35 +1479,51 @@ export function StructureEntryOverlay({
     { label: 'Sleeve', path: 'program.sleeve', valueType: 'string' },
   ];
 
-  const positionFields: FieldMeta[] = [
-    { label: 'Program ID', path: 'position.program_id', valueType: 'string', required: true },
-    { label: 'Underlier', path: 'position.underlier', valueType: 'string', required: true },
-    { label: 'Strategy Code', path: 'position.strategy_code', valueType: 'string', required: true },
-    {
-      label: 'Strategy Name',
-      path: 'position.strategy_name',
-      valueType: 'string',
-      required: true,
-      type: 'select',
-      options: strategyOptions.map((option) => option.strategy_name),
-    },
-    {
-      label: 'Options Structure',
-      path: 'position.options_structure',
-      valueType: 'string',
-      type: 'select',
-      options: OPTIONS_STRUCTURES,
-      required: true,
-    },
-    {
-      label: 'Construction',
-      path: 'position.construction',
-      valueType: 'string',
-      type: 'select',
-      options: CONSTRUCTIONS,
-      required: true,
-    },
-  ];
+  const positionFields: FieldMeta[] = React.useMemo(
+    () => [
+      { label: 'Program ID', path: 'position.program_id', valueType: 'string', required: true },
+      { label: 'Underlier', path: 'position.underlier', valueType: 'string', required: true },
+      { label: 'Strategy Code', path: 'position.strategy_code', valueType: 'string', required: true },
+      {
+        label: 'Strategy Name',
+        path: 'position.strategy_name',
+        valueType: 'string',
+        required: true,
+        type: 'select',
+        options: strategyOptions.map((option) => option.strategy_name),
+      },
+      {
+        label: 'Client',
+        path: 'position.client_name',
+        valueType: 'string',
+        required: true,
+        placeholder: 'e.g., Northwind Capital',
+        disabled: !clientScope.isAdmin,
+        helperText: clientScope.isAdmin
+          ? undefined
+          : clientScope.activeClient
+          ? `Locked to ${clientScope.activeClient}`
+          : 'Client is locked to your workspace.',
+      },
+      {
+        label: 'Options Structure',
+        path: 'position.options_structure',
+        valueType: 'string',
+        type: 'select',
+        options: OPTIONS_STRUCTURES,
+        required: true,
+      },
+      {
+        label: 'Construction',
+        path: 'position.construction',
+        valueType: 'string',
+        type: 'select',
+        options: CONSTRUCTIONS,
+        required: true,
+      },
+    ],
+    [strategyOptions, clientScope],
+  );
 
   const positionSecondaryFields: FieldMeta[] = [
     {
@@ -1737,10 +1777,10 @@ export function StructureEntryOverlay({
 
     try {
       const payload = payloadForValidation as Partial<ImportPayload>;
-      const result = await importTrades(
-        payload as ImportPayload,
-        isUpdateMode && existingPositionId ? { positionId: existingPositionId } : undefined,
-      );
+      const result = await importTrades(payload as ImportPayload, {
+        positionId: isUpdateMode && existingPositionId ? existingPositionId : undefined,
+        clientScope: { clientName: clientScope.activeClient, isAdmin: clientScope.isAdmin },
+      });
       if (result.ok) {
         setSaveStatus({
           type: 'success',
@@ -1772,6 +1812,9 @@ export function StructureEntryOverlay({
     supabaseUnavailable,
     onSaved,
     user,
+    clientScope,
+    existingPositionId,
+    isUpdateMode,
   ]);
 
   const handleToggleIncludeVenue = React.useCallback(() => {
