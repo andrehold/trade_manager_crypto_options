@@ -1,4 +1,8 @@
-export { fetchSavedStructures, type FetchSavedStructuresResult } from "./fetchSavedStructures";
+export {
+  fetchSavedStructures,
+  type FetchSavedStructuresResult,
+  type FetchSavedStructuresOptions,
+} from "./fetchSavedStructures";
 export {
   syncLinkedStructures,
   type SyncLinkedStructuresParams,
@@ -9,3 +13,4 @@ export {
   type ArchiveStructureParams,
   type ArchiveStructureResult,
 } from "./archiveStructure";
+export { type SupabaseClientScope } from "./clientScope";

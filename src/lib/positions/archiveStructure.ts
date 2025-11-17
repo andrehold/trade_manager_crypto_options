@@ -1,8 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClientScope } from "./clientScope";
 
 export type ArchiveStructureParams = {
   positionId: string;
   archivedBy?: string | null;
+  clientScope?: SupabaseClientScope;
 };
 
 export type ArchiveStructureResult = { ok: true } | { ok: false; error: string };
@@ -23,12 +25,19 @@ export async function archiveStructure(
     archived_by: params.archivedBy ?? null,
   };
 
-  const { error, data } = await client
+  const shouldFilterByClient = Boolean(params.clientScope?.clientName?.trim()) && !params.clientScope?.isAdmin;
+  const clientName = params.clientScope?.clientName?.trim();
+
+  let query = client
     .from("positions")
     .update(update)
-    .eq("position_id", id)
-    .select("position_id")
-    .maybeSingle();
+    .eq("position_id", id);
+
+  if (shouldFilterByClient && clientName) {
+    query = query.eq("client_name", clientName);
+  }
+
+  const { error, data } = await query.select("position_id").maybeSingle();
 
   if (error) {
     return { ok: false, error: error.message };

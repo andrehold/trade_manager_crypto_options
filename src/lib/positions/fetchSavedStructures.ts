@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "../supabase";
 import type { Position, TxnRow, Exchange } from "@/utils";
 import { daysTo, daysSince } from "@/utils";
+import type { SupabaseClientScope } from "./clientScope";
 
 type RawLeg = {
   leg_seq: number | null;
@@ -19,6 +20,7 @@ type RawPosition = {
   strategy_code: string | null;
   strategy_name: string | null;
   strategy_name_at_entry?: string | null;
+  client_name?: string | null;
   lifecycle: "open" | "close" | null;
   closed_at?: string | null;
   entry_ts: string | null;
@@ -271,13 +273,20 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
     archived: Boolean(raw.archived),
     archivedAt: raw.archived_at ?? null,
     archivedBy: raw.archived_by ?? null,
+    clientName: raw.client_name ?? null,
   };
 }
 
+export type FetchSavedStructuresOptions = SupabaseClientScope;
+
 export async function fetchSavedStructures(
   client: SupabaseClient,
+  options: FetchSavedStructuresOptions = {},
 ): Promise<FetchSavedStructuresResult> {
-  const { data, error } = await client
+  const shouldFilterByClient = Boolean(options.clientName?.trim()) && !options.isAdmin;
+  const clientName = options.clientName?.trim();
+
+  let query = client
     .from("positions")
     .select(
       `position_id,
@@ -317,6 +326,7 @@ export async function fetchSavedStructures(
        closed_at,
        close_target_structure_id,
        linked_structure_ids,
+       client_name,
        archived,
        archived_at,
        archived_by,
@@ -332,6 +342,12 @@ export async function fetchSavedStructures(
     )
     .eq("archived", false)
     .order("entry_ts", { ascending: false });
+
+  if (shouldFilterByClient && clientName) {
+    query = query.eq("client_name", clientName);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     return { ok: false, error: error.message };
