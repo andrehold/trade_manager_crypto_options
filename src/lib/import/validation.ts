@@ -47,6 +47,7 @@ export const PositionSchema = z
     underlier: z.string().min(1),
     strategy_code: z.string().min(1),
     strategy_name: z.string().min(1),
+    client_name: z.string().min(1),
     options_structure: z.enum(OPTIONS_STRUCTURES),
     construction: z.enum(CONSTRUCTIONS),
     risk_defined: z.boolean(),

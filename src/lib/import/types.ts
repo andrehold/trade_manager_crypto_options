@@ -69,6 +69,7 @@ export type Position = {
   underlier: string;
   strategy_code: string;
   strategy_name: string;
+  client_name: string;
   options_structure: OptionsStructure;
   construction: Construction;
   risk_defined: boolean;

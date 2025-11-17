@@ -552,6 +552,7 @@ function buildInitialPayload(position: Position): PartialPayload {
     underlier: position.underlying,
     strategy_code: position.strategy ?? '',
     strategy_name: position.strategy ?? '',
+    client_name: position.clientName ?? '',
     options_structure: position.legs.length > 1 ? 'strangle' : 'single_option',
     construction: position.legs.length > 1 ? 'balanced' : 'outright',
     risk_defined: position.legs.length > 1,
@@ -1466,6 +1467,13 @@ export function StructureEntryOverlay({
       required: true,
       type: 'select',
       options: strategyOptions.map((option) => option.strategy_name),
+    },
+    {
+      label: 'Client',
+      path: 'position.client_name',
+      valueType: 'string',
+      required: true,
+      placeholder: 'e.g., Northwind Capital',
     },
     {
       label: 'Options Structure',

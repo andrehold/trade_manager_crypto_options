@@ -20,6 +20,7 @@ type PositionRow = {
   underlier: string | null;
   strategy_code: string | null;
   strategy_name: string | null;
+  client_name: string | null;
   options_structure: OptionsStructure | null;
   construction: Construction | null;
   risk_defined: boolean | null;
@@ -127,10 +128,11 @@ export async function fetchStructurePayload(
     .select(
       `position_id,
        program_id,
-       underlier,
-       strategy_code,
-       strategy_name,
-       options_structure,
+      underlier,
+      strategy_code,
+      strategy_name,
+      client_name,
+      options_structure,
        construction,
        risk_defined,
        lifecycle,
@@ -339,6 +341,7 @@ export async function fetchStructurePayload(
         Array.isArray(position.linked_structure_ids) && position.linked_structure_ids.length > 0
           ? position.linked_structure_ids
           : undefined,
+      client_name: position.client_name ?? '',
     },
     legs: legsPayload,
     fills: fillsPayload.length > 0 ? fillsPayload : undefined,
