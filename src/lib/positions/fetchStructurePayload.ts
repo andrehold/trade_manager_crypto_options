@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '../supabase';
 import type { ImportPayload } from '../import';
+import type { SupabaseClientScope } from './clientScope';
 import type {
   OptionsStructure,
   Construction,
@@ -119,11 +120,17 @@ function coalesceNumber(value: number | string | null | undefined): number | und
   return Number.isFinite(numeric) ? numeric : undefined;
 }
 
+export type FetchStructurePayloadOptions = { clientScope?: SupabaseClientScope };
+
 export async function fetchStructurePayload(
   client: SupabaseClient,
   positionId: string,
+  options: FetchStructurePayloadOptions = {},
 ): Promise<FetchStructurePayloadResult> {
-  const { data: positionRow, error: positionError } = await client
+  const clientName = options.clientScope?.clientName?.trim();
+  const restrictByClient = Boolean(clientName) && !options.clientScope?.isAdmin;
+
+  let positionQuery = client
     .from('positions')
     .select(
       `position_id,
@@ -167,8 +174,13 @@ export async function fetchStructurePayload(
        close_target_structure_id,
        linked_structure_ids`
     )
-    .eq('position_id', positionId)
-    .maybeSingle();
+    .eq('position_id', positionId);
+
+  if (restrictByClient && clientName) {
+    positionQuery = positionQuery.eq('client_name', clientName);
+  }
+
+  const { data: positionRow, error: positionError } = await positionQuery.maybeSingle();
 
   if (positionError) {
     return { ok: false, error: positionError.message };

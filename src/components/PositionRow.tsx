@@ -28,6 +28,7 @@ type PositionRowProps = {
   onSaved?: (positionId: string) => void
   onArchive?: (positionId: string) => void
   archiving?: boolean
+  clientScope: { activeClient: string | null; isAdmin: boolean }
 }
 
 function CellSpinner() {
@@ -63,6 +64,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   onSaved,
   onArchive,
   archiving = false,
+  clientScope,
 }) => {
   const [open, setOpen] = React.useState(false)
   const [showSaveOverlay, setShowSaveOverlay] = React.useState(false)
@@ -392,6 +394,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           onSaved={onSaved}
           mode={isUpdateMode ? 'update' : 'create'}
           existingPositionId={isUpdateMode ? p.id : undefined}
+          clientScope={clientScope}
         />
       ) : null}
     </>
@@ -411,7 +414,8 @@ export const PositionRow = React.memo(
     prev.disableSave === next.disableSave &&
     prev.onSaved === next.onSaved &&
     prev.onArchive === next.onArchive &&
-    prev.archiving === next.archiving
+    prev.archiving === next.archiving &&
+    prev.clientScope === next.clientScope
 )
 
 PositionRow.displayName = 'PositionRow'

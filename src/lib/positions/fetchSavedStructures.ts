@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "../supabase";
 import type { Position, TxnRow, Exchange } from "@/utils";
 import { daysTo, daysSince } from "@/utils";
+import type { SupabaseClientScope } from "./clientScope";
 
 type RawLeg = {
   leg_seq: number | null;
@@ -276,10 +277,16 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
   };
 }
 
+export type FetchSavedStructuresOptions = SupabaseClientScope;
+
 export async function fetchSavedStructures(
   client: SupabaseClient,
+  options: FetchSavedStructuresOptions = {},
 ): Promise<FetchSavedStructuresResult> {
-  const { data, error } = await client
+  const shouldFilterByClient = Boolean(options.clientName?.trim()) && !options.isAdmin;
+  const clientName = options.clientName?.trim();
+
+  let query = client
     .from("positions")
     .select(
       `position_id,
@@ -335,6 +342,12 @@ export async function fetchSavedStructures(
     )
     .eq("archived", false)
     .order("entry_ts", { ascending: false });
+
+  if (shouldFilterByClient && clientName) {
+    query = query.eq("client_name", clientName);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     return { ok: false, error: error.message };

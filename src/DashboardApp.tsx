@@ -18,6 +18,7 @@ import { PositionRow } from './components/PositionRow'
 import { ccGetBest } from './lib/venues/coincall'
 import { dbGetBest } from './lib/venues/deribit'
 import { archiveStructure, fetchSavedStructures } from './lib/positions'
+import { resolveClientAccess } from './features/auth/access'
 
 const CLIENT_LIST_STORAGE_KEY = 'tm_client_names_v1'
 const SELECTED_CLIENT_STORAGE_KEY = 'tm_selected_client_v1'
@@ -33,6 +34,10 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   React.useEffect(() => { devQuickTests(); }, []);
 
   const { user, loading: authLoading, supabaseConfigured } = useAuth();
+  const { isAdmin, clientName: lockedClientName } = React.useMemo(
+    () => resolveClientAccess(user),
+    [user],
+  );
   const supabase = React.useMemo(
     () => (supabaseConfigured ? tryGetSupabaseClient() : null),
     [supabaseConfigured],
@@ -47,36 +52,62 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     DEFAULT_CLIENT_NAME,
   );
 
+  React.useEffect(() => {
+    if (isAdmin) return;
+    const enforced = (lockedClientName ?? DEFAULT_CLIENT_NAME).trim() || DEFAULT_CLIENT_NAME;
+    setClientOptions((prev) => {
+      if (prev.length === 1 && prev[0] === enforced) return prev;
+      return [enforced];
+    });
+    setSelectedClient((prev) => (prev === enforced ? prev : enforced));
+  }, [isAdmin, lockedClientName, setClientOptions, setSelectedClient]);
+
   const [rawRowsByClient, setRawRowsByClient] = useLocalStorage<Record<string, any[]>>(
     RAW_ROWS_STORAGE_KEY,
     {} as Record<string, any[]>,
   );
-  const rawRows = rawRowsByClient[selectedClient] ?? [];
+  const activeClientName = React.useMemo(() => {
+    if (isAdmin) {
+      const preferred = selectedClient?.trim();
+      return preferred && preferred.length > 0
+        ? preferred
+        : clientOptions[0] ?? DEFAULT_CLIENT_NAME;
+    }
+    const locked = lockedClientName?.trim();
+    if (locked && locked.length > 0) return locked;
+    return selectedClient || DEFAULT_CLIENT_NAME;
+  }, [clientOptions, isAdmin, lockedClientName, selectedClient]);
+
+  const overlayClientScope = React.useMemo(
+    () => ({ activeClient: activeClientName, isAdmin }),
+    [activeClientName, isAdmin],
+  );
+  const rawRows = rawRowsByClient[activeClientName] ?? [];
   const setRawRows = React.useCallback(
     (next: any[] | ((prev: any[]) => any[])) => {
       setRawRowsByClient((prev) => {
-        const current = prev[selectedClient] ?? [];
+        const current = prev[activeClientName] ?? [];
         const resolved = typeof next === 'function' ? (next as (prev: any[]) => any[])(current) : next;
-        return { ...prev, [selectedClient]: resolved };
+        return { ...prev, [activeClientName]: resolved };
       });
     },
-    [selectedClient, setRawRowsByClient],
+    [activeClientName, setRawRowsByClient],
   );
 
   const [positionsByClient, setPositionsByClient] = useLocalStorage<Record<string, Position[]>>(
     POSITIONS_STORAGE_KEY,
     {} as Record<string, Position[]>,
   );
-  const positions = positionsByClient[selectedClient] ?? [];
+  const positions = positionsByClient[activeClientName] ?? [];
   const setPositions = React.useCallback(
     (next: Position[] | ((prev: Position[]) => Position[])) => {
       setPositionsByClient((prev) => {
-        const current = prev[selectedClient] ?? [];
+        const current = prev[activeClientName] ?? [];
         const resolved = typeof next === 'function' ? (next as (prev: Position[]) => Position[])(current) : next;
-        return { ...prev, [selectedClient]: resolved };
+        return { ...prev, [activeClientName]: resolved };
       });
     },
-    [selectedClient, setPositionsByClient],
+    [activeClientName, setPositionsByClient],
   );
   const [savedStructures, setSavedStructures] = React.useState<Position[]>([]);
   const [savedStructuresLoading, setSavedStructuresLoading] = React.useState(false);
@@ -114,6 +145,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   }, [clientOptions, selectedClient, setClientOptions, setSelectedClient]);
 
   React.useEffect(() => {
+    if (!isAdmin) return;
     const discovered = savedStructures
       .map((structure) => (structure.clientName ?? '').trim())
       .filter((name) => name.length > 0 && !clientOptions.includes(name));
@@ -126,15 +158,19 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         return next;
       });
     }
-  }, [savedStructures, clientOptions, setClientOptions]);
+  }, [savedStructures, clientOptions, setClientOptions, isAdmin]);
 
   const handleAddClient = React.useCallback(() => {
+    if (!isAdmin) {
+      alert('Client management is restricted to admin users.');
+      return;
+    }
     const nextName = prompt('Client name');
     const trimmed = nextName?.trim();
     if (!trimmed) return;
     setClientOptions((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
     setSelectedClient(trimmed);
-  }, [setClientOptions, setSelectedClient]);
+  }, [isAdmin, setClientOptions, setSelectedClient]);
 
   function handleFiles(files: FileList) {
     const file = files[0];
@@ -261,6 +297,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         const result = await archiveStructure(supabase, {
           positionId,
           archivedBy: user.id,
+          clientScope: { clientName: activeClientName, isAdmin },
         });
 
         if (!result.ok) {
@@ -280,7 +317,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         });
       }
     },
-    [supabase, user, savedStructures, refreshSavedStructures],
+    [supabase, user, savedStructures, refreshSavedStructures, activeClientName, isAdmin],
   );
 
   React.useEffect(() => {
@@ -293,7 +330,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
 
     let ignore = false;
     setSavedStructuresLoading(true);
-    fetchSavedStructures(supabase)
+    fetchSavedStructures(supabase, { clientName: activeClientName, isAdmin })
       .then((result) => {
         if (ignore) return;
         if (result.ok) {
@@ -318,7 +355,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     return () => {
       ignore = true;
     };
-  }, [supabase, user, savedStructuresVersion, selectedClient]);
+  }, [supabase, user, savedStructuresVersion, selectedClient, isAdmin, activeClientName]);
 
   const buildPositionsFromTransactions = React.useCallback((rows: TxnRow[]): Position[] => {
     const byPos = new Map<string, TxnRow[]>();
@@ -429,7 +466,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         source: 'local',
         closedAt: null,
         expiries: sortedExpiries,
-        clientName: selectedClient,
+        clientName: activeClientName,
       });
     }
     out.sort((a, b) => a.dte - b.dte);
@@ -730,6 +767,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
               className="bg-transparent text-sm font-semibold text-slate-900 focus:outline-none"
               value={selectedClient}
               onChange={(e) => setSelectedClient(e.target.value)}
+              disabled={!isAdmin}
             >
               {clientOptions.map((client) => (
                 <option key={client} value={client}>
@@ -741,10 +779,21 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
           <button
             type="button"
             onClick={handleAddClient}
-            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+            className={`rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold transition ${
+              isAdmin
+                ? 'text-slate-600 hover:bg-slate-100'
+                : 'text-slate-400 cursor-not-allowed bg-slate-50'
+            }`}
+            disabled={!isAdmin}
+            title={isAdmin ? undefined : 'Client creation is limited to admin users'}
           >
             + New
           </button>
+          {!isAdmin ? (
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Locked
+            </span>
+          ) : null}
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-3">
@@ -882,6 +931,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
                       disableSave
                       onArchive={handleArchiveStructure}
                       archiving={Boolean(archiving[p.id])}
+                      clientScope={overlayClientScope}
                     />
                   ))}
                 </tbody>
@@ -923,6 +973,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
                       markLoading={markFetch.inProgress}
                       allPositions={positionsForLinking}
                       onSaved={refreshSavedStructures}
+                      clientScope={overlayClientScope}
                     />
                   ))}
                 </tbody>
