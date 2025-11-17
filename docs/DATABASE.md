@@ -26,12 +26,11 @@ create table if not exists public.clients (
 );
 
 alter table public.positions
-  add column if not exists client_name text,
   add column if not exists client_id uuid references public.clients(client_id);
 
 insert into public.clients (client_name)
-select distinct p.client_name from public.positions p
-where p.client_name is not null
+select distinct client_name from public.positions
+where client_name is not null
 on conflict (client_name) do nothing;
 
 update public.positions p
