@@ -160,7 +160,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     }
   }, [savedStructures, clientOptions, setClientOptions, isAdmin]);
 
-  const handleAddClient = React.useCallback(() => {
+  const handleAddClient = React.useCallback(async () => {
     if (!isAdmin) {
       alert('Client management is restricted to admin users.');
       return;
@@ -168,9 +168,37 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     const nextName = prompt('Client name');
     const trimmed = nextName?.trim();
     if (!trimmed) return;
-    setClientOptions((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+
+    let isNewClient = false;
+    setClientOptions((prev) => {
+      if (prev.includes(trimmed)) return prev;
+      isNewClient = true;
+      return [...prev, trimmed];
+    });
     setSelectedClient(trimmed);
-  }, [isAdmin, setClientOptions, setSelectedClient]);
+
+    if (!isNewClient) return;
+
+    if (!supabase) {
+      console.warn('Supabase is not configured; skipping client database sync.');
+      return;
+    }
+
+    if (!user) {
+      alert('Sign in to Supabase to sync new clients.');
+      return;
+    }
+
+    const { error } = await supabase
+      .from('clients')
+      .insert({ client_name: trimmed })
+      .select('client_id')
+      .single();
+
+    if (error && error.code !== '23505') {
+      alert(`Failed to add client to database: ${error.message}`);
+    }
+  }, [isAdmin, setClientOptions, setSelectedClient, supabase, user]);
 
   function handleFiles(files: FileList) {
     const file = files[0];
