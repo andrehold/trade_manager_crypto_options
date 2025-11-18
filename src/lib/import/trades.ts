@@ -1,6 +1,7 @@
 // src/features/import/importTrades.ts
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveClientAccess } from "@/features/auth/access";
+import { ensureClientRecord } from "@/lib/clients/ensureClientRecord";
 import { tryGetSupabaseClient } from "../supabase";
 import { syncLinkedStructures } from "../positions/syncLinkedStructures";
 import type { SupabaseClientScope } from "../positions/clientScope";
@@ -316,7 +317,29 @@ export async function importTrades(
   }
 
   const normalizedClientName = resolvedClientName.trim();
+
+  let normalizedClientId: string | null = null;
+  if (effectiveIsAdmin) {
+    const ensured = await ensureClientRecord(supabase, normalizedClientName);
+    if (!ensured.ok) {
+      return {
+        ok: false as const,
+        error: `Failed to resolve client ${normalizedClientName}: ${ensured.error}`,
+      };
+    }
+    normalizedClientId = ensured.clientId;
+  } else {
+    normalizedClientId = access.clientId ?? null;
+    if (!normalizedClientId) {
+      return {
+        ok: false as const,
+        error: "Client assignment is required. Ask an admin to configure your workspace client.",
+      };
+    }
+  }
+
   normalizedPosition.client_name = normalizedClientName;
+  normalizedPosition.client_id = normalizedClientId;
   const supabaseClientScope: SupabaseClientScope = {
     clientName: normalizedClientName,
     isAdmin: effectiveIsAdmin,
