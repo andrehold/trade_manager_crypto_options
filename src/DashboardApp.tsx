@@ -115,7 +115,11 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   const [savedStructuresVersion, setSavedStructuresVersion] = React.useState(0);
   const [archiving, setArchiving] = React.useState<Record<string, boolean>>({});
   const [showMapper, setShowMapper] = React.useState<{ headers: string[] } | null>(null);
-  const [showReview, setShowReview] = React.useState<{ rows: TxnRow[]; excludedRows: TxnRow[] } | null>(null);
+  const [showReview, setShowReview] = React.useState<{
+    rows: TxnRow[];
+    excludedRows: TxnRow[];
+    duplicateTradeIds?: string[];
+  } | null>(null);
   const [alertsOnly, setAlertsOnly] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [visibleCols, setVisibleCols] = useLocalStorage<string[]>("visible_cols_v2", [
@@ -238,7 +242,72 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     });
   }
 
-  function startImport(mapping: Record<string, string>) {
+  const filterRowsWithExistingTradeIds = React.useCallback(
+    async (rows: TxnRow[]) => {
+      if (!supabase) {
+        return { filtered: rows, duplicates: [] as TxnRow[] };
+      }
+
+      const uniqueTradeIds = Array.from(
+        new Set(
+          rows
+            .map((row) => row.trade_id?.trim())
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
+
+      if (uniqueTradeIds.length === 0) {
+        return { filtered: rows, duplicates: [] as TxnRow[] };
+      }
+
+      const clientFilter = activeClientName?.trim();
+      const restrictByClient = Boolean(clientFilter) && !isAdmin;
+      const duplicates = new Set<string>();
+      const chunkSize = 99;
+
+      for (let start = 0; start < uniqueTradeIds.length; start += chunkSize) {
+        const chunk = uniqueTradeIds.slice(start, start + chunkSize);
+        let query = supabase
+          .from('fills')
+          .select(restrictByClient ? 'trade_id, positions!inner(client_name)' : 'trade_id')
+          .in('trade_id', chunk);
+
+        if (restrictByClient && clientFilter) {
+          query = query.eq('positions.client_name', clientFilter);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+          console.warn('Failed to check existing trade IDs in fills table.', error);
+          return { filtered: rows, duplicates: [] as TxnRow[] };
+        }
+
+        for (const entry of data ?? []) {
+          const id = typeof entry.trade_id === 'string' ? entry.trade_id.trim() : '';
+          if (id) duplicates.add(id);
+        }
+      }
+
+      if (!duplicates.size) {
+        return { filtered: rows, duplicates: [] as TxnRow[] };
+      }
+
+      const filtered = rows.filter((row) => {
+        const id = row.trade_id?.trim();
+        return !id || !duplicates.has(id);
+      });
+
+      const duplicateRows = rows.filter((row) => {
+        const id = row.trade_id?.trim();
+        return Boolean(id && duplicates.has(id));
+      });
+
+      return { filtered, duplicates: duplicateRows };
+    },
+    [supabase, activeClientName, isAdmin],
+  );
+
+  async function startImport(mapping: Record<string, string>) {
     const exchange = (mapping as any).__exchange || 'deribit';
     setSelectedExchange(exchange as Exchange);
     const mappedRaw: TxnRow[] = rawRows.map((r) => {
@@ -272,8 +341,21 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       if (parsed) optionsOnly.push(row); else excludedRows.push(row);
     }
 
+    const { filtered, duplicates } = await filterRowsWithExistingTradeIds(optionsOnly);
+    const duplicateTradeIds = Array.from(
+      new Set(
+        duplicates
+          .map((row) => row.trade_id?.trim())
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+
     setShowMapper(null);
-    setShowReview({ rows: optionsOnly, excludedRows });
+    setShowReview({
+      rows: filtered,
+      excludedRows,
+      duplicateTradeIds: duplicateTradeIds.length ? duplicateTradeIds : undefined,
+    });
   }
 
   function finalizeImport(selectedRows: TxnRow[]) {
@@ -1013,6 +1095,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         <ReviewOverlay
           rows={showReview.rows}
           excludedRows={showReview.excludedRows}
+          duplicateTradeIds={showReview.duplicateTradeIds}
           onConfirm={finalizeImport}
           onCancel={() => setShowReview(null)}
         />
