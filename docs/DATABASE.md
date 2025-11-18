@@ -26,11 +26,12 @@ create table if not exists public.clients (
 );
 
 alter table public.positions
+  add column if not exists client_name text,
   add column if not exists client_id uuid references public.clients(client_id);
 
 insert into public.clients (client_name)
-select distinct client_name from public.positions
-where client_name is not null
+select distinct p.client_name from public.positions p
+where p.client_name is not null
 on conflict (client_name) do nothing;
 
 update public.positions p
@@ -44,16 +45,25 @@ alter table public.positions
 create index if not exists positions_client_id_idx on public.positions (client_id);
 ```
 
-2. **Expose helper functions** so RLS predicates can simply call `auth.current_client_id()` and `auth.is_admin()`.
+2. **Expose helper functions** in a writable schema so RLS predicates can simply call `helpers.current_client_id()` and `helpers.is_admin()`.
 
 ```sql
-create or replace function auth.current_client_id() returns uuid as $$
-  select nullif(auth.jwt()->>'client_id', '')::uuid;
-$$ language sql stable;
+create schema if not exists helpers authorization current_user;
 
-create or replace function auth.is_admin() returns boolean as $$
+create or replace function helpers.current_client_id() returns uuid
+language sql stable security definer as $$
+  select nullif(auth.jwt()->>'client_id', '')::uuid;
+$$;
+
+create or replace function helpers.is_admin() returns boolean
+language sql stable security definer as $$
   select coalesce(auth.jwt()->>'role', '') = 'admin';
-$$ language sql stable;
+$$;
+
+revoke execute on function helpers.current_client_id() from public;
+revoke execute on function helpers.is_admin() from public;
+grant execute on function helpers.current_client_id() to authenticated;
+grant execute on function helpers.is_admin() to authenticated;
 ```
 
 3. **Enable RLS** on every table that exposes customer data.
@@ -61,50 +71,50 @@ $$ language sql stable;
 ```sql
 alter table public.clients enable row level security;
 create policy "clients_admin_only" on public.clients
-  for all using (auth.is_admin()) with check (auth.is_admin());
+  for all using (helpers.is_admin()) with check (helpers.is_admin());
 
 alter table public.positions enable row level security;
 create policy "positions_admin_full" on public.positions
-  for all using (auth.is_admin()) with check (auth.is_admin());
+  for all using (helpers.is_admin()) with check (helpers.is_admin());
 create policy "positions_by_client" on public.positions
-  for select using (client_id = auth.current_client_id())
-  with check (client_id = auth.current_client_id());
+  for select using (client_id = helpers.current_client_id())
+  with check (client_id = helpers.current_client_id());
 
 alter table public.legs enable row level security;
 create policy "legs_admin_full" on public.legs
-  for all using (auth.is_admin()) with check (auth.is_admin());
+  for all using (helpers.is_admin()) with check (helpers.is_admin());
 create policy "legs_by_client" on public.legs
   for select using (
     exists (
       select 1 from public.positions p
       where p.position_id = public.legs.position_id
-        and (auth.is_admin() or p.client_id = auth.current_client_id())
+        and (helpers.is_admin() or p.client_id = helpers.current_client_id())
     )
   )
   with check (
     exists (
       select 1 from public.positions p
       where p.position_id = public.legs.position_id
-        and (auth.is_admin() or p.client_id = auth.current_client_id())
+        and (helpers.is_admin() or p.client_id = helpers.current_client_id())
     )
   );
 
 alter table public.fills enable row level security;
 create policy "fills_admin_full" on public.fills
-  for all using (auth.is_admin()) with check (auth.is_admin());
+  for all using (helpers.is_admin()) with check (helpers.is_admin());
 create policy "fills_by_client" on public.fills
   for select using (
     exists (
       select 1 from public.positions p
       where p.position_id = public.fills.position_id
-        and (auth.is_admin() or p.client_id = auth.current_client_id())
+        and (helpers.is_admin() or p.client_id = helpers.current_client_id())
     )
   )
   with check (
     exists (
       select 1 from public.positions p
       where p.position_id = public.fills.position_id
-        and (auth.is_admin() or p.client_id = auth.current_client_id())
+        and (helpers.is_admin() or p.client_id = helpers.current_client_id())
     )
   );
 ```
