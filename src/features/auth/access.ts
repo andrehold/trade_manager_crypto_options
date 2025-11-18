@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js'
 type ClientAccess = {
   isAdmin: boolean
   clientName: string | null
+  clientId: string | null
 }
 
 function getAdminEmailAllowlist(): string[] {
@@ -45,6 +46,27 @@ function extractClientNameFromUser(user: User | null): string | null {
   return null
 }
 
+function extractClientIdFromUser(user: User | null): string | null {
+  const candidates: Array<unknown> = []
+  if (user?.user_metadata) {
+    candidates.push((user.user_metadata as Record<string, unknown>).client_id)
+  }
+  if (user?.app_metadata) {
+    candidates.push((user.app_metadata as Record<string, unknown>).client_id)
+  }
+
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string') continue
+    const trimmed = candidate.trim()
+    if (trimmed.length === 0) continue
+    if (/^[0-9a-fA-F-]{36}$/.test(trimmed)) {
+      return trimmed
+    }
+  }
+
+  return null
+}
+
 export function resolveClientAccess(user: User | null): ClientAccess {
   const allowlist = getAdminEmailAllowlist()
   const userEmail = normalizeEmail(user?.email ?? null)
@@ -55,7 +77,8 @@ export function resolveClientAccess(user: User | null): ClientAccess {
   const allowlistEmpty = allowlist.length === 0
   const isAdmin = roleIsAdmin || allowlistEmpty || allowlist.includes(userEmail ?? '')
   const clientName = extractClientNameFromUser(user)
-  return { isAdmin, clientName }
+  const clientId = extractClientIdFromUser(user)
+  return { isAdmin, clientName, clientId }
 }
 
 export type { ClientAccess }

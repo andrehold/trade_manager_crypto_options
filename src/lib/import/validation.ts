@@ -48,6 +48,7 @@ export const PositionSchema = z
     strategy_code: z.string().min(1),
     strategy_name: z.string().min(1),
     client_name: z.string().min(1),
+    client_id: z.string().uuid().optional().nullable(),
     options_structure: z.enum(OPTIONS_STRUCTURES),
     construction: z.enum(CONSTRUCTIONS),
     risk_defined: z.boolean(),

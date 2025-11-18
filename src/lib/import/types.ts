@@ -70,6 +70,7 @@ export type Position = {
   strategy_code: string;
   strategy_name: string;
   client_name: string;
+  client_id?: string | null;
   options_structure: OptionsStructure;
   construction: Construction;
   risk_defined: boolean;
