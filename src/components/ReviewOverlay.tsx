@@ -6,7 +6,13 @@ const autoStructureKey = (row: TxnRow, index: number) => {
   return normalized === 'NO_TS' ? `NO_TS_${index}` : normalized
 }
 
-export function ReviewOverlay({ rows, excludedRows, onConfirm, onCancel }: { rows: TxnRow[]; excludedRows: TxnRow[]; onConfirm: (rows: TxnRow[]) => void; onCancel: () => void; }) {
+export function ReviewOverlay({ rows, excludedRows, onConfirm, onCancel, duplicateTradeIds }: {
+  rows: TxnRow[];
+  excludedRows: TxnRow[];
+  duplicateTradeIds?: string[];
+  onConfirm: (rows: TxnRow[]) => void;
+  onCancel: () => void;
+}) {
   const [activeTab, setActiveTab] = React.useState<'included'|'excluded'>('included');
   const [selected, setSelected] = React.useState<boolean[]>(() => rows.map(() => true));
 
@@ -67,6 +73,14 @@ export function ReviewOverlay({ rows, excludedRows, onConfirm, onCancel }: { row
             <button className={`px-3 py-1 rounded-lg border ${activeTab==='excluded' ? 'bg-slate-900 text-white' : ''}`} onClick={() => setActiveTab('excluded')}>Excluded ({excludedRows.length})</button>
           </div>
         </div>
+        {duplicateTradeIds?.length ? (
+          <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 text-sm p-3">
+            <p className="font-medium">{duplicateTradeIds.length === 1 ? '1 row was hidden because its trade ID already exists in saved fills.' : `${duplicateTradeIds.length} rows were hidden because their trade IDs already exist in saved fills.`}</p>
+            <p className="text-xs mt-1">
+              Trade IDs: {duplicateTradeIds.slice(0, 5).join(', ')}{duplicateTradeIds.length > 5 ? '…' : ''}
+            </p>
+          </div>
+        ) : null}
         {activeTab==='included' && (
           <>
             <p className="text-sm text-slate-600 mb-3">Uncheck any rows you don’t want to import. Lines with the same second form one “trade structure”.</p>
