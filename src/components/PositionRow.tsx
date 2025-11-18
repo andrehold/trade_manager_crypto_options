@@ -157,18 +157,6 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
             </div>
           </td>
         )}
-        {visibleCols.includes('symbol') && (
-          <td className="p-3 align-top">
-            <div className="flex flex-col gap-1">
-              <span className="font-medium text-slate-800">{p.underlying}</span>
-              {p.clientName ? (
-                <span className="inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                  {p.clientName}
-                </span>
-              ) : null}
-            </div>
-          </td>
-        )}
         {visibleCols.includes('structure') && <td className="p-3 align-top">{p.structureId}</td>}
         {visibleCols.includes('dte') && <td className="p-3 align-top">{p.dte}</td>}
         {visibleCols.includes('openSince') && (
