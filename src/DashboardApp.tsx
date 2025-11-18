@@ -119,7 +119,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   const [alertsOnly, setAlertsOnly] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [visibleCols, setVisibleCols] = useLocalStorage<string[]>("visible_cols_v2", [
-    "status","symbol","structure","dte","openSince","legs","strategy","pnl","pnlpct","delta","gamma","theta","vega","rho","playbook"
+    "status","structure","dte","openSince","legs","strategy","pnl","pnlpct","delta","gamma","theta","vega","rho","playbook"
   ]);
   const [selectedExchange, setSelectedExchange] = React.useState<Exchange>('deribit');
   // price per unique leg "exchange:symbol"
@@ -555,7 +555,6 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       <tr>
         <th className="p-3 text-left w-10"> </th>
         {visibleCols.includes("status") && <th className="p-3 text-left">Status</th>}
-        {visibleCols.includes("symbol") && <th className="p-3 text-left">Symbol</th>}
         {visibleCols.includes("structure") && <th className="p-3 text-left">Structure</th>}
         {visibleCols.includes("dte") && <th className="p-3 text-left">DTE</th>}
         {visibleCols.includes("openSince") && <th className="p-3 text-left">Open Since (days)</th>}
@@ -583,7 +582,6 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   function ColumnPicker() {
     const all = [
       { key: "status", label: "Status" },
-      { key: "symbol", label: "Symbol" },
       { key: "structure", label: "Structure" },
       { key: "dte", label: "DTE" },
       { key: "openSince", label: "Open Since (days)" },
