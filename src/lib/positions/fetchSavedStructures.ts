@@ -251,6 +251,7 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
     type: legs.length > 1 ? "Multi-leg" : "Single",
     openSinceDays,
     strategy: raw.strategy_name_at_entry || raw.strategy_name || raw.strategy_code || undefined,
+    strategyCode: raw.strategy_code ?? undefined,
     realizedPnl: 0,
     netPremium,
     pnlPct: null,

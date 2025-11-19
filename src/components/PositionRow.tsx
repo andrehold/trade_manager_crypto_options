@@ -9,6 +9,7 @@ import {
   positionGreeks,
   fmtGreek,
   getLegMarkRef,
+  legNetQty,
   type LegMarkRef,
 } from '../utils'
 import { StructureEntryOverlay } from './StructureEntryOverlay'
@@ -50,6 +51,48 @@ function CellSpinner() {
       />
     </svg>
   )
+}
+
+const MONTH_ABBREVIATIONS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+
+function formatExpiryToken(expiryISO?: string | null): string | null {
+  if (!expiryISO) return null
+  const trimmed = expiryISO.trim()
+  if (!trimmed || trimmed === '—') return null
+  const normalized = trimmed.length === 10 ? `${trimmed}T00:00:00Z` : trimmed
+  const date = new Date(normalized)
+  if (Number.isNaN(date.getTime())) {
+    return trimmed.toUpperCase()
+  }
+  const day = String(date.getUTCDate()).padStart(2, '0')
+  const month = MONTH_ABBREVIATIONS[date.getUTCMonth()]
+  const year = String(date.getUTCFullYear()).slice(-2)
+  if (!month) return trimmed.toUpperCase()
+  return `${day}${month}${year}`
+}
+
+function formatStrikeLabel(strike?: number | null): string | null {
+  if (!Number.isFinite(strike as number)) return null
+  const value = strike as number
+  if (Number.isInteger(value)) return value.toFixed(0)
+  return value.toFixed(4).replace(/\.0+$/, '').replace(/0+$/, '').replace(/\.$/, '')
+}
+
+function buildLegSummary(legs: Position['legs']): string {
+  if (!Array.isArray(legs) || legs.length === 0) return ''
+  const tokens = legs
+    .map((leg) => {
+      if (!leg) return null
+      const signedQty = legNetQty(leg)
+      if (!Number.isFinite(signedQty) || signedQty === 0) return null
+      const sign = signedQty > 0 ? '+' : '-'
+      const opt = (leg.optionType ?? '').toUpperCase().startsWith('P') ? 'P' : 'C'
+      const strikeText = formatStrikeLabel(leg.strike)
+      if (!strikeText) return null
+      return `${sign}${opt}${strikeText}`
+    })
+    .filter((token): token is string => Boolean(token))
+  return tokens.join('/')
 }
 
 const PositionRowComponent: React.FC<PositionRowProps> = ({
@@ -131,6 +174,32 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
     return p.playbook.trim().length > 0
   }, [p.playbook])
 
+  const structureChipDetails = React.useMemo(() => {
+    const underlyingText = (p.underlying ?? '').toUpperCase() || '—'
+    const expiryToken = formatExpiryToken(p.expiryISO)
+    const structureCodeText = (p.strategyCode ?? '').toUpperCase() || '—'
+    const legsSummary = buildLegSummary(p.legs)
+    const summaryParts = [
+      underlyingText !== '—' ? underlyingText : null,
+      expiryToken,
+      structureCodeText !== '—' ? structureCodeText : null,
+    ].filter((part): part is string => Boolean(part))
+    const summaryLine = summaryParts.join(' ')
+    const fallbackSummary = (summaryLine || legsSummary || underlyingText || '').trim()
+    const expiryDisplay = expiryToken ?? (p.expiryISO?.trim() || '—')
+
+    return {
+      hasStructureChip: Boolean(fallbackSummary),
+      summaryLine: fallbackSummary || 'Structure details',
+      underlying: underlyingText,
+      expiryDisplay: expiryDisplay || '—',
+      structureCode: structureCodeText,
+      legsSummary: legsSummary || '—',
+    }
+  }, [p.underlying, p.expiryISO, p.strategyCode, p.legs])
+
+  const showStructureChip = structureChipDetails.hasStructureChip
+
   return (
     <>
       <tr className="border-b last:border-0 hover:bg-slate-50">
@@ -165,11 +234,28 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
         {visibleCols.includes('legs') && <td className="p-3 align-top">{p.legsCount}</td>}
         {visibleCols.includes('strategy') && (
           <td className="p-3 align-top">
-            {programLabel || strategyLabel ? (
+            {programLabel || strategyLabel || showStructureChip ? (
               <div className="flex flex-col gap-1">
                 {programLabel && (
                   <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm">
                     {programLabel}
+                  </span>
+                )}
+                {showStructureChip && (
+                  <span className="inline-flex flex-col items-start rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
+                    <span className="font-semibold text-slate-700">{structureChipDetails.summaryLine}</span>
+                    <span className="text-[11px] text-slate-500">
+                      <span className="font-medium text-slate-600">Underlying:</span> {structureChipDetails.underlying}
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      <span className="font-medium text-slate-600">Expiry:</span> {structureChipDetails.expiryDisplay}
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      <span className="font-medium text-slate-600">Structure Code:</span> {structureChipDetails.structureCode}
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      <span className="font-medium text-slate-600">Legs:</span> {structureChipDetails.legsSummary}
+                    </span>
                   </span>
                 )}
                 {strategyLabel && (
