@@ -71,11 +71,12 @@ function formatExpiryToken(expiryISO?: string | null): string | null {
   return `${day}${month}${year}`
 }
 
-function formatStrikeLabel(strike?: number | null): string | null {
+function formatCompactStrike(strike?: number | null): string | null {
   if (!Number.isFinite(strike as number)) return null
-  const value = strike as number
-  if (Number.isInteger(value)) return value.toFixed(0)
-  return value.toFixed(4).replace(/\.0+$/, '').replace(/0+$/, '').replace(/\.$/, '')
+  const base = (strike as number) / 1000
+  if (!Number.isFinite(base)) return null
+  if (Number.isInteger(base)) return base.toFixed(0)
+  return base.toFixed(3).replace(/\.0+$/, '').replace(/0+$/, '').replace(/\.$/, '')
 }
 
 function buildLegSummary(legs: Position['legs']): string {
@@ -87,12 +88,22 @@ function buildLegSummary(legs: Position['legs']): string {
       if (!Number.isFinite(signedQty) || signedQty === 0) return null
       const sign = signedQty > 0 ? '+' : '-'
       const opt = (leg.optionType ?? '').toUpperCase().startsWith('P') ? 'P' : 'C'
-      const strikeText = formatStrikeLabel(leg.strike)
+      const strikeText = formatCompactStrike(leg.strike)
       if (!strikeText) return null
       return `${sign}${opt}${strikeText}`
     })
     .filter((token): token is string => Boolean(token))
   return tokens.join('/')
+}
+
+function deriveLegSizeToken(legs: Position['legs']): string | null {
+  for (const leg of legs) {
+    const qty = Math.abs(legNetQty(leg))
+    if (!Number.isFinite(qty) || qty === 0) continue
+    if (Number.isInteger(qty)) return `x${qty}`
+    return `x${qty.toFixed(2).replace(/\.0+$/, '').replace(/0+$/, '').replace(/\.$/, '')}`
+  }
+  return null
 }
 
 const PositionRowComponent: React.FC<PositionRowProps> = ({
@@ -175,26 +186,25 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   }, [p.playbook])
 
   const structureChipDetails = React.useMemo(() => {
-    const underlyingText = (p.underlying ?? '').toUpperCase() || '—'
-    const expiryToken = formatExpiryToken(p.expiryISO)
-    const structureCodeText = (p.strategyCode ?? '').toUpperCase() || '—'
+    const underlyingText = (p.underlying ?? '').toUpperCase().trim()
+    const expiryToken = formatExpiryToken(p.expiryISO) ?? p.expiryISO?.trim() ?? ''
+    const structureCodeText = (p.strategyCode ?? '').toUpperCase().trim()
+    const legSizeToken = deriveLegSizeToken(p.legs)
     const legsSummary = buildLegSummary(p.legs)
-    const summaryParts = [
-      underlyingText !== '—' ? underlyingText : null,
-      expiryToken,
-      structureCodeText !== '—' ? structureCodeText : null,
-    ].filter((part): part is string => Boolean(part))
-    const summaryLine = summaryParts.join(' ')
+
+    const leadingParts = [underlyingText || null, expiryToken || null, structureCodeText || null]
+      .filter((part): part is string => Boolean(part))
+      .join(' ')
+
+    const withSize = legSizeToken ? `${leadingParts} ${legSizeToken}`.trim() : leadingParts
+    const summaryLine = withSize
+      ? (legsSummary ? `${withSize} : ${legsSummary}` : withSize)
+      : legsSummary
     const fallbackSummary = (summaryLine || legsSummary || underlyingText || '').trim()
-    const expiryDisplay = expiryToken ?? (p.expiryISO?.trim() || '—')
 
     return {
       hasStructureChip: Boolean(fallbackSummary),
-      summaryLine: fallbackSummary || 'Structure details',
-      underlying: underlyingText,
-      expiryDisplay: expiryDisplay || '—',
-      structureCode: structureCodeText,
-      legsSummary: legsSummary || '—',
+      summaryLine: (fallbackSummary || 'Structure details').replace(/\s+/g, ' ').trim(),
     }
   }, [p.underlying, p.expiryISO, p.strategyCode, p.legs])
 
@@ -242,20 +252,8 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                   </span>
                 )}
                 {showStructureChip && (
-                  <span className="inline-flex flex-col items-start rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
-                    <span className="font-semibold text-slate-700">{structureChipDetails.summaryLine}</span>
-                    <span className="text-[11px] text-slate-500">
-                      <span className="font-medium text-slate-600">Underlying:</span> {structureChipDetails.underlying}
-                    </span>
-                    <span className="text-[11px] text-slate-500">
-                      <span className="font-medium text-slate-600">Expiry:</span> {structureChipDetails.expiryDisplay}
-                    </span>
-                    <span className="text-[11px] text-slate-500">
-                      <span className="font-medium text-slate-600">Structure Code:</span> {structureChipDetails.structureCode}
-                    </span>
-                    <span className="text-[11px] text-slate-500">
-                      <span className="font-medium text-slate-600">Legs:</span> {structureChipDetails.legsSummary}
-                    </span>
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 shadow-sm">
+                    {structureChipDetails.summaryLine}
                   </span>
                 )}
                 {strategyLabel && (
