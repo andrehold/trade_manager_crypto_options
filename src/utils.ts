@@ -49,6 +49,7 @@ export interface Position {
   type: 'Single' | 'Multi-leg';
   openSinceDays?: number | null;
   strategy?: string;
+  strategyCode?: string;
   realizedPnl: number;
   netPremium: number;
   pnlPct?: number | null;
