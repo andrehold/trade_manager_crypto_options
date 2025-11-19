@@ -12,7 +12,7 @@ import {
   useLocalStorage, devQuickTests,
   parseActionSide, toNumber, parseInstrumentByExchange, normalizeSecond,
   daysTo, daysSince, fifoMatchAndRealize, classifyStatus,
-  Exchange, getLegMarkRef
+  Exchange, getLegMarkRef, fmtGreek
 } from './utils'
 import { PositionRow } from './components/PositionRow'
 import { ccGetBest } from './lib/venues/coincall'
@@ -25,6 +25,16 @@ const SELECTED_CLIENT_STORAGE_KEY = 'tm_selected_client_v1'
 const RAW_ROWS_STORAGE_KEY = 'deribit_raw_rows_by_client_v1'
 const POSITIONS_STORAGE_KEY = 'deribit_positions_by_client_v1'
 const DEFAULT_CLIENT_NAME = 'General'
+
+const GREEK_SUMMARY_FIELDS = [
+  { key: 'delta', label: 'Delta', symbol: 'Δ' },
+  { key: 'gamma', label: 'Gamma', symbol: 'Γ' },
+  { key: 'theta', label: 'Theta', symbol: 'Θ' },
+  { key: 'vega', label: 'Vega', symbol: 'V' },
+  { key: 'rho', label: 'Rho', symbol: 'Ρ' },
+] as const
+
+type GreekKey = typeof GREEK_SUMMARY_FIELDS[number]['key']
 
 type DashboardAppProps = {
   onOpenPlaybookIndex?: () => void
@@ -621,6 +631,35 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     [matchesClientSelection, matchesFilter, savedStructures],
   );
 
+  const portfolioGreeks = React.useMemo(() => {
+    const totals: Record<GreekKey, number> = {
+      delta: 0,
+      gamma: 0,
+      theta: 0,
+      vega: 0,
+      rho: 0,
+    };
+    const hasValues: Record<GreekKey, boolean> = {
+      delta: false,
+      gamma: false,
+      theta: false,
+      vega: false,
+      rho: false,
+    };
+
+    for (const position of filteredSaved) {
+      for (const field of GREEK_SUMMARY_FIELDS) {
+        const value = position.greeks?.[field.key];
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          totals[field.key] += value;
+          hasValues[field.key] = true;
+        }
+      }
+    }
+
+    return { totals, hasValues };
+  }, [filteredSaved]);
+
   const noopUpdate = React.useCallback((_id: string, _updates: Partial<Position>) => {
     // Saved structures are read-only in the UI.
   }, []);
@@ -1019,6 +1058,31 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
           </div>
         </div>
       )}
+
+      <div className="px-6 pt-3">
+        <div className="bg-white rounded-2xl shadow border overflow-hidden">
+          <div className="flex flex-col gap-1 px-4 py-3 border-b text-sm font-medium text-slate-700 sm:flex-row sm:items-center sm:justify-between">
+            <span>Portfolio Greeks</span>
+            <span className="text-xs font-normal text-slate-500">Based on saved structures</span>
+          </div>
+          <div className="grid grid-cols-2 divide-y divide-slate-100 sm:grid-cols-3 sm:divide-y-0 sm:divide-x lg:grid-cols-5">
+            {GREEK_SUMMARY_FIELDS.map(({ key, label, symbol }) => {
+              const valueText = portfolioGreeks.hasValues[key]
+                ? fmtGreek(portfolioGreeks.totals[key])
+                : '—';
+              return (
+                <div key={key} className="px-4 py-4 text-center">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 flex items-center justify-center gap-1">
+                    <span className="text-sm text-slate-700">{symbol}</span>
+                    {label}
+                  </div>
+                  <div className="mt-1 text-xl font-semibold text-slate-900">{valueText}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
 
       <div className="px-6 py-3">
         <div className="bg-white rounded-2xl shadow border overflow-hidden">
