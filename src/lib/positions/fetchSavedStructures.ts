@@ -220,6 +220,7 @@ function normalizeLifecycle(raw: string | null | undefined): "open" | "close" | 
 function mapPosition(raw: RawPosition, programNames: Map<string, string>): Position {
   const underlier = (raw.underlier ?? "").toUpperCase();
   const exchange = inferExchange(raw);
+  const netDelta = parseNumeric(raw.net_delta);
   const legs = (raw.legs ?? [])
     .map((leg, index) => mapLeg(raw, leg, index, exchange))
     .filter((leg): leg is NonNullable<typeof leg> => Boolean(leg));
@@ -257,7 +258,7 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
     pnlPct: null,
     status,
     greeks: {
-      delta: raw.net_delta ?? null,
+      delta: netDelta,
       gamma: null,
       theta: null,
       vega: null,
