@@ -1,18 +1,24 @@
 import React from 'react'
 import { TxnRow, normalizeSecond } from '../utils'
 
+export type ReviewStructureOption = { value: string; label: string }
+
 const autoStructureKey = (row: TxnRow, index: number) => {
   const normalized = normalizeSecond(row.timestamp)
   return normalized === 'NO_TS' ? `NO_TS_${index}` : normalized
 }
 
-export function ReviewOverlay({ rows, excludedRows, onConfirm, onCancel, duplicateTradeIds }: {
+type ReviewOverlayProps = {
   rows: TxnRow[];
   excludedRows: TxnRow[];
   duplicateTradeIds?: string[];
   onConfirm: (rows: TxnRow[]) => void;
   onCancel: () => void;
-}) {
+  availableStructures?: ReviewStructureOption[];
+}
+
+export function ReviewOverlay(props: ReviewOverlayProps) {
+  const { rows, excludedRows, onConfirm, onCancel, duplicateTradeIds } = props
   const [activeTab, setActiveTab] = React.useState<'included'|'excluded'>('included');
   const [selected, setSelected] = React.useState<boolean[]>(() => rows.map(() => true));
 
@@ -27,20 +33,32 @@ export function ReviewOverlay({ rows, excludedRows, onConfirm, onCancel, duplica
     });
   }, [rows]);
   const [structureNumbers, setStructureNumbers] = React.useState<number[]>(autoStructureDefaults);
+  const [linkedStructures, setLinkedStructures] = React.useState<(string | null)[]>(() => rows.map(() => null));
 
   // recompute defaults anytime rows change
   React.useEffect(() => {
     setStructureNumbers(autoStructureDefaults);
-  }, [autoStructureDefaults]);
+    setLinkedStructures(rows.map(() => null));
+  }, [autoStructureDefaults, rows]);
 
-  const structures = React.useMemo(() => {
-    const m = new Map<string, number>();
-    rows.forEach((r, idx) => {
-      const k = autoStructureKey(r, idx);
-      m.set(k, (m.get(k) || 0) + 1);
-    });
-    return m;
-  }, [rows]);
+  const availableStructures = React.useMemo(
+    () => props.availableStructures ?? [],
+    [props.availableStructures],
+  );
+
+  const availableStructureMap = React.useMemo(() => {
+    const map = new Map<string, ReviewStructureOption>();
+    for (const option of availableStructures) {
+      map.set(option.value, option);
+    }
+    return map;
+  }, [availableStructures]);
+
+  React.useEffect(() => {
+    setLinkedStructures((prev) =>
+      prev.map((value) => (value && availableStructureMap.has(value) ? value : null)),
+    );
+  }, [availableStructureMap]);
 
   const toggleAll = (v: boolean) => setSelected(Array(rows.length).fill(v));
 
@@ -113,11 +131,46 @@ export function ReviewOverlay({ rows, excludedRows, onConfirm, onCancel, duplica
                 <tbody>
                   {rows.map((r, i) => {
                     const structure = normalizeSecond(r.timestamp);
+                    const selectedStructureId = linkedStructures[i];
+                    const selectedStructureLabel = selectedStructureId
+                      ? availableStructureMap.get(selectedStructureId)?.label ?? selectedStructureId
+                      : null;
+                    const hasSavedStructures = availableStructures.length > 0;
                     return (
                       <tr key={i} className="border-t">
                         <td className="p-2"><input type="checkbox" checked={selected[i]} onChange={(e) => setSelected((prev) => { const cp = [...prev]; cp[i] = e.target.checked; return cp; })} /></td>
                         <td className="p-2">{r.timestamp || '—'}</td>
-                        <td className="p-2">{structure}</td>
+                        <td className="p-2 align-top">
+                          <div className="flex flex-col gap-1">
+                            <select
+                              className="border rounded-lg px-2 py-1 text-sm bg-white disabled:bg-slate-50"
+                              value={selectedStructureId ?? ''}
+                              onChange={(e) =>
+                                setLinkedStructures((prev) => {
+                                  const cp = [...prev];
+                                  const nextValue = e.target.value;
+                                  cp[i] = nextValue.length ? nextValue : null;
+                                  return cp;
+                                })
+                              }
+                              disabled={!hasSavedStructures}
+                            >
+                              <option value="">{`Auto • ${structure}`}</option>
+                              {availableStructures.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                            <span className={`text-xs ${selectedStructureId ? 'text-emerald-600' : 'text-slate-500'}`}>
+                              {selectedStructureId
+                                ? `Linked to ${selectedStructureLabel}`
+                                : hasSavedStructures
+                                ? 'Auto grouping until you choose a saved structure.'
+                                : 'No saved structures available for this client.'}
+                            </span>
+                          </div>
+                        </td>
                         <td className="p-2">
                           <input
                             type="number"
@@ -150,7 +203,11 @@ export function ReviewOverlay({ rows, excludedRows, onConfirm, onCancel, duplica
               <button onClick={onCancel} className="px-4 py-2 rounded-xl border">Back</button>
               <button onClick={() => {
                 const idx = rows.map((_, i) => i).filter((i) => selected[i]);
-                const payload = idx.map((i) => ({ ...rows[i], structureId: String(structureNumbers[i] ?? 1)}));
+                const payload = idx.map((i) => {
+                  const selectedStructureId = linkedStructures[i];
+                  const fallbackStructure = String(structureNumbers[i] ?? 1);
+                  return { ...rows[i], structureId: selectedStructureId ?? fallbackStructure };
+                });
                 onConfirm(payload);
               }}
               className="px-4 py-2 rounded-xl bg-slate-900 text-white">Import selected ({selected.filter(Boolean).length})</button>

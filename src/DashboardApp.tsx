@@ -3,7 +3,7 @@ import Papa from 'papaparse'
 import { Toggle } from './components/Toggle'
 import { UploadBox } from './components/UploadBox'
 import { ColumnMapper } from './components/ColumnMapper'
-import { ReviewOverlay } from './components/ReviewOverlay'
+import { ReviewOverlay, type ReviewStructureOption } from './components/ReviewOverlay'
 import { SupabaseLogin } from './features/auth/SupabaseLogin'
 import { useAuth } from './features/auth/useAuth'
 import { tryGetSupabaseClient } from './lib/supabase'
@@ -680,6 +680,31 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
 
   const positionsForLinking = positionsForMarks;
 
+  const selectableStructureOptions = React.useMemo<ReviewStructureOption[]>(() => {
+    if (!savedStructures.length) return [];
+    const normalizedClient = (activeClientName ?? DEFAULT_CLIENT_NAME).trim() || DEFAULT_CLIENT_NAME;
+
+    const labelForStructure = (structure: Position) => {
+      const structureCode = structure.structureId ?? structure.id;
+      const expiry = structure.expiryISO || '—';
+      const exchangeLabel = structure.exchange ? structure.exchange.toUpperCase() : '—';
+      return `#${structureCode} • ${structure.underlying} • ${expiry} • ${exchangeLabel}`;
+    };
+
+    return savedStructures
+      .filter((structure) => {
+        const structureClient = (structure.clientName ?? DEFAULT_CLIENT_NAME).trim() || DEFAULT_CLIENT_NAME;
+        if (structureClient !== normalizedClient) return false;
+        const isArchived = Boolean(structure.archived || structure.archivedAt);
+        if (isArchived) return false;
+        return true;
+      })
+      .map((structure) => ({
+        value: structure.id,
+        label: labelForStructure(structure),
+      }));
+  }, [activeClientName, savedStructures]);
+
   const tableHead = (
     <thead className="bg-slate-50 text-slate-600">
       <tr>
@@ -1191,6 +1216,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
           duplicateTradeIds={showReview.duplicateTradeIds}
           onConfirm={finalizeImport}
           onCancel={() => setShowReview(null)}
+          availableStructures={selectableStructureOptions}
         />
       )}
 
