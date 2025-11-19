@@ -123,7 +123,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   const [alertsOnly, setAlertsOnly] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [visibleCols, setVisibleCols] = useLocalStorage<string[]>("visible_cols_v2", [
-    "status","structure","dte","openSince","legs","strategy","pnl","pnlpct","delta","gamma","theta","vega","rho","playbook"
+    "status","structure","dte","legs","strategy","pnl","pnlpct","delta","gamma","theta","vega","rho","playbook"
   ]);
   const [selectedExchange, setSelectedExchange] = React.useState<Exchange>('deribit');
   // price per unique leg "exchange:symbol"
@@ -638,8 +638,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         <th className="p-3 text-left w-10"> </th>
         {visibleCols.includes("status") && <th className="p-3 text-left">Status</th>}
         {visibleCols.includes("structure") && <th className="p-3 text-left">Structure</th>}
-        {visibleCols.includes("dte") && <th className="p-3 text-left">DTE</th>}
-        {visibleCols.includes("openSince") && <th className="p-3 text-left">Open Since (days)</th>}
+        {visibleCols.includes("dte") && <th className="p-3 text-left">DTE/Since</th>}
         {visibleCols.includes("legs") && <th className="p-3 text-left">Legs</th>}
         {visibleCols.includes("strategy") && <th className="p-3 text-left">Strategy</th>}
         {visibleCols.includes("pnl") && <th className="p-3 text-left">PnL</th>}
@@ -685,8 +684,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     const all = [
       { key: "status", label: "Status" },
       { key: "structure", label: "Structure" },
-      { key: "dte", label: "DTE" },
-      { key: "openSince", label: "Open Since (days)" },
+      { key: "dte", label: "DTE/Since" },
       { key: "legs", label: "Legs" },
       { key: "strategy", label: "Strategy" },
       { key: "pnl", label: "PnL $" },

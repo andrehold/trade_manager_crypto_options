@@ -237,9 +237,15 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           </td>
         )}
         {visibleCols.includes('structure') && <td className="p-3 align-top">{p.structureId}</td>}
-        {visibleCols.includes('dte') && <td className="p-3 align-top">{p.dte}</td>}
-        {visibleCols.includes('openSince') && (
-          <td className="p-3 align-top">{p.openSinceDays != null ? p.openSinceDays : '—'}</td>
+        {visibleCols.includes('dte') && (
+          <td className="p-3 align-top">
+            <div className="flex flex-col leading-tight">
+              <span>{p.dte}</span>
+              <span className="text-xs text-slate-500">
+                ({p.openSinceDays != null ? p.openSinceDays : '—'})
+              </span>
+            </div>
+          </td>
         )}
         {visibleCols.includes('legs') && <td className="p-3 align-top">{p.legsCount}</td>}
         {visibleCols.includes('strategy') && (
