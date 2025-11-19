@@ -12,7 +12,7 @@ import {
   useLocalStorage, devQuickTests,
   parseActionSide, toNumber, parseInstrumentByExchange, normalizeSecond,
   daysTo, daysSince, fifoMatchAndRealize, classifyStatus,
-  Exchange, getLegMarkRef, fmtGreek
+  Exchange, getLegMarkRef, fmtGreek, legGreekExposure
 } from './utils'
 import { PositionRow } from './components/PositionRow'
 import { ccGetBest } from './lib/venues/coincall'
@@ -648,17 +648,26 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     };
 
     for (const position of filteredSaved) {
-      for (const field of GREEK_SUMMARY_FIELDS) {
-        const value = position.greeks?.[field.key];
-        if (typeof value === 'number' && Number.isFinite(value)) {
-          totals[field.key] += value;
+      for (const leg of position.legs) {
+        const ref = getLegMarkRef(position, leg);
+        if (!ref) continue;
+        const mark = legMarks[ref.key];
+        if (!mark) continue;
+
+        const greeks = mark.greeks || {};
+        const multiplier = ref.exchange === 'coincall' ? mark.multiplier : ref.defaultMultiplier;
+
+        for (const field of GREEK_SUMMARY_FIELDS) {
+          const perContract = greeks[field.key];
+          if (typeof perContract !== 'number' || !Number.isFinite(perContract)) continue;
+          totals[field.key] += legGreekExposure(leg, perContract, multiplier);
           hasValues[field.key] = true;
         }
       }
     }
 
     return { totals, hasValues };
-  }, [filteredSaved]);
+  }, [filteredSaved, legMarks]);
 
   const noopUpdate = React.useCallback((_id: string, _updates: Partial<Position>) => {
     // Saved structures are read-only in the UI.
