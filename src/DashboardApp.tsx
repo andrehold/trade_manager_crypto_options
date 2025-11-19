@@ -644,11 +644,31 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         {visibleCols.includes("strategy") && <th className="p-3 text-left">Strategy</th>}
         {visibleCols.includes("pnl") && <th className="p-3 text-left">PnL</th>}
         {visibleCols.includes("pnlpct") && <th className="p-3 text-left">PnL %</th>}
-        {visibleCols.includes("delta") && <th className="p-3 text-left">Δ</th>}
-        {visibleCols.includes("gamma") && <th className="p-3 text-left">Γ</th>}
-        {visibleCols.includes("theta") && <th className="p-3 text-left">Θ</th>}
-        {visibleCols.includes("vega") && <th className="p-3 text-left">V</th>}
-        {visibleCols.includes("rho") && <th className="p-3 text-left">ρ</th>}
+        {visibleCols.includes("delta") && (
+          <th className="p-3 text-left">
+            <abbr title="Delta" className="cursor-help">Δ</abbr>
+          </th>
+        )}
+        {visibleCols.includes("gamma") && (
+          <th className="p-3 text-left">
+            <abbr title="Gamma" className="cursor-help">Γ</abbr>
+          </th>
+        )}
+        {visibleCols.includes("theta") && (
+          <th className="p-3 text-left">
+            <abbr title="Theta" className="cursor-help">Θ</abbr>
+          </th>
+        )}
+        {visibleCols.includes("vega") && (
+          <th className="p-3 text-left">
+            <abbr title="Vega" className="cursor-help">V</abbr>
+          </th>
+        )}
+        {visibleCols.includes("rho") && (
+          <th className="p-3 text-left">
+            <abbr title="Rho" className="cursor-help">ρ</abbr>
+          </th>
+        )}
         {visibleCols.includes("playbook") && <th className="p-3 text-left">Playbook</th>}
         <th className="p-3 text-right w-12">
           <span className="sr-only">Save position</span>
