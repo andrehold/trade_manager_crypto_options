@@ -8,6 +8,7 @@ export {
   type AppendTradesToStructureParams,
   type AppendTradesToStructureResult,
 } from "./appendTradesToStructure";
+export { buildStructureChipSummary } from "./structureSummary";
 export {
   syncLinkedStructures,
   type SyncLinkedStructuresParams,

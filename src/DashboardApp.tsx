@@ -17,7 +17,12 @@ import {
 import { PositionRow } from './components/PositionRow'
 import { ccGetBest } from './lib/venues/coincall'
 import { dbGetBest } from './lib/venues/deribit'
-import { archiveStructure, fetchSavedStructures, appendTradesToStructure } from './lib/positions'
+import {
+  archiveStructure,
+  fetchSavedStructures,
+  appendTradesToStructure,
+  buildStructureChipSummary,
+} from './lib/positions'
 import { resolveClientAccess } from './features/auth/access'
 
 const CLIENT_LIST_STORAGE_KEY = 'tm_client_names_v1'
@@ -731,9 +736,8 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
 
     const labelForStructure = (structure: Position) => {
       const structureCode = structure.structureId ?? structure.id;
-      const expiry = structure.expiryISO || '—';
-      const exchangeLabel = structure.exchange ? structure.exchange.toUpperCase() : '—';
-      return `#${structureCode} • ${structure.underlying} • ${expiry} • ${exchangeLabel}`;
+      const summary = buildStructureChipSummary(structure) ?? 'Structure details unavailable';
+      return `[${structureCode}] / ${summary}`;
     };
 
     return savedStructures
