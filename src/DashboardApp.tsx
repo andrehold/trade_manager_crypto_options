@@ -17,7 +17,7 @@ import {
 import { PositionRow } from './components/PositionRow'
 import { ccGetBest } from './lib/venues/coincall'
 import { dbGetBest } from './lib/venues/deribit'
-import { archiveStructure, fetchSavedStructures } from './lib/positions'
+import { archiveStructure, fetchSavedStructures, appendTradesToStructure } from './lib/positions'
 import { resolveClientAccess } from './features/auth/access'
 
 const CLIENT_LIST_STORAGE_KEY = 'tm_client_names_v1'
@@ -368,16 +368,60 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     });
   }
 
-  function finalizeImport(selectedRows: TxnRow[]) {
+  async function finalizeImport(selectedRows: TxnRow[]) {
     const rows: TxnRow[] = selectedRows.map((r, index) => {
       const normalized = normalizeSecond(r.timestamp);
       const fallbackStructure = normalized === 'NO_TS' ? `NO_TS_${index + 1}` : normalized;
+      const structureId = String(r.structureId ?? fallbackStructure);
+      const linkedStructureId =
+        typeof r.linkedStructureId === 'string' && r.linkedStructureId.trim().length > 0
+          ? r.linkedStructureId.trim()
+          : undefined;
       return {
         ...r,
-        structureId: String(r.structureId ?? fallbackStructure)
+        structureId,
+        linkedStructureId,
       };
     });
-    for (const row of rows) {
+
+    const linkedRows = rows.filter((row) => Boolean(row.linkedStructureId));
+    const localRows = rows.filter((row) => !row.linkedStructureId);
+
+    if (linkedRows.length > 0) {
+      if (!supabase) {
+        alert('Supabase is not configured. Configure environment variables to link trades to saved structures.');
+        return;
+      }
+
+      if (!user) {
+        alert('Sign in to Supabase to link trades to saved structures.');
+        return;
+      }
+
+      const byStructure = new Map<string, TxnRow[]>();
+      for (const row of linkedRows) {
+        const targetId = row.linkedStructureId!;
+        if (!byStructure.has(targetId)) byStructure.set(targetId, []);
+        byStructure.get(targetId)!.push(row);
+      }
+
+      for (const [structureId, groupedRows] of byStructure.entries()) {
+        const result = await appendTradesToStructure(supabase, {
+          structureId,
+          rows: groupedRows,
+          clientScope: { clientName: activeClientName, isAdmin },
+        });
+
+        if (!result.ok) {
+          alert(`Failed to update saved structure ${structureId}: ${result.error}`);
+          return;
+        }
+      }
+
+      refreshSavedStructures();
+    }
+
+    for (const row of localRows) {
       const parsed = parseInstrumentByExchange(selectedExchange, row.instrument);
       if (parsed) {
         row.underlying = parsed.underlying;
@@ -386,7 +430,8 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         row.optionType = parsed.optionType as any;
       }
     }
-    const grouped = buildPositionsFromTransactions(rows);
+
+    const grouped = buildPositionsFromTransactions(localRows);
     setPositions(grouped);
     setShowReview(null);
   }

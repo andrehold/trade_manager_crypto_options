@@ -4,6 +4,11 @@ export {
   type FetchSavedStructuresOptions,
 } from "./fetchSavedStructures";
 export {
+  appendTradesToStructure,
+  type AppendTradesToStructureParams,
+  type AppendTradesToStructureResult,
+} from "./appendTradesToStructure";
+export {
   syncLinkedStructures,
   type SyncLinkedStructuresParams,
   type SyncLinkedStructuresResult,
