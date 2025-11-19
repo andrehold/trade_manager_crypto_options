@@ -1065,21 +1065,23 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
             <span>Portfolio Greeks</span>
             <span className="text-xs font-normal text-slate-500">Based on saved structures</span>
           </div>
-          <div className="grid grid-cols-2 divide-y divide-slate-100 sm:grid-cols-3 sm:divide-y-0 sm:divide-x lg:grid-cols-5">
-            {GREEK_SUMMARY_FIELDS.map(({ key, label, symbol }) => {
-              const valueText = portfolioGreeks.hasValues[key]
-                ? fmtGreek(portfolioGreeks.totals[key])
-                : '—';
-              return (
-                <div key={key} className="px-4 py-4 text-center">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 flex items-center justify-center gap-1">
-                    <span className="text-sm text-slate-700">{symbol}</span>
-                    {label}
+          <div className="overflow-x-auto">
+            <div className="flex min-w-[520px] divide-x divide-slate-100">
+              {GREEK_SUMMARY_FIELDS.map(({ key, label, symbol }) => {
+                const valueText = portfolioGreeks.hasValues[key]
+                  ? fmtGreek(portfolioGreeks.totals[key])
+                  : '—';
+                return (
+                  <div key={key} className="flex-1 px-4 py-4 text-center">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 flex items-center justify-center gap-1">
+                      <span className="text-sm text-slate-700">{symbol}</span>
+                      {label}
+                    </div>
+                    <div className="mt-1 text-xl font-semibold text-slate-900">{valueText}</div>
                   </div>
-                  <div className="mt-1 text-xl font-semibold text-slate-900">{valueText}</div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
