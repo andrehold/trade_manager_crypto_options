@@ -110,6 +110,28 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
     </thead>
   );
 
+  const SideCell = ({ action, side }: { action?: TxnRow['action']; side: TxnRow['side'] }) => {
+    const chipClasses =
+      action === 'open'
+        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+        : action === 'close'
+        ? 'bg-rose-50 text-rose-700 border-rose-200'
+        : 'bg-slate-50 text-slate-600 border-slate-200';
+
+    return (
+      <div className="flex items-center gap-2">
+        {action ? (
+          <span
+            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${chipClasses}`}
+          >
+            {action}
+          </span>
+        ) : null}
+        <span className="capitalize">{side}</span>
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-6xl p-6">
@@ -217,7 +239,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                           />
                         </td>
                         <td className="p-2">{r.instrument}</td>
-                        <td className="p-2">{(r.action ? r.action + ' ' : '') + r.side}</td>
+                        <td className="p-2"><SideCell action={r.action} side={r.side} /></td>
                         <td className="p-2">{r.amount}</td>
                         <td className="p-2">{r.price}</td>
                         <td className="p-2">{r.fee ?? 0}</td>
@@ -258,7 +280,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                         <td className="p-2">{structure}</td>
                         <td className="p-2">—</td>
                         <td className="p-2">{r.instrument}</td>
-                        <td className="p-2">{(r.action ? r.action + ' ' : '') + r.side}</td>
+                        <td className="p-2"><SideCell action={r.action} side={r.side} /></td>
                         <td className="p-2">{r.amount}</td>
                         <td className="p-2">{r.price}</td>
                         <td className="p-2">{r.fee ?? 0}</td>
