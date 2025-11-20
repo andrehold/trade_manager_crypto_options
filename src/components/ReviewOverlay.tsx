@@ -1,7 +1,7 @@
 import React from 'react'
 import { TxnRow, normalizeSecond } from '../utils'
 
-export type ReviewStructureOption = { value: string; label: string }
+export type ReviewStructureOption = { value: string; label: string; supabaseId: string }
 
 const autoStructureKey = (row: TxnRow, index: number) => {
   const normalized = normalizeSecond(row.timestamp)
@@ -70,11 +70,12 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
     const payload = idx.map((i) => {
       const selectedStructureId = linkedStructures[i] ?? undefined;
       const fallbackStructure = String(structureNumbers[i] ?? 1);
+      const selectedOption = selectedStructureId ? availableStructureMap.get(selectedStructureId) : undefined;
       const normalizedLinkedId = selectedStructureId && selectedStructureId.length ? selectedStructureId : undefined;
       return {
         ...rows[i],
         structureId: normalizedLinkedId ?? fallbackStructure,
-        linkedStructureId: normalizedLinkedId,
+        linkedStructureId: selectedOption?.supabaseId,
       };
     });
 
