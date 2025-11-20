@@ -15,6 +15,7 @@ import {
   Exchange, getLegMarkRef, fmtGreek, legGreekExposure
 } from './utils'
 import { PositionRow } from './components/PositionRow'
+import { PlaybookDrawer } from './components/PlaybookDrawer'
 import { ccGetBest } from './lib/venues/coincall'
 import { dbGetBest } from './lib/venues/deribit'
 import {
@@ -22,6 +23,8 @@ import {
   fetchSavedStructures,
   appendTradesToStructure,
   buildStructureChipSummary,
+  fetchProgramResources,
+  type ProgramResource,
 } from './lib/positions'
 import { resolveClientAccess } from './features/auth/access'
 
@@ -128,6 +131,9 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   const [savedStructuresLoading, setSavedStructuresLoading] = React.useState(false);
   const [savedStructuresError, setSavedStructuresError] = React.useState<string | null>(null);
   const [savedStructuresVersion, setSavedStructuresVersion] = React.useState(0);
+  const [programResources, setProgramResources] = React.useState<Map<string, ProgramResource[]>>(new Map());
+  const [programResourcesLoading, setProgramResourcesLoading] = React.useState(false);
+  const [programResourcesError, setProgramResourcesError] = React.useState<string | null>(null);
   const [archiving, setArchiving] = React.useState<Record<string, boolean>>({});
   const [showMapper, setShowMapper] = React.useState<{ headers: string[] } | null>(null);
   const [showReview, setShowReview] = React.useState<{
@@ -135,6 +141,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     excludedRows: TxnRow[];
     duplicateTradeIds?: string[];
   } | null>(null);
+  const [activePlaybookPosition, setActivePlaybookPosition] = React.useState<Position | null>(null);
   const [alertsOnly, setAlertsOnly] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [visibleCols, setVisibleCols] = useLocalStorage<string[]>("visible_cols_v2", [
@@ -527,6 +534,73 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     };
   }, [supabase, user, savedStructuresVersion, selectedClient, isAdmin, activeClientName]);
 
+  React.useEffect(() => {
+    if (!supabase || !user) {
+      setProgramResources(new Map());
+      setProgramResourcesError(null);
+      setProgramResourcesLoading(false);
+      return;
+    }
+
+    const programIds = Array.from(
+      new Set(
+        savedStructures
+          .map((structure) => structure.programId)
+          .filter((id): id is string => typeof id === 'string' && id.trim().length > 0),
+      ),
+    );
+
+    if (programIds.length === 0) {
+      setProgramResources(new Map());
+      setProgramResourcesError(null);
+      setProgramResourcesLoading(false);
+      return;
+    }
+
+    let active = true;
+    setProgramResourcesLoading(true);
+    setProgramResourcesError(null);
+
+    fetchProgramResources(supabase, programIds)
+      .then((result) => {
+        if (!active) return;
+        if (!result.ok) {
+          setProgramResourcesError(result.error);
+          setProgramResources(new Map());
+          return;
+        }
+
+        const grouped = new Map<string, ProgramResource[]>();
+        for (const resource of result.resources) {
+          const current = grouped.get(resource.programId) ?? [];
+          current.push(resource);
+          grouped.set(resource.programId, current);
+        }
+        setProgramResources(grouped);
+      })
+      .catch((err) => {
+        if (!active) return;
+        const message = err instanceof Error ? err.message : 'Failed to load playbook resources.';
+        setProgramResourcesError(message);
+        setProgramResources(new Map());
+      })
+      .finally(() => {
+        if (active) setProgramResourcesLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [supabase, user, savedStructures]);
+
+  const handleOpenPlaybookDrawer = React.useCallback((position: Position) => {
+    setActivePlaybookPosition(position);
+  }, []);
+
+  const handleClosePlaybookDrawer = React.useCallback(() => {
+    setActivePlaybookPosition(null);
+  }, []);
+
   const buildPositionsFromTransactions = React.useCallback((rows: TxnRow[]): Position[] => {
     const byPos = new Map<string, TxnRow[]>();
     for (const r of rows) {
@@ -729,6 +803,12 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   );
 
   const positionsForLinking = positionsForMarks;
+
+  const activeProgramResources = React.useMemo(() => {
+    const programId = activePlaybookPosition?.programId;
+    if (!programId) return [] as ProgramResource[];
+    return programResources.get(programId) ?? [];
+  }, [activePlaybookPosition?.programId, programResources]);
 
   const selectableStructureOptions = React.useMemo<ReviewStructureOption[]>(() => {
     if (!savedStructures.length) return [];
@@ -1180,6 +1260,11 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
           {savedStructuresError ? (
             <div className="px-4 py-3 text-sm text-rose-600">{savedStructuresError}</div>
           ) : null}
+          {programResourcesError ? (
+            <div className="px-4 py-3 text-sm text-amber-700 bg-amber-50 border-t border-amber-200">
+              {programResourcesError}
+            </div>
+          ) : null}
           {filteredSaved.length === 0 ? (
             <div className="px-4 py-3 text-sm text-slate-500">
               {savedStructures.length > 0
@@ -1207,6 +1292,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
                       onArchive={handleArchiveStructure}
                       archiving={Boolean(archiving[p.id])}
                       clientScope={overlayClientScope}
+                      onPlaybookOpen={handleOpenPlaybookDrawer}
                     />
                   ))}
                 </tbody>
@@ -1257,6 +1343,15 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
           </div>
         </div>
       )}
+
+      <PlaybookDrawer
+        open={Boolean(activePlaybookPosition)}
+        onClose={handleClosePlaybookDrawer}
+        position={activePlaybookPosition}
+        resources={activeProgramResources}
+        loading={programResourcesLoading}
+        error={programResourcesError}
+      />
 
       {showReview && (
         <ReviewOverlay

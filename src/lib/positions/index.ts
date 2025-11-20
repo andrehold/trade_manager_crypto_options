@@ -20,3 +20,8 @@ export {
   type ArchiveStructureResult,
 } from "./archiveStructure";
 export { type SupabaseClientScope } from "./clientScope";
+export {
+  fetchProgramResources,
+  type FetchProgramResourcesResult,
+  type ProgramResource,
+} from "./programResources";
