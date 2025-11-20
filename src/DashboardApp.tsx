@@ -3,7 +3,7 @@ import Papa from 'papaparse'
 import { Toggle } from './components/Toggle'
 import { UploadBox } from './components/UploadBox'
 import { ColumnMapper } from './components/ColumnMapper'
-import { ReviewOverlay } from './components/ReviewOverlay'
+import { ReviewOverlay, type ReviewStructureOption } from './components/ReviewOverlay'
 import { SupabaseLogin } from './features/auth/SupabaseLogin'
 import { useAuth } from './features/auth/useAuth'
 import { tryGetSupabaseClient } from './lib/supabase'
@@ -17,7 +17,12 @@ import {
 import { PositionRow } from './components/PositionRow'
 import { ccGetBest } from './lib/venues/coincall'
 import { dbGetBest } from './lib/venues/deribit'
-import { archiveStructure, fetchSavedStructures } from './lib/positions'
+import {
+  archiveStructure,
+  fetchSavedStructures,
+  appendTradesToStructure,
+  buildStructureChipSummary,
+} from './lib/positions'
 import { resolveClientAccess } from './features/auth/access'
 
 const CLIENT_LIST_STORAGE_KEY = 'tm_client_names_v1'
@@ -368,16 +373,60 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     });
   }
 
-  function finalizeImport(selectedRows: TxnRow[]) {
+  async function finalizeImport(selectedRows: TxnRow[]) {
     const rows: TxnRow[] = selectedRows.map((r, index) => {
       const normalized = normalizeSecond(r.timestamp);
       const fallbackStructure = normalized === 'NO_TS' ? `NO_TS_${index + 1}` : normalized;
+      const structureId = String(r.structureId ?? fallbackStructure);
+      const linkedStructureId =
+        typeof r.linkedStructureId === 'string' && r.linkedStructureId.trim().length > 0
+          ? r.linkedStructureId.trim()
+          : undefined;
       return {
         ...r,
-        structureId: String(r.structureId ?? fallbackStructure)
+        structureId,
+        linkedStructureId,
       };
     });
-    for (const row of rows) {
+
+    const linkedRows = rows.filter((row) => Boolean(row.linkedStructureId));
+    const localRows = rows.filter((row) => !row.linkedStructureId);
+
+    if (linkedRows.length > 0) {
+      if (!supabase) {
+        alert('Supabase is not configured. Configure environment variables to link trades to saved structures.');
+        return;
+      }
+
+      if (!user) {
+        alert('Sign in to Supabase to link trades to saved structures.');
+        return;
+      }
+
+      const byStructure = new Map<string, TxnRow[]>();
+      for (const row of linkedRows) {
+        const targetId = row.linkedStructureId!;
+        if (!byStructure.has(targetId)) byStructure.set(targetId, []);
+        byStructure.get(targetId)!.push(row);
+      }
+
+      for (const [structureId, groupedRows] of byStructure.entries()) {
+        const result = await appendTradesToStructure(supabase, {
+          structureId,
+          rows: groupedRows,
+          clientScope: { clientName: activeClientName, isAdmin },
+        });
+
+        if (!result.ok) {
+          alert(`Failed to update saved structure ${structureId}: ${result.error}`);
+          return;
+        }
+      }
+
+      refreshSavedStructures();
+    }
+
+    for (const row of localRows) {
       const parsed = parseInstrumentByExchange(selectedExchange, row.instrument);
       if (parsed) {
         row.underlying = parsed.underlying;
@@ -386,7 +435,8 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         row.optionType = parsed.optionType as any;
       }
     }
-    const grouped = buildPositionsFromTransactions(rows);
+
+    const grouped = buildPositionsFromTransactions(localRows);
     setPositions(grouped);
     setShowReview(null);
   }
@@ -679,6 +729,30 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   );
 
   const positionsForLinking = positionsForMarks;
+
+  const selectableStructureOptions = React.useMemo<ReviewStructureOption[]>(() => {
+    if (!savedStructures.length) return [];
+    const normalizedClient = (activeClientName ?? DEFAULT_CLIENT_NAME).trim() || DEFAULT_CLIENT_NAME;
+
+    const labelForStructure = (structure: Position) => {
+      const structureCode = structure.structureId ?? structure.id;
+      const summary = buildStructureChipSummary(structure) ?? 'Structure details unavailable';
+      return `[${structureCode}] / ${summary}`;
+    };
+
+    return savedStructures
+      .filter((structure) => {
+        const structureClient = (structure.clientName ?? DEFAULT_CLIENT_NAME).trim() || DEFAULT_CLIENT_NAME;
+        if (structureClient !== normalizedClient) return false;
+        const isArchived = Boolean(structure.archived || structure.archivedAt);
+        if (isArchived) return false;
+        return true;
+      })
+      .map((structure) => ({
+        value: structure.id,
+        label: labelForStructure(structure),
+      }));
+  }, [activeClientName, savedStructures]);
 
   const tableHead = (
     <thead className="bg-slate-50 text-slate-600">
@@ -1191,6 +1265,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
           duplicateTradeIds={showReview.duplicateTradeIds}
           onConfirm={finalizeImport}
           onCancel={() => setShowReview(null)}
+          availableStructures={selectableStructureOptions}
         />
       )}
 
