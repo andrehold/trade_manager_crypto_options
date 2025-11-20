@@ -1,17 +1,20 @@
--- Program playbook resources per program/strategy
 create extension if not exists "pgcrypto";
 
-create table if not exists public.program_resources (
-  resource_id uuid primary key default gen_random_uuid(),
-  program_id text not null references public.programs(program_id) on delete cascade,
-  title text not null,
-  profit_rule text,
-  stop_rule text,
-  time_rule text,
-  risk_notes text,
-  playbook_url text,
-  created_at timestamptz not null default now()
-);
+-- Existing table already present; extend it with the playbook fields.
+alter table public.program_resources
+  add column if not exists profit_rule text,
+  add column if not exists stop_rule text,
+  add column if not exists time_rule text,
+  add column if not exists risk_notes text,
+  add column if not exists playbook_url text;
+
+-- Ensure title is required for consistency with the application shape.
+update public.program_resources
+set title = coalesce(title, 'Untitled Playbook')
+where title is null;
+
+alter table public.program_resources
+  alter column title set not null;
 
 comment on table public.program_resources is 'Per-program playbook resources with profit/stop/time guidance and reference links.';
 comment on column public.program_resources.resource_id is 'Stable identifier for the playbook resource row.';
