@@ -749,8 +749,9 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         return true;
       })
       .map((structure) => ({
-        value: structure.id,
+        value: structure.structureId ?? structure.id,
         label: labelForStructure(structure),
+        supabaseId: structure.id,
       }));
   }, [activeClientName, savedStructures]);
 
