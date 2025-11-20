@@ -30,6 +30,7 @@ type PositionRowProps = {
   onArchive?: (positionId: string) => void
   archiving?: boolean
   clientScope: { activeClient: string | null; isAdmin: boolean }
+  onPlaybookOpen?: (position: Position) => void
 }
 
 function CellSpinner() {
@@ -66,6 +67,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   onArchive,
   archiving = false,
   clientScope,
+  onPlaybookOpen,
 }) => {
   const [open, setOpen] = React.useState(false)
   const [showSaveOverlay, setShowSaveOverlay] = React.useState(false)
@@ -128,9 +130,10 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   }, [p.strategy])
 
   const hasPlaybookValue = React.useMemo(() => {
-    if (typeof p.playbook !== 'string') return false
-    return p.playbook.trim().length > 0
-  }, [p.playbook])
+    if (!onPlaybookOpen) return false
+    if (typeof p.playbook === 'string' && p.playbook.trim().length > 0) return true
+    return Boolean(p.programId)
+  }, [onPlaybookOpen, p.playbook, p.programId])
 
   const structureChipSummary = React.useMemo(() => buildStructureChipSummary(p), [p])
   const showStructureChip = Boolean(structureChipSummary)
@@ -228,6 +231,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                 hasPlaybookValue ? 'border-slate-200 bg-white hover:bg-slate-100' : 'border-slate-200 bg-slate-50 opacity-60'
               }`}
               disabled={!hasPlaybookValue}
+              onClick={() => (hasPlaybookValue && onPlaybookOpen ? onPlaybookOpen(p) : null)}
             >
               <LinkIcon className="h-4 w-4" />
               <span className="sr-only">Open playbook link</span>
@@ -418,7 +422,8 @@ export const PositionRow = React.memo(
     prev.onSaved === next.onSaved &&
     prev.onArchive === next.onArchive &&
     prev.archiving === next.archiving &&
-    prev.clientScope === next.clientScope
+    prev.clientScope === next.clientScope &&
+    prev.onPlaybookOpen === next.onPlaybookOpen
 )
 
 PositionRow.displayName = 'PositionRow'
