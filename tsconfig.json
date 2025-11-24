@@ -17,12 +17,14 @@
     "esModuleInterop": true,
     "strict": true,
     "types": [
-      "vite/client"
+      "vite/client",
+      "node"
     ],
     "baseUrl": "src",
     "paths": { "@/*": ["*"] }
   },
   "include": [
-    "src"
+    "src",
+    "api"
   ]
 }

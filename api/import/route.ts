@@ -1,6 +1,12 @@
-import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { payloadSchema } from "@/lib/import/validation";
+
+function jsonResponse(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
 
 export async function POST(req: Request) {
   const supabase = createServerSupabase();
@@ -9,7 +15,7 @@ export async function POST(req: Request) {
   const json = await req.json();
   const parsed = payloadSchema.safeParse(json);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return jsonResponse({ error: parsed.error.flatten() }, 400);
   }
   const { program, venue, position, legs, fills } = parsed.data;
 
@@ -18,7 +24,7 @@ export async function POST(req: Request) {
     const { error } = await supabase
       .from("programs")
       .upsert([program], { onConflict: "program_id", ignoreDuplicates: false });
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error) return jsonResponse({ error: error.message }, 400);
   }
 
   // 1b) Ensure strategy exists and is linked to the program
@@ -30,8 +36,7 @@ export async function POST(req: Request) {
     const { error: strategyErr } = await supabase
       .from("strategies")
       .upsert([strategyRow], { onConflict: "strategy_code", ignoreDuplicates: false });
-    if (strategyErr)
-      return NextResponse.json({ error: strategyErr.message }, { status: 400 });
+    if (strategyErr) return jsonResponse({ error: strategyErr.message }, 400);
 
     const programStrategyRow = {
       program_id: position.program_id,
@@ -44,7 +49,7 @@ export async function POST(req: Request) {
         ignoreDuplicates: false,
       });
     if (programStrategyErr)
-      return NextResponse.json({ error: programStrategyErr.message }, { status: 400 });
+      return jsonResponse({ error: programStrategyErr.message }, 400);
   }
 
   // 2) Optionally insert a venue and capture its id
@@ -55,7 +60,7 @@ export async function POST(req: Request) {
       .insert(venue)
       .select("venue_id")
       .single();
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error) return jsonResponse({ error: error.message }, 400);
     venue_id = data.venue_id;
   }
 
@@ -69,21 +74,21 @@ export async function POST(req: Request) {
     })
     .select("position_id")
     .single();
-  if (posErr) return NextResponse.json({ error: posErr.message }, { status: 400 });
+  if (posErr) return jsonResponse({ error: posErr.message }, 400);
 
   const position_id = pos.position_id as string;
 
   // 4) Insert legs (with FK to position)
   const legsRows = legs.map((l) => ({ ...l, position_id }));
   const { error: legsErr } = await supabase.from("legs").insert(legsRows);
-  if (legsErr) return NextResponse.json({ error: legsErr.message }, { status: 400 });
+  if (legsErr) return jsonResponse({ error: legsErr.message }, 400);
 
   // 5) Insert fills (optional)
   if (fills?.length) {
     const fillsRows = fills.map((f) => ({ ...f, position_id }));
     const { error: fillsErr } = await supabase.from("fills").insert(fillsRows);
-    if (fillsErr) return NextResponse.json({ error: fillsErr.message }, { status: 400 });
+    if (fillsErr) return jsonResponse({ error: fillsErr.message }, 400);
   }
 
-  return NextResponse.json({ ok: true, position_id });
+  return jsonResponse({ ok: true, position_id });
 }
