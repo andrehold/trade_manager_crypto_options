@@ -319,18 +319,22 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
   const lifecycle = normalizeLifecycle(raw.lifecycle) ?? "open";
   const closedAt = normalizeClosedAt(raw.closed_at ?? null);
   const hasLinkedClosure = Boolean(closedAt || raw.close_target_structure_id);
-  const isClosed = lifecycle === "close" || hasLinkedClosure;
-  const legs = coalesceLegs(
+  const normalizedEntry = normalizeDateOnly(raw.entry_ts ?? undefined);
+  const initialLegs = coalesceLegs(
     (raw.legs ?? [])
       .map((leg, index) => mapLeg(raw, leg, index, exchange))
       .filter((leg): leg is NonNullable<typeof leg> => Boolean(leg)),
-  ).map((leg) => realizeLegTrades(leg, { assumeExpired: isClosed }));
+  );
+
+  const expiryFromLeg = initialLegs.find((leg) => leg.expiry)?.expiry ?? null;
+  const normalizedExpiry = expiryFromLeg ?? normalizedEntry;
+  const expiredNaturally = normalizedExpiry ? daysTo(normalizedExpiry) <= 0 : false;
+  const isClosed = lifecycle === "close" || hasLinkedClosure || expiredNaturally;
+
+  const legs = initialLegs.map((leg) => realizeLegTrades(leg, { assumeExpired: isClosed }));
 
   const legsWithFees = applyFeesToLegs(legs, raw.fees_total);
 
-  const expiryFromLeg = legs.find((leg) => leg.expiry)?.expiry ?? null;
-  const normalizedEntry = normalizeDateOnly(raw.entry_ts ?? undefined);
-  const normalizedExpiry = expiryFromLeg ?? normalizedEntry;
   const expiryISO = normalizedExpiry ?? raw.entry_ts?.slice(0, 10) ?? "—";
   const dte = normalizedExpiry ? daysTo(normalizedExpiry) : 0;
   const openSinceDays = daysSince(normalizedEntry ?? raw.entry_ts ?? null);
