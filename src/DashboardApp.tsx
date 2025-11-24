@@ -356,11 +356,8 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       return hasInstrument && hasSide && hasAmount && hasPrice;
     });
 
-    const timeCleaned: TxnRow[] = mappedRaw.filter((r) => {
-      if (!r.timestamp) return true;
-      const t = String(r.timestamp).trim();
-      return !t.endsWith('08:00:00');
-    });
+    // Keep all rows, including 08:00 delivery/settlement records, so they are visible in the review overlay.
+    const timeCleaned: TxnRow[] = mappedRaw;
 
     const optionsOnly: TxnRow[] = [];
     const excludedRows: TxnRow[] = [];
