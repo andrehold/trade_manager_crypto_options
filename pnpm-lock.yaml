@@ -30,6 +30,9 @@ importers:
         specifier: ^4.1.12
         version: 4.1.12
     devDependencies:
+      '@types/node':
+        specifier: ^22.7.5
+        version: 24.9.1
       '@types/papaparse':
         specifier: ^5.3.16
         version: 5.3.16
