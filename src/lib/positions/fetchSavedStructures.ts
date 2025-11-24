@@ -245,7 +245,7 @@ function sortTrades(trades: TxnRow[]) {
     .map(({ trade }) => trade);
 }
 
-function realizeLegTrades(leg: Leg): Leg {
+function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): Leg {
   const inventory: typeof leg.openLots = [];
   let realizedPnl = 0;
   let netPremium = 0;
@@ -272,6 +272,13 @@ function realizeLegTrades(leg: Leg): Leg {
     } else {
       inventory.push(lot);
     }
+  }
+
+  if (options.assumeExpired && inventory.length > 0) {
+    for (const lot of inventory) {
+      realizedPnl += lot.sign === -1 ? lot.price * lot.qty : -lot.price * lot.qty;
+    }
+    inventory.length = 0;
   }
 
   return {
@@ -309,11 +316,15 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
   const underlier = (raw.underlier ?? "").toUpperCase();
   const exchange = inferExchange(raw);
   const netDelta = parseNumeric(raw.net_delta);
+  const lifecycle = normalizeLifecycle(raw.lifecycle) ?? "open";
+  const closedAt = normalizeClosedAt(raw.closed_at ?? null);
+  const hasLinkedClosure = Boolean(closedAt || raw.close_target_structure_id);
+  const isClosed = lifecycle === "close" || hasLinkedClosure;
   const legs = coalesceLegs(
     (raw.legs ?? [])
       .map((leg, index) => mapLeg(raw, leg, index, exchange))
       .filter((leg): leg is NonNullable<typeof leg> => Boolean(leg)),
-  ).map((leg) => realizeLegTrades(leg));
+  ).map((leg) => realizeLegTrades(leg, { assumeExpired: isClosed }));
 
   const legsWithFees = applyFeesToLegs(legs, raw.fees_total);
 
@@ -327,11 +338,6 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
   const netPremium =
     raw.net_fill ??
     legsWithFees.reduce((sum, leg) => sum + (Number.isFinite(leg.netPremium) ? leg.netPremium : 0), 0);
-
-  const lifecycle = normalizeLifecycle(raw.lifecycle) ?? "open";
-  const closedAt = normalizeClosedAt(raw.closed_at ?? null);
-  const hasLinkedClosure = Boolean(closedAt || raw.close_target_structure_id);
-  const isClosed = lifecycle === "close" || hasLinkedClosure;
 
   const status: Position["status"] = isClosed ? "CLOSED" : "OPEN";
 
