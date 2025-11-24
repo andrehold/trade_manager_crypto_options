@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "../supabase";
-import type { Position, TxnRow, Exchange } from "@/utils";
+import type { Position, TxnRow, Exchange, Leg } from "@/utils";
 import { daysTo, daysSince } from "@/utils";
 import type { SupabaseClientScope } from "./clientScope";
 
@@ -200,6 +200,35 @@ function mapLeg(position: RawPosition, leg: RawLeg, index: number, exchange: Exc
   };
 }
 
+function coalesceLegs(legs: Leg[]): Leg[] {
+  const merged = new Map<string, Leg>();
+
+  for (const leg of legs) {
+    const expiryKey = leg.expiry ?? "";
+    const optionKey = String(leg.optionType ?? "").toUpperCase();
+    const strikeKey = leg.strike;
+    const exchangeKey = leg.exchange ?? "";
+    const key = `${expiryKey}::${strikeKey}::${optionKey}::${exchangeKey}`;
+
+    if (!merged.has(key)) {
+      merged.set(key, { ...leg, key });
+      continue;
+    }
+
+    const existing = merged.get(key)!;
+    existing.openLots = [...(existing.openLots || []), ...(leg.openLots || [])];
+    existing.trades = [...(existing.trades || []), ...(leg.trades || [])];
+    existing.realizedPnl = (existing.realizedPnl ?? 0) + (leg.realizedPnl ?? 0);
+    existing.netPremium = (existing.netPremium ?? 0) + (leg.netPremium ?? 0);
+    existing.qtyNet = (existing.qtyNet ?? 0) + (leg.qtyNet ?? 0);
+
+    if (!existing.expiry && leg.expiry) existing.expiry = leg.expiry;
+    if (!existing.exchange && leg.exchange) existing.exchange = leg.exchange;
+  }
+
+  return Array.from(merged.values());
+}
+
 function normalizeClosedAt(rawClosedAt: string | null | undefined): string | null {
   if (rawClosedAt == null) return null;
   const trimmed = String(rawClosedAt).trim();
@@ -221,9 +250,11 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
   const underlier = (raw.underlier ?? "").toUpperCase();
   const exchange = inferExchange(raw);
   const netDelta = parseNumeric(raw.net_delta);
-  const legs = (raw.legs ?? [])
-    .map((leg, index) => mapLeg(raw, leg, index, exchange))
-    .filter((leg): leg is NonNullable<typeof leg> => Boolean(leg));
+  const legs = coalesceLegs(
+    (raw.legs ?? [])
+      .map((leg, index) => mapLeg(raw, leg, index, exchange))
+      .filter((leg): leg is NonNullable<typeof leg> => Boolean(leg)),
+  );
 
   const expiryFromLeg = legs.find((leg) => leg.expiry)?.expiry ?? null;
   const normalizedEntry = normalizeDateOnly(raw.entry_ts ?? undefined);
