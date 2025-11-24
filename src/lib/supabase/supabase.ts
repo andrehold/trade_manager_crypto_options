@@ -6,6 +6,9 @@ function createSupabaseFetchProxy(supabaseUrl: string) {
 
   return async (input: RequestInfo | URL, init?: RequestInit) => {
     if (typeof window === "undefined") return fetch(input, init);
+    // Skip the proxy during local development because the Vite dev server does not
+    // expose the API route. Directly hitting Supabase keeps development flows working.
+    if (import.meta.env.DEV) return fetch(input, init);
 
     const targetUrl = typeof input === "string" ? input : input.url;
     if (!targetUrl.startsWith(normalizedUrl)) return fetch(input, init);
