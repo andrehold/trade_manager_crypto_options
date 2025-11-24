@@ -348,7 +348,13 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         info: mapping.info ? String(r[mapping.info]) : undefined,
         exchange: exchange as Exchange,
       } as TxnRow;
-    }).filter((r) => r.instrument && r.amount && r.price && (r.side === 'buy' || r.side === 'sell'));
+    }).filter((r) => {
+      const hasInstrument = Boolean(r.instrument);
+      const hasSide = r.side === 'buy' || r.side === 'sell';
+      const hasAmount = Number.isFinite(r.amount) && Math.abs(r.amount) > 0;
+      const hasPrice = Number.isFinite(r.price);
+      return hasInstrument && hasSide && hasAmount && hasPrice;
+    });
 
     const timeCleaned: TxnRow[] = mappedRaw.filter((r) => {
       if (!r.timestamp) return true;
