@@ -1,6 +1,6 @@
 // src/features/import/validation.ts
 import { z } from 'zod';
-import type { ImportPayload } from './types';
+import type { Delivery, ImportPayload } from './types';
 import {
   VENUE_TYPES,
   EXECUTION_MODES,
@@ -124,6 +124,14 @@ export const FillSchema = z.object({
   notes: z.string().optional(),
 });
 
+export const DeliverySchema: z.ZodType<Delivery> = z.object({
+  delivery_id: z.string().optional(),
+  trade_id: z.string().min(1),
+  delivered_at: ISO_DATETIME,
+  delivery_type: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
 // ── Root payload ───────────────────────────────────────────────────────────────
 export const payloadSchema: z.ZodType<ImportPayload> = z.object({
   program: ProgramSchema,
@@ -131,4 +139,5 @@ export const payloadSchema: z.ZodType<ImportPayload> = z.object({
   position: PositionSchema,
   legs: z.array(LegSchema).min(1),
   fills: z.array(FillSchema).optional(),
+  deliveries: z.array(DeliverySchema).optional(),
 });

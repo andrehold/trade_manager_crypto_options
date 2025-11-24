@@ -134,6 +134,14 @@ export type Fill = {
   notes?: string | null;
 };
 
+export type Delivery = {
+  delivery_id?: string;
+  trade_id: string;
+  delivered_at: ISODateTime;
+  delivery_type?: string | null;
+  notes?: string | null;
+};
+
 // ───────────────────────────────────────────────────────────────────────────────
 // Root payload
 // ───────────────────────────────────────────────────────────────────────────────
@@ -143,4 +151,5 @@ export type ImportPayload = {
   position: Position;
   legs: Array<Leg>;
   fills?: Array<Fill>;
+  deliveries?: Array<Delivery>;
 };
