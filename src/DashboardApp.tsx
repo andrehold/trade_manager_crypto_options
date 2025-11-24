@@ -332,15 +332,17 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   async function startImport(mapping: Record<string, string>) {
     const exchange = (mapping as any).__exchange || 'deribit';
     setSelectedExchange(exchange as Exchange);
-    const mappedRaw: TxnRow[] = rawRows.map((r) => {
+    const mappedRaw: TxnRow[] = [];
+    for (const r of rawRows) {
       const rawSide = String(r[mapping.side] ?? '');
+      const rawPrice = mapping.price ? r[mapping.price] : undefined;
       const { action, side } = parseActionSide(rawSide);
-      return {
+      const mappedRow: TxnRow = {
         instrument: String(r[mapping.instrument] ?? '').trim(),
         side: side || '',
         action,
         amount: toNumber(r[mapping.amount]),
-        price: toNumber(r[mapping.price]),
+        price: toNumber(rawPrice),
         fee: mapping.fee ? toNumber(r[mapping.fee]) : 0,
         timestamp: mapping.timestamp ? String(r[mapping.timestamp]) : undefined,
         trade_id: mapping.trade_id ? String(r[mapping.trade_id]) : undefined,
@@ -348,13 +350,14 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         info: mapping.info ? String(r[mapping.info]) : undefined,
         exchange: exchange as Exchange,
       } as TxnRow;
-    }).filter((r) => {
-      const hasInstrument = Boolean(r.instrument);
-      const hasSide = r.side === 'buy' || r.side === 'sell';
-      const hasAmount = Number.isFinite(r.amount) && Math.abs(r.amount) > 0;
-      const hasPrice = Number.isFinite(r.price);
-      return hasInstrument && hasSide && hasAmount && hasPrice;
-    });
+
+      const hasInstrument = Boolean(mappedRow.instrument);
+      const hasSide = mappedRow.side === 'buy' || mappedRow.side === 'sell';
+      const hasAmount = Number.isFinite(mappedRow.amount) && Math.abs(mappedRow.amount) > 0;
+      const rawPriceProvided = rawPrice !== undefined && String(rawPrice).trim() !== '';
+      const hasPrice = rawPriceProvided && Number.isFinite(mappedRow.price);
+      if (hasInstrument && hasSide && hasAmount && hasPrice) mappedRaw.push(mappedRow);
+    }
 
     // Keep all rows, including 08:00 delivery/settlement records, so they are visible in the review overlay.
     const timeCleaned: TxnRow[] = mappedRaw;
