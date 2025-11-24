@@ -1,6 +1,31 @@
 // src/lib/supabase.ts
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+function createSupabaseFetchProxy(supabaseUrl: string) {
+  const normalizedUrl = supabaseUrl.replace(/\/$/, "");
+
+  return async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (typeof window === "undefined") return fetch(input, init);
+
+    const targetUrl = typeof input === "string" ? input : input.url;
+    if (!targetUrl.startsWith(normalizedUrl)) return fetch(input, init);
+
+    const serializedHeaders = Array.from(new Headers(init?.headers ?? {}).entries());
+
+    return fetch("/api/supabase-proxy", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        url: targetUrl,
+        init: {
+          ...init,
+          headers: serializedHeaders,
+        },
+      }),
+    });
+  };
+}
+
 let cachedClient: SupabaseClient | null | undefined;
 
 function initClient(): SupabaseClient | null {
@@ -20,6 +45,7 @@ function initClient(): SupabaseClient | null {
   }
 
   cachedClient = createClient(url, key, {
+    global: { fetch: createSupabaseFetchProxy(url) },
     auth: {
       persistSession: true,
       autoRefreshToken: true,
@@ -47,5 +73,4 @@ export function getSupabaseClient(): SupabaseClient {
   }
   return client;
 }
-
 export const supabase = initClient();
