@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "../supabase";
 import type { Position, TxnRow, Exchange, Leg } from "@/utils";
-import { daysTo, daysSince } from "@/utils";
+import { daysTo, daysSince, fifoMatchAndRealize } from "@/utils";
 import type { SupabaseClientScope } from "./clientScope";
 
 type RawLeg = {
@@ -229,6 +229,65 @@ function coalesceLegs(legs: Leg[]): Leg[] {
   return Array.from(merged.values());
 }
 
+function sortTrades(trades: TxnRow[]) {
+  return trades
+    .map((trade, index) => ({ trade, index }))
+    .sort((a, b) => {
+      const timeA = Number.isFinite(Date.parse(a.trade.timestamp ?? ""))
+        ? Date.parse(a.trade.timestamp!)
+        : Number.MAX_SAFE_INTEGER;
+      const timeB = Number.isFinite(Date.parse(b.trade.timestamp ?? ""))
+        ? Date.parse(b.trade.timestamp!)
+        : Number.MAX_SAFE_INTEGER;
+      if (timeA !== timeB) return timeA - timeB;
+      return a.index - b.index;
+    })
+    .map(({ trade }) => trade);
+}
+
+function realizeLegTrades(leg: Leg): Leg {
+  const inventory: typeof leg.openLots = [];
+  let realizedPnl = 0;
+  let netPremium = 0;
+  let qtyNet = 0;
+
+  const trades = sortTrades(leg.trades ?? []);
+
+  for (const trade of trades) {
+    const price = parseNumeric(trade.price);
+    const qty = parseNumeric(trade.amount);
+    if (price == null || qty == null) continue;
+
+    const side = trade.side === "sell" ? "sell" : "buy";
+    const sign: 1 | -1 = side === "sell" ? -1 : 1;
+    const lot = { qty: Math.abs(qty), price, sign } as const;
+
+    netPremium += sign === -1 ? price * lot.qty : -price * lot.qty;
+    qtyNet += sign * lot.qty;
+
+    if (trade.action === "close") {
+      const { realized, remainder } = fifoMatchAndRealize(inventory, lot);
+      realizedPnl += realized;
+      if (remainder) inventory.push(remainder);
+    } else {
+      inventory.push(lot);
+    }
+  }
+
+  return {
+    ...leg,
+    openLots: inventory,
+    realizedPnl,
+    netPremium,
+    qtyNet,
+  };
+}
+
+function applyFeesToLegs(legs: Leg[], feesTotal?: number | null): Leg[] {
+  const feeShare = (feesTotal ?? 0) / Math.max(1, legs.length);
+  return legs.map((leg) => ({ ...leg, realizedPnl: leg.realizedPnl - feeShare }));
+}
+
 function normalizeClosedAt(rawClosedAt: string | null | undefined): string | null {
   if (rawClosedAt == null) return null;
   const trimmed = String(rawClosedAt).trim();
@@ -254,7 +313,9 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
     (raw.legs ?? [])
       .map((leg, index) => mapLeg(raw, leg, index, exchange))
       .filter((leg): leg is NonNullable<typeof leg> => Boolean(leg)),
-  );
+  ).map((leg) => realizeLegTrades(leg));
+
+  const legsWithFees = applyFeesToLegs(legs, raw.fees_total);
 
   const expiryFromLeg = legs.find((leg) => leg.expiry)?.expiry ?? null;
   const normalizedEntry = normalizeDateOnly(raw.entry_ts ?? undefined);
@@ -264,7 +325,8 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
   const openSinceDays = daysSince(normalizedEntry ?? raw.entry_ts ?? null);
 
   const netPremium =
-    raw.net_fill ?? legs.reduce((sum, leg) => sum + (Number.isFinite(leg.netPremium) ? leg.netPremium : 0), 0);
+    raw.net_fill ??
+    legsWithFees.reduce((sum, leg) => sum + (Number.isFinite(leg.netPremium) ? leg.netPremium : 0), 0);
 
   const lifecycle = normalizeLifecycle(raw.lifecycle) ?? "open";
   const closedAt = normalizeClosedAt(raw.closed_at ?? null);
@@ -278,13 +340,16 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
     underlying: underlier || "—",
     expiryISO,
     dte,
-    legs,
+    legs: legsWithFees,
     legsCount: legs.length,
     type: legs.length > 1 ? "Multi-leg" : "Single",
     openSinceDays,
     strategy: raw.strategy_name_at_entry || raw.strategy_name || raw.strategy_code || undefined,
     strategyCode: raw.strategy_code ?? undefined,
-    realizedPnl: 0,
+    realizedPnl: legsWithFees.reduce(
+      (sum, leg) => sum + (Number.isFinite(leg.realizedPnl) ? leg.realizedPnl : 0),
+      0,
+    ),
     netPremium,
     pnlPct: null,
     status,
