@@ -265,13 +265,9 @@ function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): 
     netPremium += sign === -1 ? price * lot.qty : -price * lot.qty;
     qtyNet += sign * lot.qty;
 
-    if (trade.action === "close") {
-      const { realized, remainder } = fifoMatchAndRealize(inventory, lot);
-      realizedPnl += realized;
-      if (remainder) inventory.push(remainder);
-    } else {
-      inventory.push(lot);
-    }
+    const { realized, remainder } = fifoMatchAndRealize(inventory, lot);
+    realizedPnl += realized;
+    if (remainder) inventory.push(remainder);
   }
 
   if (options.assumeExpired && inventory.length > 0) {
