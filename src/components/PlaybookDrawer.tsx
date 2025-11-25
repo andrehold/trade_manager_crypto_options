@@ -1,4 +1,5 @@
 import React from 'react'
+import { createPortal } from 'react-dom'
 import { Link as LinkIcon, X as CloseIcon } from 'lucide-react'
 import type { Position } from '../utils'
 import type { ProgramResource } from '../lib/positions'
@@ -37,7 +38,7 @@ export function PlaybookDrawer({ open, onClose, position, resources, loading, er
 
   const safeProgramName = position.programName || 'Program playbook'
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50">
       <button
         type="button"
@@ -141,6 +142,7 @@ export function PlaybookDrawer({ open, onClose, position, resources, loading, er
           ) : null}
         </div>
       </aside>
-    </div>
+    </div>,
+    document.body
   )
 }
