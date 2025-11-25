@@ -596,6 +596,47 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     };
   }, [supabase, user, savedStructures]);
 
+  React.useEffect(() => {
+    if (!supabase || !user) return;
+
+    const programId = activePlaybookPosition?.programId;
+    if (!programId || programResources.has(programId)) return;
+
+    let active = true;
+    setProgramResourcesLoading(true);
+    setProgramResourcesError(null);
+
+    fetchProgramResources(supabase, [programId])
+      .then((result) => {
+        if (!active) return;
+        if (!result.ok) {
+          setProgramResourcesError(result.error);
+          return;
+        }
+
+        setProgramResources((prev) => {
+          const next = new Map(prev);
+          for (const resource of result.resources) {
+            const current = next.get(resource.programId) ?? [];
+            next.set(resource.programId, [...current, resource]);
+          }
+          return next;
+        });
+      })
+      .catch((err) => {
+        if (!active) return;
+        const message = err instanceof Error ? err.message : 'Failed to load playbook resources.';
+        setProgramResourcesError(message);
+      })
+      .finally(() => {
+        if (active) setProgramResourcesLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [activePlaybookPosition?.programId, programResources, supabase, user]);
+
   const handleOpenPlaybookDrawer = React.useCallback((position: Position) => {
     setActivePlaybookPosition(position);
   }, []);
