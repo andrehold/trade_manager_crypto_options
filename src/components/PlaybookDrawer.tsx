@@ -86,9 +86,9 @@ export function PlaybookDrawer({ open, onClose, position, resources, loading, er
                         <div className="text-xs text-slate-500">{position.programName}</div>
                       ) : null}
                     </div>
-                    {resource.playbookUrl ? (
+                    {resource.playbookUrl || resource.url ? (
                       <a
-                        href={resource.playbookUrl}
+                        href={resource.playbookUrl ?? resource.url ?? undefined}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100"
@@ -116,6 +116,12 @@ export function PlaybookDrawer({ open, onClose, position, resources, loading, er
                       <div className="flex gap-2">
                         <dt className="w-16 shrink-0 text-xs uppercase tracking-wide text-slate-500">Time</dt>
                         <dd className="flex-1 leading-relaxed">{resource.timeRule}</dd>
+                      </div>
+                    ) : null}
+                    {resource.notes ? (
+                      <div className="flex gap-2">
+                        <dt className="w-16 shrink-0 text-xs uppercase tracking-wide text-slate-500">Notes</dt>
+                        <dd className="flex-1 whitespace-pre-line leading-relaxed">{resource.notes}</dd>
                       </div>
                     ) : null}
                   </dl>
