@@ -9,6 +9,19 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          supabase: ['@supabase/supabase-js', '@supabase/ssr'],
+          papaparse: ['papaparse'],
+          icons: ['lucide-react'],
+        },
+      },
+    },
+  },
   server: {
     proxy: {
       // Coincall
