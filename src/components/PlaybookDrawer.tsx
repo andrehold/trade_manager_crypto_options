@@ -38,9 +38,14 @@ export function PlaybookDrawer({ open, onClose, position, resources, loading, er
   const safeProgramName = position.programName || 'Program playbook'
 
   return (
-    <div className="fixed inset-0 z-50 flex">
-      <button type="button" aria-label="Close playbook drawer" className="flex-1 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <aside className="relative w-full max-w-xl overflow-y-auto border-l border-slate-200 bg-white shadow-2xl">
+    <div className="fixed inset-0 z-50">
+      <button
+        type="button"
+        aria-label="Close playbook drawer"
+        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      />
+      <aside className="absolute right-0 top-0 h-full w-full max-w-xl overflow-y-auto border-l border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.25)]">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Program Playbook</div>
