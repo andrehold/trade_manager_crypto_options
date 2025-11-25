@@ -1347,12 +1347,6 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         </div>
       )}
 
-      {Boolean(activePlaybookPosition) && (
-        <div className="pointer-events-none fixed inset-y-0 right-0 z-40 flex justify-end">
-          <div className="h-full w-full max-w-xl shadow-[-32px_0_72px_-18px_rgba(15,23,42,0.35)]" />
-        </div>
-      )}
-
       <PlaybookDrawer
         open={Boolean(activePlaybookPosition)}
         onClose={handleClosePlaybookDrawer}
