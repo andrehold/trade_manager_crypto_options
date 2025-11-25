@@ -45,7 +45,9 @@ export function PlaybookDrawer({ open, onClose, position, resources, loading, er
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
-      <aside className="relative h-full w-full max-w-xl overflow-y-auto border-l border-slate-200 bg-white shadow-[-24px_0_80px_rgba(15,23,42,0.25)]">
+      <aside
+        className="relative h-full w-full max-w-xl overflow-y-auto border-l border-slate-200 bg-white shadow-[-32px_0_72px_-18px_rgba(15,23,42,0.35)] before:pointer-events-none before:absolute before:left-0 before:top-0 before:h-full before:w-6 before:bg-gradient-to-l before:from-slate-900/15 before:to-transparent"
+      >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Program Playbook</div>
