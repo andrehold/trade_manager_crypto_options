@@ -1,5 +1,5 @@
-import { createServerSupabase } from "@/lib/supabase/server";
-import { payloadSchema } from "@/lib/import/validation";
+import { createServerSupabase } from "../../src/lib/supabase/server";
+import { payloadSchema } from "../../src/lib/import/validation";
 
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -8,7 +8,11 @@ function jsonResponse(data: unknown, status = 200): Response {
   });
 }
 
-export async function POST(req: Request) {
+export default async function handler(req: Request): Promise<Response> {
+  if (req.method !== "POST") {
+    return jsonResponse({ error: "Method Not Allowed" }, 405);
+  }
+
   const supabase = createServerSupabase();
 
   // Validate payload
