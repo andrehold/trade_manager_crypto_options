@@ -1,8 +1,8 @@
--- Seed playbook-style guidance for the expanded program_resources fields.
+-- Seed playbook-style guidance for the expanded program_playbooks table.
 -- Titles align with the tactics referenced in the product brief.
 
-insert into public.program_resources (
-  resource_id,
+insert into public.program_playbooks (
+  playbook_id,
   program_id,
   title,
   profit_rule,
@@ -20,7 +20,7 @@ insert into public.program_resources (
     $$Delta/Gamma: |Δ| > 10–15% NAV or Γ > 2× θ near expiry → reduce/close.
 IV/Skew: IV–RV < +2 vol pts or IVR > 80% or RR shift > 5 pts → reduce.
 EM/Range: close if close outside EM or −1× EM beyond short strike.
-Event: Flatten T−1 for CPI/FOMC/ETF if wings tight.$$ 
+Event: Flatten T−1 for CPI/FOMC/ETF if wings tight.$$
   ),
   (
     gen_random_uuid(),
@@ -31,7 +31,7 @@ Event: Flatten T−1 for CPI/FOMC/ETF if wings tight.$$
     'Time: expiry-driven.',
     $$Δ/Γ: |Δ| > 15% or Γ spike → trim/close.
 IV: 0–2D IV −20% vs entry → take profit.
-Funding: >|±15%| → cut size.$$ 
+Funding: >|±15%| → cut size.$$
   ),
   (
     gen_random_uuid(),
@@ -41,7 +41,7 @@ Funding: >|±15%| → cut size.$$
     'Stop: −150% or confirmed breakout.',
     'Time: exit at 30–40% DTE if <30% profit.',
     $$Range: close on >3× ATR or >1.5σ VWAP with volume.
-Curve: backwardation or IV pct > 50% → reduce.$$ 
+Curve: backwardation or IV pct > 50% → reduce.$$
   ),
   (
     gen_random_uuid(),
@@ -51,7 +51,7 @@ Curve: backwardation or IV pct > 50% → reduce.$$
     'Stop: RV>IV two days or DD > 1.5× θ/day.',
     'Time: if no profit by 50% of tenor and edge decays → reduce/exit.',
     $$Curve: IVR > 80% or backwardation → cut.
-Ops: vega cap ≤10% NAV per expiry; utilization ≤50% NAV.$$ 
+Ops: vega cap ≤10% NAV per expiry; utilization ≤50% NAV.$$
   ),
   (
     gen_random_uuid(),
@@ -61,7 +61,7 @@ Ops: vega cap ≤10% NAV per expiry; utilization ≤50% NAV.$$
     'Stop: if spread+slippage ≥ buffer, cap at −1× buffer.',
     'Time: reversion half-life × 1.5 time stop.',
     $$Basis: misalignment vs options leg → exit/rehash.
-Micro: skip/exit if spreads to 95p or depth falls.$$ 
+Micro: skip/exit if spreads to 95p or depth falls.$$
   ),
   (
     gen_random_uuid(),
@@ -71,7 +71,7 @@ Micro: skip/exit if spreads to 95p or depth falls.$$
     'Stop: −150% credit or price > +1.5σ VWAP.',
     'Time: close EOD if >70% target achieved.',
     $$IV: intraday IV +20% vs entry → reduce/close.
-Funding: >|±10%| = crowding → lighten.$$ 
+Funding: >|±10%| = crowding → lighten.$$
   ),
   (
     gen_random_uuid(),
@@ -81,5 +81,5 @@ Funding: >|±10%| = crowding → lighten.$$
     'Stop: r_imp − costs < +5–10 bps or fees/slippage rise.',
     'Time: roll at T−5–10 days or when better box appears.',
     $$Risk: avoid American ex-div; prefer European index.
-Funding: unwind if OIS/T-bill vs r_imp narrows.$$ 
+Funding: unwind if OIS/T-bill vs r_imp narrows.$$
   );

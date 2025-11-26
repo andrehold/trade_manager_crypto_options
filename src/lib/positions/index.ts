@@ -21,7 +21,9 @@ export {
 } from "./archiveStructure";
 export { type SupabaseClientScope } from "./clientScope";
 export {
-  fetchProgramResources,
-  type FetchProgramResourcesResult,
-  type ProgramResource,
-} from "./programResources";
+  fetchProgramPlaybooks,
+  type FetchProgramPlaybooksResult,
+  type ProgramPlaybook,
+  type ProgramLink,
+  type PlaybookSignal,
+} from "./programPlaybooks";

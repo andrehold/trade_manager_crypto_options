@@ -23,8 +23,8 @@ import {
   fetchSavedStructures,
   appendTradesToStructure,
   buildStructureChipSummary,
-  fetchProgramResources,
-  type ProgramResource,
+  fetchProgramPlaybooks,
+  type ProgramPlaybook,
 } from './lib/positions'
 import { resolveClientAccess } from './features/auth/access'
 
@@ -131,9 +131,9 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   const [savedStructuresLoading, setSavedStructuresLoading] = React.useState(false);
   const [savedStructuresError, setSavedStructuresError] = React.useState<string | null>(null);
   const [savedStructuresVersion, setSavedStructuresVersion] = React.useState(0);
-  const [programResources, setProgramResources] = React.useState<Map<string, ProgramResource[]>>(new Map());
-  const [programResourcesLoading, setProgramResourcesLoading] = React.useState(false);
-  const [programResourcesError, setProgramResourcesError] = React.useState<string | null>(null);
+  const [programPlaybooks, setProgramPlaybooks] = React.useState<Map<string, ProgramPlaybook>>(new Map());
+  const [programPlaybooksLoading, setProgramPlaybooksLoading] = React.useState(false);
+  const [programPlaybooksError, setProgramPlaybooksError] = React.useState<string | null>(null);
   const [archiving, setArchiving] = React.useState<Record<string, boolean>>({});
   const [showMapper, setShowMapper] = React.useState<{ headers: string[] } | null>(null);
   const [showReview, setShowReview] = React.useState<{
@@ -539,9 +539,9 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
 
   React.useEffect(() => {
     if (!supabase || !user) {
-      setProgramResources(new Map());
-      setProgramResourcesError(null);
-      setProgramResourcesLoading(false);
+      setProgramPlaybooks(new Map());
+      setProgramPlaybooksError(null);
+      setProgramPlaybooksLoading(false);
       return;
     }
 
@@ -554,41 +554,39 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     );
 
     if (programIds.length === 0) {
-      setProgramResources(new Map());
-      setProgramResourcesError(null);
-      setProgramResourcesLoading(false);
+      setProgramPlaybooks(new Map());
+      setProgramPlaybooksError(null);
+      setProgramPlaybooksLoading(false);
       return;
     }
 
     let active = true;
-    setProgramResourcesLoading(true);
-    setProgramResourcesError(null);
+    setProgramPlaybooksLoading(true);
+    setProgramPlaybooksError(null);
 
-    fetchProgramResources(supabase, programIds)
+    fetchProgramPlaybooks(supabase, programIds)
       .then((result) => {
         if (!active) return;
         if (!result.ok) {
-          setProgramResourcesError(result.error);
-          setProgramResources(new Map());
+          setProgramPlaybooksError(result.error);
+          setProgramPlaybooks(new Map());
           return;
         }
 
-        const grouped = new Map<string, ProgramResource[]>();
-        for (const resource of result.resources) {
-          const current = grouped.get(resource.programId) ?? [];
-          current.push(resource);
-          grouped.set(resource.programId, current);
+        const grouped = new Map<string, ProgramPlaybook>();
+        for (const playbook of result.playbooks) {
+          grouped.set(playbook.programId, playbook);
         }
-        setProgramResources(grouped);
+        setProgramPlaybooks(grouped);
       })
       .catch((err) => {
         if (!active) return;
         const message = err instanceof Error ? err.message : 'Failed to load playbook resources.';
-        setProgramResourcesError(message);
-        setProgramResources(new Map());
+        setProgramPlaybooksError(message);
+        setProgramPlaybooks(new Map());
       })
       .finally(() => {
-        if (active) setProgramResourcesLoading(false);
+        if (active) setProgramPlaybooksLoading(false);
       });
 
     return () => {
@@ -600,25 +598,24 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     if (!supabase || !user) return;
 
     const programId = activePlaybookPosition?.programId;
-    if (!programId || programResources.has(programId)) return;
+    if (!programId || programPlaybooks.has(programId)) return;
 
     let active = true;
-    setProgramResourcesLoading(true);
-    setProgramResourcesError(null);
+    setProgramPlaybooksLoading(true);
+    setProgramPlaybooksError(null);
 
-    fetchProgramResources(supabase, [programId])
+    fetchProgramPlaybooks(supabase, [programId])
       .then((result) => {
         if (!active) return;
         if (!result.ok) {
-          setProgramResourcesError(result.error);
+          setProgramPlaybooksError(result.error);
           return;
         }
 
-        setProgramResources((prev) => {
+        setProgramPlaybooks((prev) => {
           const next = new Map(prev);
-          for (const resource of result.resources) {
-            const current = next.get(resource.programId) ?? [];
-            next.set(resource.programId, [...current, resource]);
+          for (const playbook of result.playbooks) {
+            next.set(playbook.programId, playbook);
           }
           return next;
         });
@@ -626,16 +623,16 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       .catch((err) => {
         if (!active) return;
         const message = err instanceof Error ? err.message : 'Failed to load playbook resources.';
-        setProgramResourcesError(message);
+        setProgramPlaybooksError(message);
       })
       .finally(() => {
-        if (active) setProgramResourcesLoading(false);
+        if (active) setProgramPlaybooksLoading(false);
       });
 
     return () => {
       active = false;
     };
-  }, [activePlaybookPosition?.programId, programResources, supabase, user]);
+  }, [activePlaybookPosition?.programId, programPlaybooks, supabase, user]);
 
   const handleOpenPlaybookDrawer = React.useCallback((position: Position) => {
     setActivePlaybookPosition(position);
@@ -848,11 +845,11 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
 
   const positionsForLinking = positionsForMarks;
 
-  const activeProgramResources = React.useMemo(() => {
+  const activeProgramPlaybook = React.useMemo(() => {
     const programId = activePlaybookPosition?.programId;
-    if (!programId) return [] as ProgramResource[];
-    return programResources.get(programId) ?? [];
-  }, [activePlaybookPosition?.programId, programResources]);
+    if (!programId) return null as ProgramPlaybook | null;
+    return programPlaybooks.get(programId) ?? null;
+  }, [activePlaybookPosition?.programId, programPlaybooks]);
 
   const selectableStructureOptions = React.useMemo<ReviewStructureOption[]>(() => {
     if (!savedStructures.length) return [];
@@ -1304,9 +1301,9 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
           {savedStructuresError ? (
             <div className="px-4 py-3 text-sm text-rose-600">{savedStructuresError}</div>
           ) : null}
-          {programResourcesError ? (
+          {programPlaybooksError ? (
             <div className="px-4 py-3 text-sm text-amber-700 bg-amber-50 border-t border-amber-200">
-              {programResourcesError}
+              {programPlaybooksError}
             </div>
           ) : null}
           {filteredSaved.length === 0 ? (
@@ -1392,9 +1389,9 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         open={Boolean(activePlaybookPosition)}
         onClose={handleClosePlaybookDrawer}
         position={activePlaybookPosition}
-        resources={activeProgramResources}
-        loading={programResourcesLoading}
-        error={programResourcesError}
+        playbook={activeProgramPlaybook}
+        loading={programPlaybooksLoading}
+        error={programPlaybooksError}
       />
 
       {showReview && (
