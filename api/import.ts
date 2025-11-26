@@ -1,5 +1,6 @@
-import { createServerSupabase } from "../../src/lib/supabase/server";
-import { payloadSchema } from "../../src/lib/import/validation";
+import { createServerSupabase } from "../src/lib/supabase/server";
+import { payloadSchema } from "../src/lib/import/validation";
+import type { Fill, Leg } from "../src/lib/import/types";
 
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -83,13 +84,13 @@ export default async function handler(req: Request): Promise<Response> {
   const position_id = pos.position_id as string;
 
   // 4) Insert legs (with FK to position)
-  const legsRows = legs.map((l) => ({ ...l, position_id }));
+  const legsRows = legs.map((leg: Leg) => ({ ...leg, position_id }));
   const { error: legsErr } = await supabase.from("legs").insert(legsRows);
   if (legsErr) return jsonResponse({ error: legsErr.message }, 400);
 
   // 5) Insert fills (optional)
   if (fills?.length) {
-    const fillsRows = fills.map((f) => ({ ...f, position_id }));
+    const fillsRows = fills.map((fill: Fill) => ({ ...fill, position_id }));
     const { error: fillsErr } = await supabase.from("fills").insert(fillsRows);
     if (fillsErr) return jsonResponse({ error: fillsErr.message }, 400);
   }
