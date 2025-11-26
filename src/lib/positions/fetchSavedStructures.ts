@@ -267,7 +267,7 @@ function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): 
 
     const { realized, remainder } = fifoMatchAndRealize(inventory, lot);
     realizedPnl += realized;
-    if (remainder) inventory.push(remainder);
+    if (remainder) inventory.push({ ...remainder, qty: Math.abs(remainder.qty) });
   }
 
   if (options.assumeExpired && inventory.length > 0) {
