@@ -4,6 +4,8 @@ export type ProgramResource = {
   id: string;
   programId: string;
   title: string;
+  url?: string | null;
+  notes?: string | null;
   profitRule?: string | null;
   stopRule?: string | null;
   timeRule?: string | null;
@@ -22,7 +24,7 @@ export async function fetchProgramResources(
   let query = client
     .from("program_resources")
     .select(
-      "resource_id, program_id, title, profit_rule, stop_rule, time_rule, risk_notes, playbook_url",
+      "resource_id, program_id, title, url, notes, profit_rule, stop_rule, time_rule, risk_notes, playbook_url",
     )
     .order("title", { ascending: true });
 
@@ -49,6 +51,8 @@ export async function fetchProgramResources(
         id,
         programId,
         title,
+        url: typeof row.url === "string" ? row.url : null,
+        notes: typeof row.notes === "string" ? row.notes : null,
         profitRule: typeof row.profit_rule === "string" ? row.profit_rule : null,
         stopRule: typeof row.stop_rule === "string" ? row.stop_rule : null,
         timeRule: typeof row.time_rule === "string" ? row.time_rule : null,
