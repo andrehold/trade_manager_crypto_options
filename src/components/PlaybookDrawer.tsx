@@ -81,24 +81,24 @@ export function PlaybookDrawer({ open, onClose, position, playbook, loading, err
 
           {hasPlaybook ? (
             <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-              <dl className="mt-3 space-y-2 text-sm text-slate-700">
+              <dl className="mt-3 grid grid-cols-[80px,1fr] items-start gap-x-3 gap-y-2 text-sm text-slate-700">
                 {playbook?.profitRule ? (
-                  <div className="flex gap-2">
-                    <dt className="w-16 shrink-0 text-xs uppercase tracking-wide text-slate-500">Profit</dt>
-                    <dd className="flex-1 leading-relaxed">{playbook.profitRule}</dd>
-                  </div>
+                  <>
+                    <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Profit</dt>
+                    <dd className="leading-relaxed text-slate-800">{playbook.profitRule}</dd>
+                  </>
                 ) : null}
                 {playbook?.stopRule ? (
-                  <div className="flex gap-2">
-                    <dt className="w-16 shrink-0 text-xs uppercase tracking-wide text-slate-500">Stop</dt>
-                    <dd className="flex-1 leading-relaxed">{playbook.stopRule}</dd>
-                  </div>
+                  <>
+                    <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Stop</dt>
+                    <dd className="leading-relaxed text-slate-800">{playbook.stopRule}</dd>
+                  </>
                 ) : null}
                 {playbook?.timeRule ? (
-                  <div className="flex gap-2">
-                    <dt className="w-16 shrink-0 text-xs uppercase tracking-wide text-slate-500">Time</dt>
-                    <dd className="flex-1 leading-relaxed">{playbook.timeRule}</dd>
-                  </div>
+                  <>
+                    <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Time</dt>
+                    <dd className="leading-relaxed text-slate-800">{playbook.timeRule}</dd>
+                  </>
                 ) : null}
               </dl>
 
