@@ -81,7 +81,7 @@ export function PlaybookDrawer({ open, onClose, position, playbook, loading, err
 
           {hasPlaybook ? (
             <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-              <dl className="mt-3 grid grid-cols-[90px,1fr] gap-x-4 gap-y-3 text-sm text-slate-700">
+              <dl className="mt-3 grid grid-cols-[minmax(0,1fr),minmax(0,2fr)] gap-x-4 gap-y-3 text-sm text-slate-700">
                 {[
                   { label: 'Profit', value: playbook?.profitRule },
                   { label: 'Stop', value: playbook?.stopRule },
