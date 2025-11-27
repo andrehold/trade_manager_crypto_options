@@ -81,25 +81,21 @@ export function PlaybookDrawer({ open, onClose, position, playbook, loading, err
 
           {hasPlaybook ? (
             <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-              <dl className="mt-3 grid grid-cols-[80px,1fr] items-start gap-x-3 gap-y-2 text-sm text-slate-700">
-                {playbook?.profitRule ? (
-                  <>
-                    <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Profit</dt>
-                    <dd className="leading-relaxed text-slate-800">{playbook.profitRule}</dd>
-                  </>
-                ) : null}
-                {playbook?.stopRule ? (
-                  <>
-                    <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Stop</dt>
-                    <dd className="leading-relaxed text-slate-800">{playbook.stopRule}</dd>
-                  </>
-                ) : null}
-                {playbook?.timeRule ? (
-                  <>
-                    <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Time</dt>
-                    <dd className="leading-relaxed text-slate-800">{playbook.timeRule}</dd>
-                  </>
-                ) : null}
+              <dl className="mt-3 grid grid-cols-[90px,1fr] gap-x-4 gap-y-3 text-sm text-slate-700">
+                {[
+                  { label: 'Profit', value: playbook?.profitRule },
+                  { label: 'Stop', value: playbook?.stopRule },
+                  { label: 'Time', value: playbook?.timeRule },
+                ]
+                  .filter((item) => Boolean(item.value))
+                  .map((item) => (
+                    <div key={item.label} className="contents">
+                      <dt className="self-start text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                        {item.label}
+                      </dt>
+                      <dd className="whitespace-pre-line leading-relaxed text-slate-800">{item.value}</dd>
+                    </div>
+                  ))}
               </dl>
 
               {playbook?.otherNotes ? (
