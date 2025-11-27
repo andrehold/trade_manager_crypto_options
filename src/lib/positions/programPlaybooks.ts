@@ -43,7 +43,7 @@ export async function fetchProgramPlaybooks(
   let playbooksQuery = client
     .from("program_playbooks")
     .select(
-      "playbook_id, program_id, title, profit_rule, stop_rule, time_rule, risk_notes, playbook_url, sizing_limits, market_signals, signals:playbook_signals(signal_id, label, trigger, action)",
+      "playbook_id, program_id, title, profit_rule, stop_rule, time_rule, risk_notes, playbook_url, sizing_limits, market_signals",
     )
     .order("title", { ascending: true });
 
@@ -105,23 +105,6 @@ export async function fetchProgramPlaybooks(
 
       if (!id || !programId || !title) return null;
 
-      const signals: PlaybookSignal[] = Array.isArray(row.signals)
-        ? row.signals
-            .map((signal: any) => {
-              const signalId = typeof signal.signal_id === "string" ? signal.signal_id : null;
-              const label = typeof signal.label === "string" ? signal.label : null;
-              if (!signalId || !label) return null;
-              return {
-                id: signalId,
-                playbookId: id,
-                label,
-                trigger: typeof signal.trigger === "string" ? signal.trigger : null,
-                action: typeof signal.action === "string" ? signal.action : null,
-              } satisfies PlaybookSignal;
-            })
-            .filter((sig): sig is PlaybookSignal => Boolean(sig))
-        : [];
-
       return {
         id,
         programId,
@@ -133,7 +116,7 @@ export async function fetchProgramPlaybooks(
         playbookUrl: typeof row.playbook_url === "string" ? row.playbook_url : null,
         sizingLimits: row.sizing_limits,
         marketSignals: row.market_signals,
-        signals,
+        signals: [],
         links: linksByProgram.get(programId) ?? [],
       } satisfies ProgramPlaybook;
     })
