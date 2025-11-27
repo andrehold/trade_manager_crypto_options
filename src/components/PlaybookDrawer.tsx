@@ -83,19 +83,19 @@ export function PlaybookDrawer({ open, onClose, position, playbook, loading, err
             <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
               <dl className="mt-3 space-y-2 text-sm text-slate-700">
                 {playbook?.profitRule ? (
-                  <div className="flex gap-2">
+                  <div className="flex items-start gap-2">
                     <dt className="w-16 shrink-0 text-xs uppercase tracking-wide text-slate-500">Profit</dt>
                     <dd className="flex-1 leading-relaxed">{playbook.profitRule}</dd>
                   </div>
                 ) : null}
                 {playbook?.stopRule ? (
-                  <div className="flex gap-2">
+                  <div className="flex items-start gap-2">
                     <dt className="w-16 shrink-0 text-xs uppercase tracking-wide text-slate-500">Stop</dt>
                     <dd className="flex-1 leading-relaxed">{playbook.stopRule}</dd>
                   </div>
                 ) : null}
                 {playbook?.timeRule ? (
-                  <div className="flex gap-2">
+                  <div className="flex items-start gap-2">
                     <dt className="w-16 shrink-0 text-xs uppercase tracking-wide text-slate-500">Time</dt>
                     <dd className="flex-1 leading-relaxed">{playbook.timeRule}</dd>
                   </div>
