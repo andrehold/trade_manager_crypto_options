@@ -81,22 +81,31 @@ export function PlaybookDrawer({ open, onClose, position, playbook, loading, err
 
           {hasPlaybook ? (
             <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-              <dl className="mt-3 grid grid-cols-[minmax(0,1fr),minmax(0,2fr)] gap-x-4 gap-y-3 text-sm text-slate-700">
-                {[
-                  { label: 'Profit', value: playbook?.profitRule },
-                  { label: 'Stop', value: playbook?.stopRule },
-                  { label: 'Time', value: playbook?.timeRule },
-                ]
-                  .filter((item) => Boolean(item.value))
-                  .map((item) => (
-                    <div key={item.label} className="contents">
-                      <dt className="self-start text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                        {item.label}
-                      </dt>
-                      <dd className="whitespace-pre-line leading-relaxed text-slate-800">{item.value}</dd>
-                    </div>
-                  ))}
-              </dl>
+              <table className="mt-3 w-full table-fixed border-separate border-spacing-y-2 text-sm text-slate-700">
+                <colgroup>
+                  <col className="w-1/3" />
+                  <col className="w-2/3" />
+                </colgroup>
+                <tbody className="align-top">
+                  {[
+                    { label: 'Profit', value: playbook?.profitRule },
+                    { label: 'Stop', value: playbook?.stopRule },
+                    { label: 'Time', value: playbook?.timeRule },
+                  ]
+                    .filter((item) => Boolean(item.value))
+                    .map((item) => (
+                      <tr key={item.label}>
+                        <th
+                          scope="row"
+                          className="align-top text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500"
+                        >
+                          {item.label}
+                        </th>
+                        <td className="align-top whitespace-pre-line leading-relaxed text-slate-800">{item.value}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
 
               {playbook?.otherNotes ? (
                 <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 whitespace-pre-line">
