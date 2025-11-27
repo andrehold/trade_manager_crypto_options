@@ -20,12 +20,10 @@ export type ProgramLink = {
 export type ProgramPlaybook = {
   id: string;
   programId: string;
-  title: string;
   profitRule?: string | null;
   stopRule?: string | null;
   timeRule?: string | null;
-  riskNotes?: string | null;
-  playbookUrl?: string | null;
+  otherNotes?: string | null;
   sizingLimits?: unknown;
   marketSignals?: unknown;
   signals: PlaybookSignal[];
@@ -43,9 +41,9 @@ export async function fetchProgramPlaybooks(
   let playbooksQuery = client
     .from("program_playbooks")
     .select(
-      "playbook_id, program_id, title, profit_rule, stop_rule, time_rule, risk_notes, playbook_url, sizing_limits, market_signals",
+      "playbook_id, program_id, profit_rule, stop_rule, time_rule, other_notes, sizing_limits, market_signals",
     )
-    .order("title", { ascending: true });
+    .order("created_at", { ascending: true });
 
   if (Array.isArray(programIds) && programIds.length > 0) {
     playbooksQuery = playbooksQuery.in("program_id", programIds);
@@ -101,19 +99,16 @@ export async function fetchProgramPlaybooks(
     .map((row) => {
       const id = typeof row.playbook_id === "string" ? row.playbook_id : null;
       const programId = typeof row.program_id === "string" ? row.program_id : null;
-      const title = typeof row.title === "string" ? row.title : null;
 
-      if (!id || !programId || !title) return null;
+      if (!id || !programId) return null;
 
       return {
         id,
         programId,
-        title,
         profitRule: typeof row.profit_rule === "string" ? row.profit_rule : null,
         stopRule: typeof row.stop_rule === "string" ? row.stop_rule : null,
         timeRule: typeof row.time_rule === "string" ? row.time_rule : null,
-        riskNotes: typeof row.risk_notes === "string" ? row.risk_notes : null,
-        playbookUrl: typeof row.playbook_url === "string" ? row.playbook_url : null,
+        otherNotes: typeof row.other_notes === "string" ? row.other_notes : null,
         sizingLimits: row.sizing_limits,
         marketSignals: row.market_signals,
         signals: [],

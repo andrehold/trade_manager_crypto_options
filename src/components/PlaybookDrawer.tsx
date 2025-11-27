@@ -40,7 +40,7 @@ export function PlaybookDrawer({ open, onClose, position, playbook, loading, err
   if (!open || !position) return null
 
   const safeProgramName = position.programName || 'Program playbook'
-  const safeTitle = playbook?.title || safeProgramName
+  const safeTitle = safeProgramName
 
   return (
     <div className="fixed inset-0 z-50 flex items-stretch justify-end">
@@ -88,17 +88,6 @@ export function PlaybookDrawer({ open, onClose, position, playbook, loading, err
                     <div className="text-xs text-slate-500">{position.programName}</div>
                   ) : null}
                 </div>
-                {playbook?.playbookUrl ? (
-                  <a
-                    href={playbook.playbookUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100"
-                  >
-                    <LinkIcon className="h-3.5 w-3.5" />
-                    <span>Open</span>
-                  </a>
-                ) : null}
               </div>
 
               <dl className="mt-3 space-y-2 text-sm text-slate-700">
@@ -122,9 +111,9 @@ export function PlaybookDrawer({ open, onClose, position, playbook, loading, err
                 ) : null}
               </dl>
 
-              {playbook?.riskNotes ? (
+              {playbook?.otherNotes ? (
                 <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700 whitespace-pre-line">
-                  {playbook.riskNotes}
+                  {playbook.otherNotes}
                 </div>
               ) : null}
 
