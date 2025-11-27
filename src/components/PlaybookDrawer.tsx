@@ -81,15 +81,6 @@ export function PlaybookDrawer({ open, onClose, position, playbook, loading, err
 
           {hasPlaybook ? (
             <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900">{safeTitle}</div>
-                  {position.programName ? (
-                    <div className="text-xs text-slate-500">{position.programName}</div>
-                  ) : null}
-                </div>
-              </div>
-
               <dl className="mt-3 space-y-2 text-sm text-slate-700">
                 {playbook?.profitRule ? (
                   <div className="flex gap-2">
@@ -155,14 +146,20 @@ export function PlaybookDrawer({ open, onClose, position, playbook, loading, err
             <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-800 shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Helpful Links</div>
               <ul className="mt-3 space-y-2">
-                {links.map((link) => (
-                  <li key={link.id} className="flex items-start justify-between gap-3 rounded border border-slate-200 bg-slate-50 px-3 py-2">
-                    <div>
-                      <div className="text-sm font-semibold text-slate-900">{link.title}</div>
-                      {link.notes ? (
-                        <div className="text-xs text-slate-600 whitespace-pre-line">{link.notes}</div>
-                      ) : null}
-                    </div>
+                {links.map((link) => {
+                  const linkLabel = link.title && link.title !== safeTitle ? link.title : 'Resource'
+
+                  return (
+                    <li
+                      key={link.id}
+                      className="flex items-start justify-between gap-3 rounded border border-slate-200 bg-slate-50 px-3 py-2"
+                    >
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">{linkLabel}</div>
+                        {link.notes ? (
+                          <div className="text-xs text-slate-600 whitespace-pre-line">{link.notes}</div>
+                        ) : null}
+                      </div>
                     {link.url ? (
                       <a
                         href={link.url}
@@ -174,8 +171,9 @@ export function PlaybookDrawer({ open, onClose, position, playbook, loading, err
                         <span>Open</span>
                       </a>
                     ) : null}
-                  </li>
-                ))}
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           ) : null}
