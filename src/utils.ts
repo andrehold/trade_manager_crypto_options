@@ -427,12 +427,20 @@ export function fmtGreek(n: number | null | undefined, digits = 4): string {
   return (n as number).toLocaleString(undefined, { maximumFractionDigits: digits });
 }
 
-export function fmtPremium(n: number, asset?: string) {
+export function fmtPremium(n: number, asset?: string, digits?: number) {
   const sign = n < 0 ? '-' : '';
   const abs = Math.abs(n);
   const sym = (asset || '').toUpperCase();
-  if (sym === 'BTC' || sym === 'ETH') {
-    return `${sign}${abs.toLocaleString(undefined, { maximumFractionDigits: 8 })} ${sym}`;
+  const isCrypto = sym === 'BTC' || sym === 'ETH';
+  const defaultDigits = isCrypto ? 8 : 2;
+  const fractionDigits = typeof digits === 'number' ? digits : defaultDigits;
+  const formatOptions: Intl.NumberFormatOptions =
+    typeof digits === 'number'
+      ? { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits }
+      : { maximumFractionDigits: fractionDigits };
+
+  if (isCrypto) {
+    return `${sign}${abs.toLocaleString(undefined, formatOptions)} ${sym}`;
   }
-  return `${sign}$${abs.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  return `${sign}$${abs.toLocaleString(undefined, formatOptions)}`;
 }
