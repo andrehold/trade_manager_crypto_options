@@ -205,12 +205,12 @@ export function fifoMatchAndRealize(inventory: Lot[], trade: Lot): { realized: n
       lot.qty -= closeQty;
     } else if (lot.sign === -1 && trade.sign === 1) {
       realized += (lot.price - trade.price) * closeQty;
-      lot.qty += closeQty;
+      lot.qty -= closeQty;
     }
     remainingQty -= closeQty;
     if (Math.abs(lot.qty) <= 1e-9) inventory.shift();
   }
-  const leftover = remainingQty > 0 ? { ...trade, qty: remainingQty * (trade.sign) } : undefined;
+  const leftover = remainingQty > 0 ? { ...trade, qty: remainingQty } : undefined;
   return { realized, remainder: leftover };
 }
 
