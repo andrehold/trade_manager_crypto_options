@@ -69,6 +69,15 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   clientScope,
   onPlaybookOpen,
 }) => {
+  const fmtFiveDecimals = React.useCallback(
+    (value: number) =>
+      value.toLocaleString(undefined, {
+        minimumFractionDigits: 5,
+        maximumFractionDigits: 5,
+      }),
+    [],
+  )
+
   const [open, setOpen] = React.useState(false)
   const [showSaveOverlay, setShowSaveOverlay] = React.useState(false)
   const statusTone =
@@ -313,11 +322,11 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                     <thead className="text-slate-500">
                       <tr>
                         <th className="text-left p-2">Leg</th>
-                        <th className="text-left p-2">Net Qty</th>
-                        <th className="text-left p-2">Realized PnL</th>
-                        <th className="text-left p-2">Net Premium</th>
-                        <th className="text-left p-2">Mark</th>
-                        <th className="text-left p-2">uPnL</th>
+                        <th className="text-right p-2">Net Qty</th>
+                        <th className="text-right p-2">Realized PnL</th>
+                        <th className="text-right p-2">Net Premium</th>
+                        <th className="text-right p-2">Mark</th>
+                        <th className="text-right p-2">uPnL</th>
                         <th className="text-left p-2">Open Lots</th>
                       </tr>
                     </thead>
@@ -334,7 +343,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                           ? markLoading
                             ? <CellSpinner />
                             : '—'
-                          : markPrice.toLocaleString(undefined, { maximumFractionDigits: 8 })
+                          : fmtFiveDecimals(markPrice)
 
                         let unrealizedCell: React.ReactNode = '—'
                         if (!ref) {
@@ -346,7 +355,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                           const u = legUnrealizedPnL(l, markPrice, multiplier)
                           unrealizedCell = (
                             <span className={u < 0 ? 'text-rose-600' : 'text-emerald-600'}>
-                              {fmtPremium(u, p.underlying)}
+                              {fmtPremium(u, p.underlying, 5)}
                             </span>
                           )
                         }
@@ -364,13 +373,13 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                                   <>{l.strike} {l.optionType}</>
                                 )}
                               </td>
-                              <td className="p-2">{l.qtyNet}</td>
-                              <td className={`p-2 ${l.realizedPnl < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                                {fmtPremium(l.realizedPnl, p.underlying)}
+                              <td className="p-2 text-right font-mono tabular-nums">{fmtFiveDecimals(l.qtyNet)}</td>
+                              <td className={`p-2 text-right font-mono tabular-nums ${l.realizedPnl < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                {fmtPremium(l.realizedPnl, p.underlying, 5)}
                               </td>
-                              <td className="p-2">{fmtPremium(l.netPremium, p.underlying)}</td>
-                              <td className="p-2">{markCell}</td>
-                              <td className="p-2 text-right">{unrealizedCell}</td>
+                              <td className="p-2 text-right font-mono tabular-nums">{fmtPremium(l.netPremium, p.underlying, 5)}</td>
+                              <td className="p-2 text-right font-mono tabular-nums">{markCell}</td>
+                              <td className="p-2 text-right font-mono tabular-nums">{unrealizedCell}</td>
                               <td className="p-2">
                                 {l.openLots.length
                                   ? l.openLots.map((o, i) => (
