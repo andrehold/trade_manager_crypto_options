@@ -298,6 +298,15 @@ function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): 
 }
 
 function applyFeesToLegs(legs: Leg[], feesTotal?: number | null): Leg[] {
+  const legFees = legs.map((leg) =>
+    (leg.trades ?? []).reduce((sum, trade) => sum + (parseNumeric(trade.fee) ?? 0), 0),
+  );
+  const totalLegFees = legFees.reduce((sum, legFee) => sum + legFee, 0);
+
+  if (totalLegFees > 0) {
+    return legs.map((leg, idx) => ({ ...leg, realizedPnl: leg.realizedPnl - legFees[idx] }));
+  }
+
   const feeShare = (feesTotal ?? 0) / Math.max(1, legs.length);
   return legs.map((leg) => ({ ...leg, realizedPnl: leg.realizedPnl - feeShare }));
 }
