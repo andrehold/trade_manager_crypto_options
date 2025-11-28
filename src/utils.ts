@@ -353,6 +353,11 @@ export function legUnrealizedPnL(
   mark: number,
   multiplier?: number | null
 ): number {
+  // If the leg is fully closed, suppress any mark-to-market noise
+  // that could arise from offsetting lots at different strikes.
+  const netQty = legNetQty(leg);
+  if (!Number.isFinite(netQty) || Math.abs(netQty) < 1e-10) return 0;
+
   const m = Number.isFinite(multiplier as number) && (multiplier as number) > 0 ? (multiplier as number) : 1;
   return (leg.openLots || []).reduce((acc, lot) => {
     // profit is (mark - entry) * signed quantity
