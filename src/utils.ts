@@ -33,6 +33,7 @@ export interface Leg {
   optionType: 'C' | 'P' | string;
   openLots: Lot[];
   realizedPnl: number;
+  fees?: number | null;
   netPremium: number;
   qtyNet: number;
   trades: TxnRow[];

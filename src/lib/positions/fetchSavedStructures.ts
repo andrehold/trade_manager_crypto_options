@@ -13,6 +13,11 @@ type RawLeg = {
   price: number | string | null;
 };
 
+type RawFill = {
+  leg_seq: number | null;
+  fees: number | string | null;
+};
+
 type RawPosition = {
   position_id: string;
   program_id: string | null;
@@ -53,6 +58,7 @@ type RawPosition = {
   close_target_structure_id?: string | null;
   linked_structure_ids?: string[] | null;
   legs?: RawLeg[] | null;
+  fills?: RawFill[] | null;
   archived?: boolean | null;
   archived_at?: string | null;
   archived_by?: string | null;
@@ -297,9 +303,28 @@ function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): 
   };
 }
 
-function applyFeesToLegs(legs: Leg[], feesTotal?: number | null): Leg[] {
+function applyFeesToLegs(
+  legs: Leg[],
+  feesTotal?: number | null,
+  explicitLegFees: number[] = [],
+): Leg[] {
+  const tradeLegFees = legs.map((leg) =>
+    (leg.trades ?? []).reduce((sum, trade) => sum + (parseNumeric(trade.fee) ?? 0), 0),
+  );
+
+  const legFees = legs.map((_, idx) => explicitLegFees[idx] ?? tradeLegFees[idx] ?? 0);
+  const totalLegFees = legFees.reduce((sum, legFee) => sum + legFee, 0);
+
+  if (totalLegFees > 0) {
+    return legs.map((leg, idx) => ({
+      ...leg,
+      fees: legFees[idx],
+      realizedPnl: leg.realizedPnl - legFees[idx],
+    }));
+  }
+
   const feeShare = (feesTotal ?? 0) / Math.max(1, legs.length);
-  return legs.map((leg) => ({ ...leg, realizedPnl: leg.realizedPnl - feeShare }));
+  return legs.map((leg) => ({ ...leg, fees: feeShare, realizedPnl: leg.realizedPnl - feeShare }));
 }
 
 function normalizeClosedAt(rawClosedAt: string | null | undefined): string | null {
@@ -340,7 +365,21 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
 
   const legs = initialLegs.map((leg) => realizeLegTrades(leg, { assumeExpired: isClosed }));
 
-  const legsWithFees = applyFeesToLegs(legs, raw.fees_total);
+  const legFeesFromFills = (raw.fills ?? []).reduce((fees, fill) => {
+    const seq = fill.leg_seq != null ? Number(fill.leg_seq) : null;
+    const feeValue = parseNumeric(fill.fees) ?? 0;
+    if (!seq || feeValue === 0) return fees;
+
+    fees.set(seq, (fees.get(seq) ?? 0) + feeValue);
+    return fees;
+  }, new Map<number, number>());
+
+  const explicitLegFees = (raw.legs ?? []).map((leg, idx) => {
+    const seq = leg.leg_seq != null ? Number(leg.leg_seq) : idx + 1;
+    return legFeesFromFills.get(seq) ?? 0;
+  });
+
+  const legsWithFees = applyFeesToLegs(legs, raw.fees_total, explicitLegFees);
 
   const expiryISO = normalizedExpiry ?? raw.entry_ts?.slice(0, 10) ?? "—";
   const dte = normalizedExpiry ? daysTo(normalizedExpiry) : 0;
@@ -453,6 +492,10 @@ export async function fetchSavedStructures(
          strike,
          qty,
          price
+       ),
+       fills:fills(
+         leg_seq,
+         fees
        )`
     )
     .eq("archived", false)
