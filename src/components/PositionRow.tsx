@@ -327,6 +327,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                         <th className="text-right p-2">Net Premium</th>
                         <th className="text-right p-2">Mark</th>
                         <th className="text-right p-2">uPnL</th>
+                        <th className="text-right p-2">Fee</th>
                         <th className="text-left p-2">Open Lots</th>
                       </tr>
                     </thead>
@@ -380,6 +381,9 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                               <td className="p-2 text-right font-mono tabular-nums">{fmtPremium(l.netPremium, p.underlying, 5)}</td>
                               <td className="p-2 text-right font-mono tabular-nums">{markCell}</td>
                               <td className="p-2 text-right font-mono tabular-nums">{unrealizedCell}</td>
+                              <td className="p-2 text-right font-mono tabular-nums">
+                                {l.fees != null ? fmtPremium(l.fees, p.underlying, 5) : '—'}
+                              </td>
                               <td className="p-2">
                                 {l.openLots.length
                                   ? l.openLots.map((o, i) => (

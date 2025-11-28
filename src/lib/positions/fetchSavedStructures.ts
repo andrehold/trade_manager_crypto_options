@@ -316,11 +316,15 @@ function applyFeesToLegs(
   const totalLegFees = legFees.reduce((sum, legFee) => sum + legFee, 0);
 
   if (totalLegFees > 0) {
-    return legs.map((leg, idx) => ({ ...leg, realizedPnl: leg.realizedPnl - legFees[idx] }));
+    return legs.map((leg, idx) => ({
+      ...leg,
+      fees: legFees[idx],
+      realizedPnl: leg.realizedPnl - legFees[idx],
+    }));
   }
 
   const feeShare = (feesTotal ?? 0) / Math.max(1, legs.length);
-  return legs.map((leg) => ({ ...leg, realizedPnl: leg.realizedPnl - feeShare }));
+  return legs.map((leg) => ({ ...leg, fees: feeShare, realizedPnl: leg.realizedPnl - feeShare }));
 }
 
 function normalizeClosedAt(rawClosedAt: string | null | undefined): string | null {
