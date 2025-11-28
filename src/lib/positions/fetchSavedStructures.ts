@@ -276,6 +276,11 @@ function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): 
     }
   }
 
+  const netOpenQty = inventory.reduce((sum, lot) => sum + lot.sign * lot.qty, 0);
+  if (Math.abs(netOpenQty) <= Number.EPSILON) {
+    inventory.length = 0;
+  }
+
   if (options.assumeExpired && inventory.length > 0) {
     for (const lot of inventory) {
       realizedPnl += lot.sign === -1 ? lot.price * lot.qty : -lot.price * lot.qty;
