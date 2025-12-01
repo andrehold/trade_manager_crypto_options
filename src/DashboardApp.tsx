@@ -141,6 +141,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     rows: TxnRow[];
     excludedRows: TxnRow[];
     duplicateTradeIds?: string[];
+    duplicateOrderIds?: string[];
   } | null>(null);
   const [activePlaybookPosition, setActivePlaybookPosition] = React.useState<Position | null>(null);
   const [alertsOnly, setAlertsOnly] = React.useState(false);
@@ -268,7 +269,12 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   const filterRowsWithExistingTradeIds = React.useCallback(
     async (rows: TxnRow[]) => {
       if (!supabase) {
-        return { filtered: rows, duplicates: [] as TxnRow[] };
+        return {
+          filtered: rows,
+          duplicates: [] as TxnRow[],
+          duplicateTradeIds: [] as string[],
+          duplicateOrderIds: [] as string[],
+        };
       }
 
       const uniqueTradeIds = Array.from(
@@ -279,13 +285,27 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         ),
       );
 
-      if (uniqueTradeIds.length === 0) {
-        return { filtered: rows, duplicates: [] as TxnRow[] };
+      const uniqueOrderIds = Array.from(
+        new Set(
+          rows
+            .map((row) => row.order_id?.trim())
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
+
+      if (uniqueTradeIds.length === 0 && uniqueOrderIds.length === 0) {
+        return {
+          filtered: rows,
+          duplicates: [] as TxnRow[],
+          duplicateTradeIds: [] as string[],
+          duplicateOrderIds: [] as string[],
+        };
       }
 
       const clientFilter = activeClientName?.trim();
       const restrictByClient = Boolean(clientFilter) && !isAdmin;
-      const duplicates = new Set<string>();
+      const duplicateTradeIds = new Set<string>();
+      const duplicateOrderIds = new Set<string>();
       const chunkSize = 99;
 
       for (let start = 0; start < uniqueTradeIds.length; start += chunkSize) {
@@ -307,7 +327,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
 
         for (const entry of data ?? []) {
           const id = typeof entry.trade_id === 'string' ? entry.trade_id.trim() : '';
-          if (id) duplicates.add(id);
+          if (id) duplicateTradeIds.add(id);
         }
 
         const { data: unprocessed, error: unprocessedErr } = await supabase
@@ -323,25 +343,85 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         for (const entry of unprocessed ?? []) {
           const id = typeof entry.trade_id === 'string' ? entry.trade_id.trim() : '';
           const isSameClient = !restrictByClient || !clientFilter || entry.client_name === clientFilter;
-          if (id && isSameClient) duplicates.add(id);
+          if (id && isSameClient) duplicateTradeIds.add(id);
         }
       }
 
-      if (!duplicates.size) {
-        return { filtered: rows, duplicates: [] as TxnRow[] };
+      for (let start = 0; start < uniqueOrderIds.length; start += chunkSize) {
+        const chunk = uniqueOrderIds.slice(start, start + chunkSize);
+        let query = supabase
+          .from('fills')
+          .select(restrictByClient ? 'order_id, positions!inner(client_name)' : 'order_id')
+          .in('order_id', chunk);
+
+        if (restrictByClient && clientFilter) {
+          query = query.eq('positions.client_name', clientFilter);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+          console.warn('Failed to check existing order IDs in fills table.', error);
+          return {
+            filtered: rows,
+            duplicates: [] as TxnRow[],
+            duplicateTradeIds: [] as string[],
+            duplicateOrderIds: [] as string[],
+          };
+        }
+
+        for (const entry of data ?? []) {
+          const id = typeof entry.order_id === 'string' ? entry.order_id.trim() : '';
+          if (id) duplicateOrderIds.add(id);
+        }
+
+        const { data: unprocessed, error: unprocessedErr } = await supabase
+          .from('unprocessed_imports')
+          .select('order_id, client_name')
+          .in('order_id', chunk)
+          .match(restrictByClient && clientFilter ? { client_name: clientFilter } : {});
+
+        if (unprocessedErr) {
+          console.warn('Failed to check existing order IDs in unprocessed_imports table.', unprocessedErr);
+        }
+
+        for (const entry of unprocessed ?? []) {
+          const id = typeof entry.order_id === 'string' ? entry.order_id.trim() : '';
+          const isSameClient = !restrictByClient || !clientFilter || entry.client_name === clientFilter;
+          if (id && isSameClient) duplicateOrderIds.add(id);
+        }
+      }
+
+      if (!duplicateTradeIds.size && !duplicateOrderIds.size) {
+        return {
+          filtered: rows,
+          duplicates: [] as TxnRow[],
+          duplicateTradeIds: [] as string[],
+          duplicateOrderIds: [] as string[],
+        };
       }
 
       const filtered = rows.filter((row) => {
         const id = row.trade_id?.trim();
-        return !id || !duplicates.has(id);
+        const orderId = row.order_id?.trim();
+        const hasTrade = Boolean(id && duplicateTradeIds.has(id));
+        const hasOrder = Boolean(orderId && duplicateOrderIds.has(orderId));
+        return !hasTrade && !hasOrder;
       });
 
       const duplicateRows = rows.filter((row) => {
         const id = row.trade_id?.trim();
-        return Boolean(id && duplicates.has(id));
+        const orderId = row.order_id?.trim();
+        const isTradeDuplicate = Boolean(id && duplicateTradeIds.has(id));
+        const isOrderDuplicate = Boolean(orderId && duplicateOrderIds.has(orderId));
+        return isTradeDuplicate || isOrderDuplicate;
       });
 
-      return { filtered, duplicates: duplicateRows };
+      return {
+        filtered,
+        duplicates: duplicateRows,
+        duplicateTradeIds: Array.from(duplicateTradeIds),
+        duplicateOrderIds: Array.from(duplicateOrderIds),
+      };
     },
     [supabase, activeClientName, isAdmin],
   );
@@ -383,20 +463,14 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       if (parsed) optionsOnly.push(row); else excludedRows.push(row);
     }
 
-    const { filtered, duplicates } = await filterRowsWithExistingTradeIds(optionsOnly);
-    const duplicateTradeIds = Array.from(
-      new Set(
-        duplicates
-          .map((row) => row.trade_id?.trim())
-          .filter((id): id is string => Boolean(id)),
-      ),
-    );
+    const { filtered, duplicateTradeIds, duplicateOrderIds } = await filterRowsWithExistingTradeIds(optionsOnly);
 
     setShowMapper(null);
     setShowReview({
       rows: filtered,
       excludedRows,
       duplicateTradeIds: duplicateTradeIds.length ? duplicateTradeIds : undefined,
+      duplicateOrderIds: duplicateOrderIds.length ? duplicateOrderIds : undefined,
     });
   }
 
