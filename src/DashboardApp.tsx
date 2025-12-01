@@ -28,6 +28,7 @@ import {
   type ProgramPlaybook,
 } from './lib/positions'
 import { resolveClientAccess } from './features/auth/access'
+import { extractIdentifier, sanitizeIdentifier } from './lib/positions/identifiers'
 
 const CLIENT_LIST_STORAGE_KEY = 'tm_client_names_v1'
 const SELECTED_CLIENT_STORAGE_KEY = 'tm_selected_client_v1'
@@ -432,6 +433,11 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     const mappedRaw: TxnRow[] = rawRows.map((r) => {
       const rawSide = String(r[mapping.side] ?? '');
       const { action, side } = parseActionSide(rawSide);
+      const mappedTradeId = mapping.trade_id ? sanitizeIdentifier(r[mapping.trade_id]) : null;
+      const mappedOrderId = mapping.order_id ? sanitizeIdentifier(r[mapping.order_id]) : null;
+      const fallbackTradeId = extractIdentifier(r as any, 'trade');
+      const fallbackOrderId = extractIdentifier(r as any, 'order');
+
       return {
         instrument: String(r[mapping.instrument] ?? '').trim(),
         side: side || '',
@@ -440,8 +446,8 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         price: toNumber(r[mapping.price]),
         fee: mapping.fee ? toNumber(r[mapping.fee]) : 0,
         timestamp: mapping.timestamp ? String(r[mapping.timestamp]) : undefined,
-        trade_id: mapping.trade_id ? String(r[mapping.trade_id]) : undefined,
-        order_id: mapping.order_id ? String(r[mapping.order_id]) : undefined,
+        trade_id: mappedTradeId ?? fallbackTradeId ?? undefined,
+        order_id: mappedOrderId ?? fallbackOrderId ?? undefined,
         info: mapping.info ? String(r[mapping.info]) : undefined,
         exchange: exchange as Exchange,
       } as TxnRow;
