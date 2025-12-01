@@ -28,7 +28,11 @@ import {
   type ProgramPlaybook,
 } from './lib/positions'
 import { resolveClientAccess } from './features/auth/access'
-import { extractIdentifier, sanitizeIdentifier } from './lib/positions/identifiers'
+import {
+  deriveSyntheticDeliveryTradeId,
+  extractIdentifier,
+  sanitizeIdentifier,
+} from './lib/positions/identifiers'
 
 const CLIENT_LIST_STORAGE_KEY = 'tm_client_names_v1'
 const SELECTED_CLIENT_STORAGE_KEY = 'tm_selected_client_v1'
@@ -457,7 +461,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       const mappedTradeId = resolveIdentifierFromMapping(r as Record<string, unknown>, mapping.trade_id, 'trade');
       const mappedOrderId = resolveIdentifierFromMapping(r as Record<string, unknown>, mapping.order_id, 'order');
 
-      return {
+      const provisionalRow: TxnRow = {
         instrument: String(r[mapping.instrument] ?? '').trim(),
         side: side || '',
         action,
@@ -469,7 +473,17 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         order_id: mappedOrderId ?? undefined,
         info: mapping.info ? String(r[mapping.info]) : undefined,
         exchange: exchange as Exchange,
-      } as TxnRow;
+      }
+
+      const syntheticTradeId =
+        provisionalRow.trade_id ??
+        deriveSyntheticDeliveryTradeId(provisionalRow, r as Record<string, unknown>) ??
+        undefined
+
+      return {
+        ...provisionalRow,
+        trade_id: syntheticTradeId,
+      } as TxnRow
     }).filter((r) => {
       const hasInstrument = Boolean(r.instrument);
       const hasSide = r.side === 'buy' || r.side === 'sell';
