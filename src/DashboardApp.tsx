@@ -427,16 +427,35 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     [supabase, activeClientName, isAdmin],
   );
 
+  const resolveIdentifierFromMapping = React.useCallback(
+    (row: Record<string, unknown>, mappingKey: string | undefined, type: 'trade' | 'order') => {
+      const direct = mappingKey ? sanitizeIdentifier(row[mappingKey]) : null;
+      if (direct) return direct;
+
+      if (mappingKey) {
+        const target = mappingKey.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        for (const [key, value] of Object.entries(row)) {
+          const normalized = key.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+          if (normalized === target) {
+            const sanitized = sanitizeIdentifier(value);
+            if (sanitized) return sanitized;
+          }
+        }
+      }
+
+      return extractIdentifier(row as any, type);
+    },
+    [],
+  );
+
   async function startImport(mapping: Record<string, string>) {
     const exchange = (mapping as any).__exchange || 'deribit';
     setSelectedExchange(exchange as Exchange);
     const mappedRaw: TxnRow[] = rawRows.map((r) => {
       const rawSide = String(r[mapping.side] ?? '');
       const { action, side } = parseActionSide(rawSide);
-      const mappedTradeId = mapping.trade_id ? sanitizeIdentifier(r[mapping.trade_id]) : null;
-      const mappedOrderId = mapping.order_id ? sanitizeIdentifier(r[mapping.order_id]) : null;
-      const fallbackTradeId = extractIdentifier(r as any, 'trade');
-      const fallbackOrderId = extractIdentifier(r as any, 'order');
+      const mappedTradeId = resolveIdentifierFromMapping(r as Record<string, unknown>, mapping.trade_id, 'trade');
+      const mappedOrderId = resolveIdentifierFromMapping(r as Record<string, unknown>, mapping.order_id, 'order');
 
       return {
         instrument: String(r[mapping.instrument] ?? '').trim(),
@@ -446,8 +465,8 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         price: toNumber(r[mapping.price]),
         fee: mapping.fee ? toNumber(r[mapping.fee]) : 0,
         timestamp: mapping.timestamp ? String(r[mapping.timestamp]) : undefined,
-        trade_id: mappedTradeId ?? fallbackTradeId ?? undefined,
-        order_id: mappedOrderId ?? fallbackOrderId ?? undefined,
+        trade_id: mappedTradeId ?? undefined,
+        order_id: mappedOrderId ?? undefined,
         info: mapping.info ? String(r[mapping.info]) : undefined,
         exchange: exchange as Exchange,
       } as TxnRow;

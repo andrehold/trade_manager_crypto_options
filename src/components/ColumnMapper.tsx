@@ -27,7 +27,7 @@ export function ColumnMapper({ headers, onConfirm, onCancel }: {
       fee: exact('fee') || guess(['fee', 'commission', 'cost']),
       timestamp: exact('date') || exact('timestamp') || guess(['time', 'timestamp', 'date', 'datetime', 'trade time', 'execution time']),
       trade_id: exact('trade id') || exact('trade_id') || guess(['trade id', 'trade_id', 'tradeid', 'id', 'exec id', 'execution id']),
-      order_id: exact('order id') || guess(['order id', 'order_id', 'orderid']),
+      order_id: exact('order id') || exact('order_id') || guess(['order id', 'order_id', 'orderid']),
       info: exact('info') || guess(['info', 'note', 'comment']),
     };
     setMapping(initial);
