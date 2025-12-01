@@ -134,6 +134,8 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
     return (p.programName ?? '').trim()
   }, [p.programName, p.source])
 
+  const isClosed = p.status === 'CLOSED'
+
   const strategyLabel = React.useMemo(() => {
     return (p.strategy ?? '').trim()
   }, [p.strategy])
@@ -313,7 +315,14 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                 <div className="mt-2 text-xs text-slate-500">Exchange</div>
                 <div className="text-sm font-medium capitalize">{p.exchange ?? '—'}</div>
                 <div className="mt-2 text-xs text-slate-500">Net Premium</div>
-                <div className="text-sm font-medium">{fmtPremium(p.netPremium, p.underlying)}</div>
+                <div className="text-sm font-medium flex items-center gap-2">
+                  <span>{fmtPremium(p.netPremium, p.underlying)}</span>
+                  {isClosed ? (
+                    <span className={p.realizedPnl < 0 ? 'text-rose-600' : 'text-emerald-600'}>
+                      / {fmtPremium(p.realizedPnl, p.underlying)}
+                    </span>
+                  ) : null}
+                </div>
               </div>
               <div className="bg-white border rounded-xl p-3 md:col-span-2">
                 <div className="text-xs text-slate-500 mb-2">Legs</div>
