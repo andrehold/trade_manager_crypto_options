@@ -20,5 +20,15 @@ export function extractIdentifier(row: TxnRow, type: 'trade' | 'order') {
     if (sanitized) return sanitized
   }
 
+  // Last resort: look for keys that normalize (remove separators and lowercase) to the same identifier
+  const normalizedTarget = `${type}id`
+  for (const [rawKey, rawValue] of Object.entries(row as Record<string, unknown>)) {
+    const normalizedKey = rawKey.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+    if (normalizedKey === normalizedTarget) {
+      const sanitized = sanitizeIdentifier(rawValue)
+      if (sanitized) return sanitized
+    }
+  }
+
   return null
 }
