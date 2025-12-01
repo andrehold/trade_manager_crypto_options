@@ -52,6 +52,15 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
     setNotProcessed(rows.map(() => false));
   }, [autoStructureDefaults, rows]);
 
+  React.useEffect(() => {
+    console.log('[ReviewOverlay] Opened with rows', {
+      rows,
+      excludedRows,
+      duplicateTradeIds,
+      duplicateOrderIds,
+    });
+  }, [rows, excludedRows, duplicateTradeIds, duplicateOrderIds]);
+
   const availableStructures = React.useMemo(
     () => props.availableStructures ?? [],
     [props.availableStructures],
@@ -103,6 +112,10 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
 
     try {
       setImporting(true);
+      console.log('[ReviewOverlay] Submitting import selection', {
+        payload,
+        unprocessedRows,
+      });
       await onConfirm(payload, unprocessedRows);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to import trades.';

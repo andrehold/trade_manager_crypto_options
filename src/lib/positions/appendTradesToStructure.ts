@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { TxnRow, Exchange } from '@/utils'
+import { extractIdentifier } from './identifiers'
 import { parseInstrumentByExchange } from '@/utils'
 import type { SupabaseClientScope } from './clientScope'
 
@@ -75,16 +76,16 @@ function toNumeric(value: unknown): number | null {
   return Number.isFinite(num) ? num : null
 }
 
-function sanitizeString(value: string | undefined): string | null {
-  if (!value) return null
-  const trimmed = value.trim()
+function sanitizeText(value: unknown): string | null {
+  if (value == null) return null
+  const trimmed = String(value).trim()
   return trimmed.length ? trimmed : null
 }
 
 function describeRow(row: TxnRow): string {
-  const tradeId = sanitizeString(row.trade_id)
+  const tradeId = extractIdentifier(row, 'trade')
   if (tradeId) return `trade ${tradeId}`
-  const orderId = sanitizeString(row.order_id)
+  const orderId = extractIdentifier(row, 'order')
   if (orderId) return `order ${orderId}`
   return row.instrument || 'trade row'
 }
@@ -126,10 +127,10 @@ function normalizeTradeRow(row: TxnRow): NormalizeResult {
   }
 
   const timestamp = normalizeTimestamp(row.timestamp)
-  const tradeId = sanitizeString(row.trade_id)
-  const orderId = sanitizeString(row.order_id)
+  const tradeId = extractIdentifier(row, 'trade')
+  const orderId = extractIdentifier(row, 'order')
   const fee = toNumeric(row.fee)
-  const notes = sanitizeString(row.info)
+  const notes = sanitizeText(row.info)
 
   return {
     ok: true,

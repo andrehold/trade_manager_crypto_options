@@ -28,6 +28,11 @@ import {
   type ProgramPlaybook,
 } from './lib/positions'
 import { resolveClientAccess } from './features/auth/access'
+import {
+  deriveSyntheticDeliveryTradeId,
+  extractIdentifier,
+  sanitizeIdentifier,
+} from './lib/positions/identifiers'
 
 const CLIENT_LIST_STORAGE_KEY = 'tm_client_names_v1'
 const SELECTED_CLIENT_STORAGE_KEY = 'tm_selected_client_v1'
@@ -426,13 +431,37 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     [supabase, activeClientName, isAdmin],
   );
 
+  const resolveIdentifierFromMapping = React.useCallback(
+    (row: Record<string, unknown>, mappingKey: string | undefined, type: 'trade' | 'order') => {
+      const direct = mappingKey ? sanitizeIdentifier(row[mappingKey]) : null;
+      if (direct) return direct;
+
+      if (mappingKey) {
+        const target = mappingKey.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        for (const [key, value] of Object.entries(row)) {
+          const normalized = key.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+          if (normalized === target) {
+            const sanitized = sanitizeIdentifier(value);
+            if (sanitized) return sanitized;
+          }
+        }
+      }
+
+      return extractIdentifier(row as any, type);
+    },
+    [],
+  );
+
   async function startImport(mapping: Record<string, string>) {
     const exchange = (mapping as any).__exchange || 'deribit';
     setSelectedExchange(exchange as Exchange);
     const mappedRaw: TxnRow[] = rawRows.map((r) => {
       const rawSide = String(r[mapping.side] ?? '');
       const { action, side } = parseActionSide(rawSide);
-      return {
+      const mappedTradeId = resolveIdentifierFromMapping(r as Record<string, unknown>, mapping.trade_id, 'trade');
+      const mappedOrderId = resolveIdentifierFromMapping(r as Record<string, unknown>, mapping.order_id, 'order');
+
+      const provisionalRow: TxnRow = {
         instrument: String(r[mapping.instrument] ?? '').trim(),
         side: side || '',
         action,
@@ -440,11 +469,21 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         price: toNumber(r[mapping.price]),
         fee: mapping.fee ? toNumber(r[mapping.fee]) : 0,
         timestamp: mapping.timestamp ? String(r[mapping.timestamp]) : undefined,
-        trade_id: mapping.trade_id ? String(r[mapping.trade_id]) : undefined,
-        order_id: mapping.order_id ? String(r[mapping.order_id]) : undefined,
+        trade_id: mappedTradeId ?? undefined,
+        order_id: mappedOrderId ?? undefined,
         info: mapping.info ? String(r[mapping.info]) : undefined,
         exchange: exchange as Exchange,
-      } as TxnRow;
+      }
+
+      const syntheticTradeId =
+        provisionalRow.trade_id ??
+        deriveSyntheticDeliveryTradeId(provisionalRow, r as Record<string, unknown>) ??
+        undefined
+
+      return {
+        ...provisionalRow,
+        trade_id: syntheticTradeId,
+      } as TxnRow
     }).filter((r) => {
       const hasInstrument = Boolean(r.instrument);
       const hasSide = r.side === 'buy' || r.side === 'sell';
@@ -490,6 +529,12 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       };
     });
 
+    console.log('[Import] Prepared rows from review overlay', {
+      selectedRows,
+      preparedRows: rows,
+      unprocessedRows,
+    });
+
     if (unprocessedRows.length > 0) {
       if (!supabase) {
         alert('Supabase is not configured. Configure environment variables to save unprocessed trades.');
@@ -500,6 +545,12 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         alert('Sign in to Supabase to save unprocessed trades.');
         return;
       }
+
+      console.log('[Import] Saving unprocessed trades to Supabase', {
+        rows: unprocessedRows,
+        clientScope: { clientName: activeClientName, isAdmin },
+        createdBy: user.id,
+      });
 
       const saveResult = await saveUnprocessedTrades(supabase, {
         rows: unprocessedRows,
@@ -540,6 +591,12 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       }
 
       for (const [structureId, groupedRows] of byStructure.entries()) {
+        console.log('[Import] Appending trades to saved structure', {
+          structureId,
+          rows: groupedRows,
+          clientScope: { clientName: activeClientName, isAdmin },
+        });
+
         const result = await appendTradesToStructure(supabase, {
           structureId,
           rows: groupedRows,
