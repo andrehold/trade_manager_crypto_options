@@ -12,7 +12,7 @@ type ReviewOverlayProps = {
   rows: TxnRow[];
   excludedRows: TxnRow[];
   duplicateTradeIds?: string[];
-  onConfirm: (rows: TxnRow[]) => void | Promise<void>;
+  onConfirm: (rows: TxnRow[], unprocessedRows: TxnRow[]) => void | Promise<void>;
   onCancel: () => void;
   availableStructures?: ReviewStructureOption[];
 }
@@ -21,6 +21,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
   const { rows, excludedRows, onConfirm, onCancel, duplicateTradeIds } = props
   const [activeTab, setActiveTab] = React.useState<'included'|'excluded'>('included');
   const [selected, setSelected] = React.useState<boolean[]>(() => rows.map(() => true));
+  const [notProcessed, setNotProcessed] = React.useState<boolean[]>(() => rows.map(() => false));
   const [importing, setImporting] = React.useState(false);
 
   // per-row structure #, defaulted by same-second grouping (unique fallback when no timestamp is present)
@@ -40,6 +41,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
   React.useEffect(() => {
     setStructureNumbers(autoStructureDefaults);
     setLinkedStructures(rows.map(() => null));
+    setNotProcessed(rows.map(() => false));
   }, [autoStructureDefaults, rows]);
 
   const availableStructures = React.useMemo(
@@ -61,28 +63,39 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
     );
   }, [availableStructureMap]);
 
-  const toggleAll = (v: boolean) => setSelected(Array(rows.length).fill(v));
+  const toggleAll = (v: boolean) => {
+    setSelected(Array(rows.length).fill(v));
+    setNotProcessed((prev) => prev.map((value, idx) => (v ? value : false)));
+  };
   const selectedCount = selected.filter(Boolean).length;
+  const selectedUnprocessed = selected.filter((v, idx) => v && notProcessed[idx]).length;
+  const selectedForImport = selected.filter((v, idx) => v && !notProcessed[idx]).length;
 
   const handleImport = async () => {
     if (importing) return;
     const idx = rows.map((_, i) => i).filter((i) => selected[i]);
-    const payload = idx.map((i) => {
-      const selectedStructureId = linkedStructures[i] ?? undefined;
-      const fallbackStructure = String(structureNumbers[i] ?? 1);
-      const normalizedLinkedId = selectedStructureId && selectedStructureId.length ? selectedStructureId : undefined;
-      return {
-        ...rows[i],
-        structureId: normalizedLinkedId ?? fallbackStructure,
-        linkedStructureId: normalizedLinkedId,
-      };
-    });
+    const payload = idx
+      .filter((i) => !notProcessed[i])
+      .map((i) => {
+        const selectedStructureId = linkedStructures[i] ?? undefined;
+        const fallbackStructure = String(structureNumbers[i] ?? 1);
+        const normalizedLinkedId = selectedStructureId && selectedStructureId.length ? selectedStructureId : undefined;
+        return {
+          ...rows[i],
+          structureId: normalizedLinkedId ?? fallbackStructure,
+          linkedStructureId: normalizedLinkedId,
+        };
+      });
 
-    if (!payload.length) return;
+    const unprocessedRows = idx
+      .filter((i) => notProcessed[i])
+      .map((i) => rows[i]);
+
+    if (!payload.length && !unprocessedRows.length) return;
 
     try {
       setImporting(true);
-      await onConfirm(payload);
+      await onConfirm(payload, unprocessedRows);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to import trades.';
       alert(message);
@@ -94,7 +107,8 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
   const TableHead = () => (
     <thead className="bg-slate-50 text-slate-600 sticky top-0">
       <tr>
-        <th className="p-2"></th>
+        <th className="p-2">Import</th>
+        <th className="p-2 text-left">Unprocessed</th>
         <th className="p-2 text-left">Timestamp</th>
         <th className="p-2 text-left">Structure (auto)</th>
         <th className="p-2 text-left">Structure #</th>
@@ -154,8 +168,8 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
           <>
             <p className="text-sm text-slate-600 mb-3">Uncheck any rows you don’t want to import. Lines with the same second form one “trade structure”.</p>
             <div className="flex gap-2 mb-3 items-center">
-              <button className="px-3 py-1 border rounded-lg" onClick={() => setSelected(Array(rows.length).fill(true))}>Select all</button>
-              <button className="px-3 py-1 border rounded-lg" onClick={() => setSelected(Array(rows.length).fill(false))}>Select none</button>
+              <button className="px-3 py-1 border rounded-lg" onClick={() => toggleAll(true)}>Select all</button>
+              <button className="px-3 py-1 border rounded-lg" onClick={() => toggleAll(false)}>Select none</button>
               <div className="mx-2 w-px h-5 bg-slate-200" />
               <button
                 className="px-3 py-1 border rounded-lg"
@@ -187,9 +201,46 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                       ? availableStructureMap.get(selectedStructureId)?.label ?? selectedStructureId
                       : null;
                     const hasSavedStructures = availableStructures.length > 0;
+                    const isUnprocessed = notProcessed[i];
                     return (
                       <tr key={i} className="border-t">
-                        <td className="p-2"><input type="checkbox" checked={selected[i]} onChange={(e) => setSelected((prev) => { const cp = [...prev]; cp[i] = e.target.checked; return cp; })} /></td>
+                        <td className="p-2 align-top">
+                          <input
+                            type="checkbox"
+                            checked={selected[i]}
+                            onChange={(e) =>
+                              setSelected((prev) => {
+                                const cp = [...prev];
+                                cp[i] = e.target.checked;
+                                if (!e.target.checked) {
+                                  setNotProcessed((prevFlag) => {
+                                    const next = [...prevFlag];
+                                    next[i] = false;
+                                    return next;
+                                  });
+                                }
+                                return cp;
+                              })
+                            }
+                          />
+                        </td>
+                        <td className="p-2 align-top">
+                          <label className="inline-flex items-center gap-2 text-xs text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={isUnprocessed}
+                              onChange={(e) =>
+                                setNotProcessed((prev) => {
+                                  const cp = [...prev];
+                                  cp[i] = e.target.checked;
+                                  return cp;
+                                })
+                              }
+                              disabled={!selected[i]}
+                            />
+                            <span>Mark unprocessed</span>
+                          </label>
+                        </td>
                         <td className="p-2">{r.timestamp || '—'}</td>
                         <td className="p-2 align-top">
                           <div className="flex flex-col gap-1">
@@ -204,7 +255,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                                   return cp;
                                 })
                               }
-                              disabled={!hasSavedStructures}
+                              disabled={!hasSavedStructures || isUnprocessed}
                             >
                               <option value="">{`Auto • ${structure}`}</option>
                               {availableStructures.map((option) => (
@@ -214,7 +265,9 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                               ))}
                             </select>
                             <span className={`text-xs ${selectedStructureId ? 'text-emerald-600' : 'text-slate-500'}`}>
-                              {selectedStructureId
+                              {isUnprocessed
+                                ? 'Will be saved as unprocessed and excluded from future imports.'
+                                : selectedStructureId
                                 ? `Linked to ${selectedStructureLabel}. Structure # input disabled.`
                                 : hasSavedStructures
                                 ? 'Auto grouping until you choose a saved structure.'
@@ -226,7 +279,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                           <input
                             type="number"
                             min={1}
-                            className={`border rounded-lg px-2 py-1 text-sm w-20 ${selectedStructureId ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : ''}`}
+                            className={`border rounded-lg px-2 py-1 text-sm w-20 ${selectedStructureId || isUnprocessed ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : ''}`}
                             value={structureNumbers[i] ?? 1}
                             onChange={(e) => setStructureNumbers((prev) => {
                               const cp = [...prev];
@@ -234,7 +287,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                               cp[i] = Number.isFinite(v) && v > 0 ? Math.floor(v) : 1;
                               return cp;
                             })}
-                            disabled={Boolean(selectedStructureId)}
+                            disabled={Boolean(selectedStructureId) || isUnprocessed}
                             title={selectedStructureId ? 'Structure number comes from the linked saved structure.' : undefined}
                           />
                         </td>
@@ -259,7 +312,9 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                 className="px-4 py-2 rounded-xl bg-slate-900 text-white disabled:opacity-50"
                 disabled={importing || selectedCount === 0}
               >
-                {importing ? 'Importing…' : `Import selected (${selectedCount})`}
+                {importing
+                  ? 'Importing…'
+                  : `Save selected (import ${selectedForImport}, unprocessed ${selectedUnprocessed})`}
               </button>
             </div>
           </>
@@ -276,6 +331,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                     return (
                       <tr key={i} className="border-t opacity-70">
                         <td className="p-2"><input type="checkbox" disabled checked={false} readOnly /></td>
+                        <td className="p-2 text-xs text-slate-500">—</td>
                         <td className="p-2">{r.timestamp || '—'}</td>
                         <td className="p-2">{structure}</td>
                         <td className="p-2">—</td>

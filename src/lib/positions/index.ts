@@ -8,6 +8,11 @@ export {
   type AppendTradesToStructureParams,
   type AppendTradesToStructureResult,
 } from "./appendTradesToStructure";
+export {
+  saveUnprocessedTrades,
+  type SaveUnprocessedTradesParams,
+  type SaveUnprocessedTradesResult,
+} from "./saveUnprocessedTrades";
 export { buildStructureChipSummary } from "./structureSummary";
 export {
   syncLinkedStructures,
