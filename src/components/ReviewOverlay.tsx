@@ -12,13 +12,21 @@ type ReviewOverlayProps = {
   rows: TxnRow[];
   excludedRows: TxnRow[];
   duplicateTradeIds?: string[];
+  duplicateOrderIds?: string[];
   onConfirm: (rows: TxnRow[], unprocessedRows: TxnRow[]) => void | Promise<void>;
   onCancel: () => void;
   availableStructures?: ReviewStructureOption[];
 }
 
 export function ReviewOverlay(props: ReviewOverlayProps) {
-  const { rows, excludedRows, onConfirm, onCancel, duplicateTradeIds } = props
+  const {
+    rows,
+    excludedRows,
+    onConfirm,
+    onCancel,
+    duplicateTradeIds,
+    duplicateOrderIds,
+  } = props
   const [activeTab, setActiveTab] = React.useState<'included'|'excluded'>('included');
   const [selected, setSelected] = React.useState<boolean[]>(() => rows.map(() => true));
   const [notProcessed, setNotProcessed] = React.useState<boolean[]>(() => rows.map(() => false));
@@ -156,12 +164,25 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
             <button className={`px-3 py-1 rounded-lg border ${activeTab==='excluded' ? 'bg-slate-900 text-white' : ''}`} onClick={() => setActiveTab('excluded')}>Excluded ({excludedRows.length})</button>
           </div>
         </div>
-        {duplicateTradeIds?.length ? (
+        {(duplicateTradeIds?.length || duplicateOrderIds?.length) ? (
           <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 text-sm p-3">
-            <p className="font-medium">{duplicateTradeIds.length === 1 ? '1 row was hidden because its trade ID already exists in saved fills.' : `${duplicateTradeIds.length} rows were hidden because their trade IDs already exist in saved fills.`}</p>
-            <p className="text-xs mt-1">
-              Trade IDs: {duplicateTradeIds.slice(0, 5).join(', ')}{duplicateTradeIds.length > 5 ? '…' : ''}
+            <p className="font-medium">
+              {(duplicateTradeIds?.length ?? 0) + (duplicateOrderIds?.length ?? 0) === 1
+                ? '1 row was hidden because its trade or order ID already exists in saved fills or unprocessed trades.'
+                : `${(duplicateTradeIds?.length ?? 0) + (duplicateOrderIds?.length ?? 0)} rows were hidden because their trade or order IDs already exist in saved fills or unprocessed trades.`}
             </p>
+            <div className="text-xs mt-1 space-y-1">
+              {duplicateTradeIds?.length ? (
+                <p>
+                  Trade IDs: {duplicateTradeIds.slice(0, 5).join(', ')}{duplicateTradeIds.length > 5 ? '…' : ''}
+                </p>
+              ) : null}
+              {duplicateOrderIds?.length ? (
+                <p>
+                  Order IDs: {duplicateOrderIds.slice(0, 5).join(', ')}{duplicateOrderIds.length > 5 ? '…' : ''}
+                </p>
+              ) : null}
+            </div>
           </div>
         ) : null}
         {activeTab==='included' && (
