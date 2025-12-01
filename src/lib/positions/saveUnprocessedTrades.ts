@@ -10,10 +10,27 @@ export type SaveUnprocessedTradesParams = {
 
 export type SaveUnprocessedTradesResult = { ok: true; inserted: number } | { ok: false; error: string }
 
-function sanitizeString(value: string | number | undefined | null) {
+function sanitizeString(value: unknown) {
   if (value == null) return null
   const trimmed = String(value).trim()
   return trimmed.length ? trimmed : null
+}
+
+function extractIdentifier(row: TxnRow, type: 'trade' | 'order') {
+  const candidates = [
+    `${type}_id`,
+    `${type}Id`,
+    `${type}ID`,
+    `${type}id`,
+  ] as const
+
+  for (const key of candidates) {
+    const value = (row as Record<string, unknown>)[key]
+    const sanitized = sanitizeString(value)
+    if (sanitized) return sanitized
+  }
+
+  return null
 }
 
 function nullifyUndefined<T extends Record<string, unknown>>(row: T): T {
@@ -39,8 +56,8 @@ export async function saveUnprocessedTrades(
   const payload = rows.map((row) =>
     nullifyUndefined({
       client_name: clientName,
-      trade_id: sanitizeString(row.trade_id ?? (row as any).tradeId),
-      order_id: sanitizeString(row.order_id ?? (row as any).orderId),
+      trade_id: extractIdentifier(row, 'trade'),
+      order_id: extractIdentifier(row, 'order'),
       instrument: row.instrument,
       side: row.side,
       amount: row.amount,
