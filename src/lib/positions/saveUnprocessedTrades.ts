@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { TxnRow } from '@/utils'
 import type { SupabaseClientScope } from './clientScope'
+import { extractIdentifier } from './identifiers'
 
 export type SaveUnprocessedTradesParams = {
   rows: TxnRow[]
@@ -9,29 +10,6 @@ export type SaveUnprocessedTradesParams = {
 }
 
 export type SaveUnprocessedTradesResult = { ok: true; inserted: number } | { ok: false; error: string }
-
-function sanitizeString(value: unknown) {
-  if (value == null) return null
-  const trimmed = String(value).trim()
-  return trimmed.length ? trimmed : null
-}
-
-function extractIdentifier(row: TxnRow, type: 'trade' | 'order') {
-  const candidates = [
-    `${type}_id`,
-    `${type}Id`,
-    `${type}ID`,
-    `${type}id`,
-  ] as const
-
-  for (const key of candidates) {
-    const value = (row as Record<string, unknown>)[key]
-    const sanitized = sanitizeString(value)
-    if (sanitized) return sanitized
-  }
-
-  return null
-}
 
 function nullifyUndefined<T extends Record<string, unknown>>(row: T): T {
   const result: Record<string, unknown> = {}
