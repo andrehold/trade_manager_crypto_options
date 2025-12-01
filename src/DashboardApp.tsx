@@ -490,6 +490,12 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       };
     });
 
+    console.log('[Import] Prepared rows from review overlay', {
+      selectedRows,
+      preparedRows: rows,
+      unprocessedRows,
+    });
+
     if (unprocessedRows.length > 0) {
       if (!supabase) {
         alert('Supabase is not configured. Configure environment variables to save unprocessed trades.');
@@ -500,6 +506,12 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         alert('Sign in to Supabase to save unprocessed trades.');
         return;
       }
+
+      console.log('[Import] Saving unprocessed trades to Supabase', {
+        rows: unprocessedRows,
+        clientScope: { clientName: activeClientName, isAdmin },
+        createdBy: user.id,
+      });
 
       const saveResult = await saveUnprocessedTrades(supabase, {
         rows: unprocessedRows,
@@ -540,6 +552,12 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       }
 
       for (const [structureId, groupedRows] of byStructure.entries()) {
+        console.log('[Import] Appending trades to saved structure', {
+          structureId,
+          rows: groupedRows,
+          clientScope: { clientName: activeClientName, isAdmin },
+        });
+
         const result = await appendTradesToStructure(supabase, {
           structureId,
           rows: groupedRows,
