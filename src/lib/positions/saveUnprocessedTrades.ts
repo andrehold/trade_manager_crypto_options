@@ -10,9 +10,9 @@ export type SaveUnprocessedTradesParams = {
 
 export type SaveUnprocessedTradesResult = { ok: true; inserted: number } | { ok: false; error: string }
 
-function sanitizeString(value: string | undefined) {
-  if (!value) return null
-  const trimmed = value.trim()
+function sanitizeString(value: string | number | undefined | null) {
+  if (value == null) return null
+  const trimmed = String(value).trim()
   return trimmed.length ? trimmed : null
 }
 
@@ -39,8 +39,8 @@ export async function saveUnprocessedTrades(
   const payload = rows.map((row) =>
     nullifyUndefined({
       client_name: clientName,
-      trade_id: sanitizeString(row.trade_id),
-      order_id: sanitizeString(row.order_id),
+      trade_id: sanitizeString(row.trade_id ?? (row as any).tradeId),
+      order_id: sanitizeString(row.order_id ?? (row as any).orderId),
       instrument: row.instrument,
       side: row.side,
       amount: row.amount,
