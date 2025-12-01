@@ -22,6 +22,7 @@ import {
   archiveStructure,
   fetchSavedStructures,
   appendTradesToStructure,
+  saveUnprocessedTrades,
   buildStructureChipSummary,
   fetchProgramPlaybooks,
   type ProgramPlaybook,
@@ -308,6 +309,22 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
           const id = typeof entry.trade_id === 'string' ? entry.trade_id.trim() : '';
           if (id) duplicates.add(id);
         }
+
+        const { data: unprocessed, error: unprocessedErr } = await supabase
+          .from('unprocessed_imports')
+          .select('trade_id, client_name')
+          .in('trade_id', chunk)
+          .match(restrictByClient && clientFilter ? { client_name: clientFilter } : {});
+
+        if (unprocessedErr) {
+          console.warn('Failed to check existing trade IDs in unprocessed_imports table.', unprocessedErr);
+        }
+
+        for (const entry of unprocessed ?? []) {
+          const id = typeof entry.trade_id === 'string' ? entry.trade_id.trim() : '';
+          const isSameClient = !restrictByClient || !clientFilter || entry.client_name === clientFilter;
+          if (id && isSameClient) duplicates.add(id);
+        }
       }
 
       if (!duplicates.size) {
@@ -383,7 +400,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     });
   }
 
-  async function finalizeImport(selectedRows: TxnRow[]) {
+  async function finalizeImport(selectedRows: TxnRow[], unprocessedRows: TxnRow[]) {
     const rows: TxnRow[] = selectedRows.map((r, index) => {
       const normalized = normalizeSecond(r.timestamp);
       const fallbackStructure = normalized === 'NO_TS' ? `NO_TS_${index + 1}` : normalized;
@@ -399,8 +416,36 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       };
     });
 
+    if (unprocessedRows.length > 0) {
+      if (!supabase) {
+        alert('Supabase is not configured. Configure environment variables to save unprocessed trades.');
+        return;
+      }
+
+      if (!user) {
+        alert('Sign in to Supabase to save unprocessed trades.');
+        return;
+      }
+
+      const saveResult = await saveUnprocessedTrades(supabase, {
+        rows: unprocessedRows,
+        clientScope: { clientName: activeClientName, isAdmin },
+        createdBy: user.id,
+      });
+
+      if (!saveResult.ok) {
+        alert(`Failed to save unprocessed trades: ${saveResult.error}`);
+        return;
+      }
+    }
+
     const linkedRows = rows.filter((row) => Boolean(row.linkedStructureId));
     const localRows = rows.filter((row) => !row.linkedStructureId);
+
+    if (!linkedRows.length && !localRows.length) {
+      setShowReview(null);
+      return;
+    }
 
     if (linkedRows.length > 0) {
       if (!supabase) {
