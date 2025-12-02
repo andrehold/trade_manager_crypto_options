@@ -21,7 +21,7 @@ function InlineSpinner() {
   )
 }
 
-export function PlaybookDrawer({ open, onClose, position, playbook, loading, error }: PlaybookDrawerProps) {
+function PlaybookDrawerComponent({ open, onClose, position, playbook, loading, error }: PlaybookDrawerProps) {
   const hasPlaybook = Boolean(playbook)
   const links = playbook?.links ?? []
   const signals = playbook?.signals ?? []
@@ -194,3 +194,16 @@ export function PlaybookDrawer({ open, onClose, position, playbook, loading, err
     </div>
   )
 }
+
+export const PlaybookDrawer = React.memo(
+  PlaybookDrawerComponent,
+  (prev, next) =>
+    prev.open === next.open &&
+    prev.onClose === next.onClose &&
+    prev.loading === next.loading &&
+    prev.error === next.error &&
+    prev.position === next.position &&
+    prev.playbook === next.playbook,
+)
+
+PlaybookDrawer.displayName = 'PlaybookDrawer'
