@@ -1533,7 +1533,10 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
                   {savedStructureGroups.closed.length ? (
                     <tr className="bg-slate-100/80 border-y border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
                       <td colSpan={savedStructureColSpan} className="px-3 py-2 text-left">
-                        Closed structures
+                        <div className="flex items-center gap-3">
+                          <span>Closed structures</span>
+                          <span className="h-px flex-1 bg-slate-300" aria-hidden />
+                        </div>
                       </td>
                     </tr>
                   ) : null}
