@@ -972,6 +972,24 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     [matchesClientSelection, matchesFilter, savedStructures],
   );
 
+  const savedStructureGroups = React.useMemo(
+    () =>
+      filteredSaved.reduce(
+        (acc, position) => {
+          if (position.status === 'CLOSED') {
+            acc.closed.push(position);
+          } else {
+            acc.open.push(position);
+          }
+          return acc;
+        },
+        { open: [] as Position[], closed: [] as Position[] },
+      ),
+    [filteredSaved],
+  );
+
+  const savedStructureColSpan = React.useMemo(() => visibleCols.length + 2, [visibleCols.length]);
+
   const portfolioGreeks = React.useMemo(() => {
     const totals: Record<GreekKey, number> = {
       delta: 0,
@@ -1495,7 +1513,31 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
               <table className="min-w-full text-sm">
                 {tableHead}
                 <tbody>
-                  {filteredSaved.map((p) => (
+                  {savedStructureGroups.open.map((p) => (
+                    <PositionRow
+                      key={`saved-${p.id}`}
+                      p={p}
+                      onUpdate={noopUpdate}
+                      visibleCols={visibleCols}
+                      marks={legMarks}
+                      markLoading={markFetch.inProgress}
+                      allPositions={positionsForLinking}
+                      readOnly
+                      disableSave
+                      onArchive={handleArchiveStructure}
+                      archiving={Boolean(archiving[p.id])}
+                      clientScope={overlayClientScope}
+                      onPlaybookOpen={handleOpenPlaybookDrawer}
+                    />
+                  ))}
+                  {savedStructureGroups.closed.length ? (
+                    <tr className="bg-slate-100/80 border-y border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <td colSpan={savedStructureColSpan} className="px-3 py-2 text-left">
+                        Closed structures
+                      </td>
+                    </tr>
+                  ) : null}
+                  {savedStructureGroups.closed.map((p) => (
                     <PositionRow
                       key={`saved-${p.id}`}
                       p={p}
