@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { TxnRow } from '@/utils'
 import type { SupabaseClientScope } from './clientScope'
-import { extractIdentifier } from './identifiers'
+import { deriveSyntheticDeliveryTradeId, extractIdentifier } from './identifiers'
 
 export type SaveUnprocessedTradesParams = {
   rows: TxnRow[]
@@ -31,11 +31,15 @@ export async function saveUnprocessedTrades(
   const clientName = params.clientScope?.clientName?.trim() ?? null
   const createdBy = params.createdBy ?? null
 
-  const payload = rows.map((row) =>
-    nullifyUndefined({
+  const payload = rows.map((row) => {
+    const orderId = extractIdentifier(row, 'order')
+    const tradeIdFromRow = extractIdentifier(row, 'trade')
+    const tradeId = tradeIdFromRow ?? deriveSyntheticDeliveryTradeId(row, row as Record<string, unknown>) ?? orderId
+
+    return nullifyUndefined({
       client_name: clientName,
-      trade_id: extractIdentifier(row, 'trade'),
-      order_id: extractIdentifier(row, 'order'),
+      trade_id: tradeId,
+      order_id: orderId,
       instrument: row.instrument,
       side: row.side,
       amount: row.amount,
@@ -45,8 +49,8 @@ export async function saveUnprocessedTrades(
       exchange: row.exchange ?? null,
       raw: row,
       created_by: createdBy,
-    }),
-  )
+    })
+  })
 
   const { error } = await client.from('unprocessed_imports').insert(payload)
   if (error) {
