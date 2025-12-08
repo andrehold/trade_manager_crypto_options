@@ -294,10 +294,12 @@ function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): 
     inventory.length = 0;
   }
 
+  const realizedBounded = netPremium > 0 && realizedPnl > netPremium ? netPremium : realizedPnl;
+
   return {
     ...leg,
     openLots: inventory,
-    realizedPnl,
+    realizedPnl: realizedBounded,
     netPremium,
     qtyNet,
   };
