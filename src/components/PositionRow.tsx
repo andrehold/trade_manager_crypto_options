@@ -114,15 +114,25 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
 
   const posTotalPnl = p.realizedPnl + posUnrealized
 
-  const netPremiumForPct = React.useMemo(
-    () => (Number.isFinite(p.netPremium) ? Math.abs(p.netPremium) : 0),
-    [p.netPremium],
-  )
+  const { netPremiumForPct, pnlPctSignedBasis } = React.useMemo(() => {
+    if (!Number.isFinite(p.netPremium)) {
+      return { netPremiumForPct: 0, pnlPctSignedBasis: posTotalPnl }
+    }
+
+    const premiumAbs = Math.abs(p.netPremium)
+
+    // For credit structures (negative net premium), profits are realized by the
+    // position moving toward zero cost; flip the sign so percentage returns are
+    // aligned with the cash that was originally received.
+    const pnlBasis = p.netPremium < 0 ? -posTotalPnl : posTotalPnl
+
+    return { netPremiumForPct: premiumAbs, pnlPctSignedBasis: pnlBasis }
+  }, [p.netPremium, posTotalPnl])
 
   const markAwarePnlPct = React.useMemo(() => {
     if (netPremiumForPct <= 0) return null
-    return (posTotalPnl / netPremiumForPct) * 100
-  }, [netPremiumForPct, posTotalPnl])
+    return (pnlPctSignedBasis / netPremiumForPct) * 100
+  }, [netPremiumForPct, pnlPctSignedBasis])
 
   const structureGreeks = React.useMemo(
     () => (marks ? positionGreeks(p, marks) : { delta: 0, gamma: 0, theta: 0, vega: 0, rho: 0 }),
