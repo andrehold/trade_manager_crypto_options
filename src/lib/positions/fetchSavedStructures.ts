@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "../supabase";
 import type { Position, TxnRow, Exchange, Leg } from "@/utils";
-import { daysTo, daysSince, fifoMatchAndRealize } from "@/utils";
+import { daysTo, daysSince, fifoMatchAndRealize, legNetQty } from "@/utils";
 import type { SupabaseClientScope } from "./clientScope";
 
 type RawLeg = {
@@ -361,9 +361,9 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
   const expiryFromLeg = initialLegs.find((leg) => leg.expiry)?.expiry ?? null;
   const normalizedExpiry = expiryFromLeg ?? normalizedEntry;
   const expiredNaturally = normalizedExpiry ? daysTo(normalizedExpiry) <= 0 : false;
-  const isClosed = lifecycle === "close" || hasLinkedClosure || expiredNaturally;
+  const baseClosed = lifecycle === "close" || hasLinkedClosure || expiredNaturally;
 
-  const legs = initialLegs.map((leg) => realizeLegTrades(leg, { assumeExpired: isClosed }));
+  const legs = initialLegs.map((leg) => realizeLegTrades(leg, { assumeExpired: baseClosed }));
 
   const legFeesFromFills = (raw.fills ?? []).reduce((fees, fill) => {
     const seq = fill.leg_seq != null ? Number(fill.leg_seq) : null;
@@ -389,6 +389,8 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
     raw.net_fill ??
     legsWithFees.reduce((sum, leg) => sum + (Number.isFinite(leg.netPremium) ? leg.netPremium : 0), 0);
 
+  const netQtyIsZero = legsWithFees.every((leg) => Math.abs(legNetQty(leg)) <= 1e-10);
+  const isClosed = baseClosed || netQtyIsZero;
   const status: Position["status"] = isClosed ? "CLOSED" : "OPEN";
 
   return {
