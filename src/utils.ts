@@ -330,6 +330,10 @@ export function getLegMarkRef(position: Position, leg: Leg): LegMarkRef | null {
   const expiryISO = leg.expiry ?? position.expiryISO;
   if (!expiryISO) return null;
 
+  // Skip fetching marks for expired options; Deribit returns 400 for inactive instruments
+  const dte = daysTo(expiryISO);
+  if (Number.isFinite(dte) && dte < 0) return null;
+
   if (exchange === 'coincall') {
     const symbol = toCoincallSymbol(position.underlying, expiryISO, leg.strike, leg.optionType);
     return { key: `coincall:${symbol}`, symbol, exchange, defaultMultiplier: 1 };
