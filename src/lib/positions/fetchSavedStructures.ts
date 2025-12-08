@@ -294,10 +294,12 @@ function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): 
     inventory.length = 0;
   }
 
+  const realizedBounded = netPremium > 0 && realizedPnl > netPremium ? netPremium : realizedPnl;
+
   return {
     ...leg,
     openLots: inventory,
-    realizedPnl,
+    realizedPnl: realizedBounded,
     netPremium,
     qtyNet,
   };
@@ -385,9 +387,18 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
   const dte = normalizedExpiry ? daysTo(normalizedExpiry) : 0;
   const openSinceDays = daysSince(normalizedEntry ?? raw.entry_ts ?? null);
 
+  const legsNetPremium = legsWithFees.reduce(
+    (sum, leg) => sum + (Number.isFinite(leg.netPremium) ? leg.netPremium : 0),
+    0,
+  );
+
+  // Prefer the premium derived from trade legs so realized PnL and premium share
+  // the same basis. Fall back to the persisted net_fill only when leg data is
+  // missing or unusable.
   const netPremium =
-    raw.net_fill ??
-    legsWithFees.reduce((sum, leg) => sum + (Number.isFinite(leg.netPremium) ? leg.netPremium : 0), 0);
+    Number.isFinite(legsNetPremium) && Math.abs(legsNetPremium) > 0
+      ? legsNetPremium
+      : raw.net_fill ?? 0;
 
   const netQtyIsZero = legsWithFees.every((leg) => Math.abs(legNetQty(leg)) <= 1e-10);
   const isClosed = baseClosed || netQtyIsZero;
