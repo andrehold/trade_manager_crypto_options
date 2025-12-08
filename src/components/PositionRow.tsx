@@ -121,12 +121,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
 
     const premiumAbs = Math.abs(p.netPremium)
 
-    // For credit structures (negative net premium), profits are realized by the
-    // position moving toward zero cost; flip the sign so percentage returns are
-    // aligned with the cash that was originally received.
-    const pnlBasis = p.netPremium < 0 ? -posTotalPnl : posTotalPnl
-
-    return { netPremiumForPct: premiumAbs, pnlPctSignedBasis: pnlBasis }
+    return { netPremiumForPct: premiumAbs, pnlPctSignedBasis: posTotalPnl }
   }, [p.netPremium, posTotalPnl])
 
   const markAwarePnlPct = React.useMemo(() => {
