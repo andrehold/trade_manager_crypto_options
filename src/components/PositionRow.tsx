@@ -120,8 +120,12 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
     }
 
     const premiumAbs = Math.abs(p.netPremium)
+    const isNetCredit = p.netPremium > 0
 
-    return { netPremiumForPct: premiumAbs, pnlPctSignedBasis: posTotalPnl }
+    return {
+      netPremiumForPct: premiumAbs,
+      pnlPctSignedBasis: isNetCredit ? -posTotalPnl : posTotalPnl,
+    }
   }, [p.netPremium, posTotalPnl])
 
   const markAwarePnlPct = React.useMemo(() => {
