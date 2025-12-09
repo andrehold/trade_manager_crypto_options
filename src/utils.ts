@@ -332,9 +332,18 @@ export function getLegMarkRef(position: Position, leg: Leg): LegMarkRef | null {
 
   // Skip fetching marks for expired options; Deribit returns 400 for inactive instruments
   const dte = daysTo(expiryISO);
-  // Deribit instruments can become inactive hours before the calendar date ends;
-  // treat zero days-to-expiry as already expired to avoid requesting marks that 400.
-  if (Number.isFinite(dte) && dte <= 0) return null;
+  if (Number.isFinite(dte)) {
+    if (exchange === 'deribit') {
+      // Deribit options expire at 08:00 UTC; continue fetching marks until that cutoff
+      const expiryTime = new Date(`${expiryISO}T08:00:00Z`);
+      if (!Number.isFinite(expiryTime.getTime())) return null;
+
+      if (dte < 0 || new Date() >= expiryTime) return null;
+    } else if (dte <= 0) {
+      // For other venues, treat the calendar day boundary as expiry
+      return null;
+    }
+  }
 
   if (exchange === 'coincall') {
     const symbol = toCoincallSymbol(position.underlying, expiryISO, leg.strike, leg.optionType);
