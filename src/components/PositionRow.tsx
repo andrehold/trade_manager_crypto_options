@@ -115,14 +115,16 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   const posTotalPnl = p.realizedPnl + posUnrealized
 
   const { netPremiumForPct, pnlPctSignedBasis } = React.useMemo(() => {
-    if (!Number.isFinite(p.netPremium)) {
-      return { netPremiumForPct: 0, pnlPctSignedBasis: posTotalPnl }
-    }
+    const legsPremium = p.legs?.reduce((sum, leg) => sum + (Number.isFinite(leg.netPremium) ? leg.netPremium : 0), 0) ?? 0
 
-    const premiumAbs = Math.abs(p.netPremium)
+    const premiumAbs = (() => {
+      if (Number.isFinite(p.netPremium) && Math.abs(p.netPremium as number) > 0) return Math.abs(p.netPremium as number)
+      if (Math.abs(legsPremium) > 0) return Math.abs(legsPremium)
+      return 0
+    })()
 
     return { netPremiumForPct: premiumAbs, pnlPctSignedBasis: posTotalPnl }
-  }, [p.netPremium, posTotalPnl])
+  }, [p.legs, p.netPremium, posTotalPnl])
 
   const markAwarePnlPct = React.useMemo(() => {
     if (netPremiumForPct <= 0) return null

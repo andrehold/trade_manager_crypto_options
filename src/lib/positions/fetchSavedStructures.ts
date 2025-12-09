@@ -395,10 +395,12 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
   // Prefer the premium derived from trade legs so realized PnL and premium share
   // the same basis. Fall back to the persisted net_fill only when leg data is
   // missing or unusable.
-  const netPremium =
+  const rawPremium =
     Number.isFinite(legsNetPremium) && Math.abs(legsNetPremium) > 0
       ? legsNetPremium
       : raw.net_fill ?? 0;
+
+  const netPremium = Math.abs(rawPremium);
 
   const netQtyIsZero = legsWithFees.every((leg) => Math.abs(legNetQty(leg)) <= 1e-10);
   const isClosed = baseClosed || netQtyIsZero;
