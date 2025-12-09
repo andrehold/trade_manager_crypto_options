@@ -114,24 +114,21 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
 
   const posTotalPnl = p.realizedPnl + posUnrealized
 
-  const { netPremiumForPct, pnlPctSignedBasis } = React.useMemo(() => {
+  const { netPremiumForPct, markAwarePnlPct } = React.useMemo(() => {
     if (!Number.isFinite(p.netPremium)) {
-      return { netPremiumForPct: 0, pnlPctSignedBasis: posTotalPnl }
+      return { netPremiumForPct: 0, markAwarePnlPct: null }
     }
 
-    const premiumAbs = Math.abs(p.netPremium)
-    const isNetCredit = p.netPremium > 0
+    const netPremiumForPct = Math.abs(p.netPremium)
+    if (netPremiumForPct <= 0) {
+      return { netPremiumForPct: 0, markAwarePnlPct: null }
+    }
 
     return {
-      netPremiumForPct: premiumAbs,
-      pnlPctSignedBasis: isNetCredit ? -posTotalPnl : posTotalPnl,
+      netPremiumForPct,
+      markAwarePnlPct: (posTotalPnl / netPremiumForPct) * 100,
     }
   }, [p.netPremium, posTotalPnl])
-
-  const markAwarePnlPct = React.useMemo(() => {
-    if (netPremiumForPct <= 0) return null
-    return (pnlPctSignedBasis / netPremiumForPct) * 100
-  }, [netPremiumForPct, pnlPctSignedBasis])
 
   const structureGreeks = React.useMemo(
     () => (marks ? positionGreeks(p, marks) : { delta: 0, gamma: 0, theta: 0, vega: 0, rho: 0 }),
