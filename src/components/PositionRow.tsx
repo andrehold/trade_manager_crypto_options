@@ -340,7 +340,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                         <th className="text-left p-2">Leg</th>
                         <th className="text-right p-2">Net Qty</th>
                         <th className="text-right p-2">Realized PnL</th>
-                        <th className="text-right p-2">Net Premium</th>
+                        <th className="text-right p-2">Net Premium / Lot</th>
                         <th className="text-right p-2">Mark</th>
                         <th className="text-right p-2">uPnL</th>
                         <th className="text-right p-2">Fee</th>
@@ -353,6 +353,10 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                         const ref = entry?.ref ?? null
                         const markInfo = entry?.mark
                         const markPrice = markInfo?.price ?? null
+
+                        const totalAbsQty = l.trades.reduce((sum, t) => sum + Math.abs(t.amount ?? 0), 0)
+                        const premiumBasisQty = l.netPremiumBasisQty ?? totalAbsQty
+                        const netPremiumPerLot = premiumBasisQty > 0 ? l.netPremium / premiumBasisQty : null
 
                         const markCell: React.ReactNode = !ref
                           ? '—'
@@ -394,7 +398,9 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                               <td className={`p-2 text-right font-mono tabular-nums ${l.realizedPnl < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                                 {fmtPremium(l.realizedPnl, p.underlying, 5)}
                               </td>
-                              <td className="p-2 text-right font-mono tabular-nums">{fmtPremium(l.netPremium, p.underlying, 5)}</td>
+                              <td className="p-2 text-right font-mono tabular-nums">
+                                {netPremiumPerLot != null ? fmtPremium(netPremiumPerLot, p.underlying, 5) : '—'}
+                              </td>
                               <td className="p-2 text-right font-mono tabular-nums">{markCell}</td>
                               <td className="p-2 text-right font-mono tabular-nums">{unrealizedCell}</td>
                               <td className="p-2 text-right font-mono tabular-nums">
@@ -415,6 +421,10 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                       })}
                     </tbody>
                   </table>
+                </div>
+                <div className="mt-2 text-[11px] text-slate-500 leading-snug">
+                  uPnL sums each open lot as (mark − entry price) × signed qty × multiplier. Fully offset legs report 0 to avoid
+                  mark noise when net size is flat.
                 </div>
               </div>
             </div>

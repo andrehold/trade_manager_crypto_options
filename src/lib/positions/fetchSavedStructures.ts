@@ -156,6 +156,14 @@ function inferExchange(position: RawPosition): Exchange | undefined {
   return undefined;
 }
 
+function legMergeKey(leg: Pick<Leg, "expiry" | "strike" | "optionType" | "exchange">) {
+  const expiryKey = leg.expiry ?? "";
+  const optionKey = String(leg.optionType ?? "").toUpperCase();
+  const strikeKey = leg.strike;
+  const exchangeKey = leg.exchange ?? "";
+  return `${expiryKey}::${strikeKey}::${optionKey}::${exchangeKey}`;
+}
+
 function mapLeg(position: RawPosition, leg: RawLeg, index: number, exchange: Exchange | undefined) {
   const strike = parseNumeric(leg.strike) ?? undefined;
   const qtyRaw = parseNumeric(leg.qty) ?? undefined;
@@ -210,11 +218,7 @@ function coalesceLegs(legs: Leg[]): Leg[] {
   const merged = new Map<string, Leg>();
 
   for (const leg of legs) {
-    const expiryKey = leg.expiry ?? "";
-    const optionKey = String(leg.optionType ?? "").toUpperCase();
-    const strikeKey = leg.strike;
-    const exchangeKey = leg.exchange ?? "";
-    const key = `${expiryKey}::${strikeKey}::${optionKey}::${exchangeKey}`;
+    const key = legMergeKey(leg);
 
     if (!merged.has(key)) {
       merged.set(key, { ...leg, key });
@@ -226,6 +230,8 @@ function coalesceLegs(legs: Leg[]): Leg[] {
     existing.trades = [...(existing.trades || []), ...(leg.trades || [])];
     existing.realizedPnl = (existing.realizedPnl ?? 0) + (leg.realizedPnl ?? 0);
     existing.netPremium = (existing.netPremium ?? 0) + (leg.netPremium ?? 0);
+    existing.netPremiumBasisQty =
+      (existing.netPremiumBasisQty ?? 0) + (leg.netPremiumBasisQty ?? leg.openLots.reduce((sum, lot) => sum + Math.abs(lot.qty), 0));
     existing.qtyNet = (existing.qtyNet ?? 0) + (leg.qtyNet ?? 0);
 
     if (!existing.expiry && leg.expiry) existing.expiry = leg.expiry;
@@ -251,13 +257,73 @@ function sortTrades(trades: TxnRow[]) {
     .map(({ trade }) => trade);
 }
 
+function deriveOpeningSign(trades: TxnRow[]): 1 | -1 | null {
+  for (const trade of trades) {
+    if (trade.action === "close") continue;
+    const side = trade.side === "sell" ? -1 : 1;
+    return side as 1 | -1;
+  }
+
+  return null;
+}
+
+function openingWindowNetPremium(trades: TxnRow[]) {
+  const openingTrades = trades.filter((trade) => trade.action !== "close");
+  if (openingTrades.length === 0) return { netPremium: 0, basisQty: 0 };
+
+  const openingWithTimes = openingTrades.map((trade) => {
+    const ts = trade.timestamp ? Date.parse(trade.timestamp) : Number.NaN;
+    return { trade, ts: Number.isFinite(ts) ? ts : null };
+  });
+
+  const earliestTs = openingWithTimes
+    .map((entry) => entry.ts)
+    .filter((ts): ts is number => ts != null)
+    .reduce<number | null>((min, ts) => (min == null ? ts : Math.min(min, ts)), null);
+
+  const windowEnd = earliestTs != null ? earliestTs + 10 * 60 * 1000 : null;
+
+  let premiumTrades: TxnRow[];
+  if (windowEnd != null) {
+    premiumTrades = openingWithTimes
+      .filter((entry) => entry.ts != null && entry.ts <= windowEnd)
+      .map((entry) => entry.trade);
+  } else {
+    const contiguousOpenings: TxnRow[] = [];
+    for (const trade of trades) {
+      if (trade.action === "close") break;
+      if (trade.action !== "close") contiguousOpenings.push(trade);
+    }
+    premiumTrades = contiguousOpenings.length > 0 ? contiguousOpenings : openingTrades;
+  }
+
+  const { netPremium, basisQty } = premiumTrades.reduce(
+    (acc, trade) => {
+      const price = parseNumeric(trade.price);
+      const qty = parseNumeric(trade.amount);
+      if (price == null || qty == null) return acc;
+
+      const sign = trade.side === "sell" ? -1 : 1;
+      const premiumDelta = sign === -1 ? price * Math.abs(qty) : -price * Math.abs(qty);
+      return {
+        netPremium: acc.netPremium + premiumDelta,
+        basisQty: acc.basisQty + Math.abs(qty),
+      };
+    },
+    { netPremium: 0, basisQty: 0 },
+  );
+
+  return { netPremium, basisQty };
+}
+
 function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): Leg {
   const inventory: typeof leg.openLots = [];
   let realizedPnl = 0;
-  let netPremium = 0;
   let qtyNet = 0;
 
   const trades = sortTrades(leg.trades ?? []);
+  const openingSign = deriveOpeningSign(trades);
+  const { netPremium: initialNetPremium, basisQty: initialPremiumQty } = openingWindowNetPremium(trades);
 
   for (const trade of trades) {
     const price = parseNumeric(trade.price);
@@ -265,10 +331,19 @@ function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): 
     if (price == null || qty == null) continue;
 
     const side = trade.side === "sell" ? "sell" : "buy";
-    const sign: 1 | -1 = side === "sell" ? -1 : 1;
-    const lot = { qty: Math.abs(qty), price, sign } as const;
+    let sign: 1 | -1 = side === "sell" ? -1 : 1;
 
-    netPremium += sign === -1 ? price * lot.qty : -price * lot.qty;
+    // Some close records ship with the same side as the opening trade, which would
+    // otherwise expand the open quantity. If the trade is marked as a close and the
+    // sign matches either the current inventory or the expected opening direction,
+    // flip it so it offsets instead of enlarging.
+    const hasSameInventorySign = inventory.length > 0 && inventory[0].sign === sign;
+    const matchesOpeningDirection = openingSign != null && openingSign === sign && inventory.length === 0;
+    if (trade.action === "close" && (hasSameInventorySign || matchesOpeningDirection)) {
+      sign = (sign === 1 ? -1 : 1) as 1 | -1;
+    }
+
+    const lot = { qty: Math.abs(qty), price, sign } as const;
     qtyNet += sign * lot.qty;
 
     const isClosingTrade = trade.action === "close" || (inventory.length > 0 && inventory[0].sign !== sign);
@@ -294,13 +369,15 @@ function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): 
     inventory.length = 0;
   }
 
-  const realizedBounded = netPremium > 0 && realizedPnl > netPremium ? netPremium : realizedPnl;
+  const realizedBounded =
+    initialNetPremium > 0 && realizedPnl > initialNetPremium ? initialNetPremium : realizedPnl;
 
   return {
     ...leg,
     openLots: inventory,
     realizedPnl: realizedBounded,
-    netPremium,
+    netPremium: initialNetPremium,
+    netPremiumBasisQty: initialPremiumQty,
     qtyNet,
   };
 }
@@ -346,7 +423,11 @@ function normalizeLifecycle(raw: string | null | undefined): "open" | "close" | 
   return null;
 }
 
-function mapPosition(raw: RawPosition, programNames: Map<string, string>): Position {
+function mapPosition(
+  raw: RawPosition,
+  programNames: Map<string, string>,
+  closingPositions: RawPosition[] = [],
+): Position {
   const underlier = (raw.underlier ?? "").toUpperCase();
   const exchange = inferExchange(raw);
   const netDelta = parseNumeric(raw.net_delta);
@@ -354,12 +435,29 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
   const closedAt = normalizeClosedAt(raw.closed_at ?? null);
   const hasLinkedClosure = Boolean(closedAt || raw.close_target_structure_id);
   const normalizedEntry = normalizeDateOnly(raw.entry_ts ?? undefined);
-  const initialLegs = coalesceLegs(
-    (raw.legs ?? [])
-      .map((leg, index) => mapLeg(raw, leg, index, exchange))
-      .filter((leg): leg is NonNullable<typeof leg> => Boolean(leg)),
-  );
+  const mappedLegs: Array<{ leg: Leg; feeSeq: number | null; mergeKey: string }> = [];
 
+  const addLegWithMeta = (
+    position: RawPosition,
+    leg: RawLeg,
+    index: number,
+    posExchange: Exchange | undefined,
+  ) => {
+    const mapped = mapLeg(position, leg, index, posExchange);
+    if (!mapped) return;
+    const seq = leg.leg_seq != null ? Number(leg.leg_seq) : index + 1;
+    const feeSeq = Number.isFinite(seq) ? seq : null;
+    mappedLegs.push({ leg: mapped, feeSeq, mergeKey: legMergeKey(mapped) });
+  };
+
+  (raw.legs ?? []).forEach((leg, index) => addLegWithMeta(raw, leg, index, exchange));
+  closingPositions.forEach((position) => {
+    const posExchange = inferExchange(position) ?? exchange;
+    (position.legs ?? []).forEach((leg, index) => addLegWithMeta(position, leg, index, posExchange));
+  });
+
+  const initialLegs = coalesceLegs(mappedLegs.map((entry) => entry.leg));
+  
   const expiryFromLeg = initialLegs.find((leg) => leg.expiry)?.expiry ?? null;
   const normalizedExpiry = expiryFromLeg ?? normalizedEntry;
   const expiredNaturally = normalizedExpiry ? daysTo(normalizedExpiry) <= 0 : false;
@@ -367,7 +465,9 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
 
   const legs = initialLegs.map((leg) => realizeLegTrades(leg, { assumeExpired: baseClosed }));
 
-  const legFeesFromFills = (raw.fills ?? []).reduce((fees, fill) => {
+  const combinedFills = [...(raw.fills ?? []), ...closingPositions.flatMap((pos) => pos.fills ?? [])];
+
+  const legFeesFromFills = combinedFills.reduce((fees, fill) => {
     const seq = fill.leg_seq != null ? Number(fill.leg_seq) : null;
     const feeValue = parseNumeric(fill.fees) ?? 0;
     if (!seq || feeValue === 0) return fees;
@@ -376,12 +476,17 @@ function mapPosition(raw: RawPosition, programNames: Map<string, string>): Posit
     return fees;
   }, new Map<number, number>());
 
-  const explicitLegFees = (raw.legs ?? []).map((leg, idx) => {
-    const seq = leg.leg_seq != null ? Number(leg.leg_seq) : idx + 1;
-    return legFeesFromFills.get(seq) ?? 0;
+  const explicitLegFees = legs.map((leg) => {
+    const key = legMergeKey(leg);
+    const matchingFeeSeqs = mappedLegs.filter((entry) => entry.mergeKey === key).map((entry) => entry.feeSeq);
+    const feesForLeg = matchingFeeSeqs.reduce((sum, seq) => sum + (seq ? legFeesFromFills.get(seq) ?? 0 : 0), 0);
+    return feesForLeg;
   });
 
-  const legsWithFees = applyFeesToLegs(legs, raw.fees_total, explicitLegFees);
+  const totalFees =
+    (raw.fees_total ?? 0) + closingPositions.reduce((sum, position) => sum + (position.fees_total ?? 0), 0);
+
+  const legsWithFees = applyFeesToLegs(legs, totalFees, explicitLegFees);
 
   const expiryISO = normalizedExpiry ?? raw.entry_ts?.slice(0, 10) ?? "—";
   const dte = normalizedExpiry ? daysTo(normalizedExpiry) : 0;
@@ -550,6 +655,27 @@ export async function fetchSavedStructures(
     }
   }
 
-  const positions = rows.map((raw) => mapPosition(raw, programNameMap));
+  const targetIdSet = new Set(rows.map((row) => row.position_id));
+  const closersByTarget = rows.reduce((map, row) => {
+    const lifecycle = normalizeLifecycle(row.lifecycle);
+    const targetId = typeof row.close_target_structure_id === "string" ? row.close_target_structure_id : null;
+    if (lifecycle !== "close" || !targetId || !targetIdSet.has(targetId)) return map;
+
+    const closers = map.get(targetId) ?? [];
+    closers.push(row);
+    map.set(targetId, closers);
+    return map;
+  }, new Map<string, RawPosition[]>());
+
+  const positions = rows
+    .filter((row) => {
+      const lifecycle = normalizeLifecycle(row.lifecycle);
+      const targetId = typeof row.close_target_structure_id === "string" ? row.close_target_structure_id : null;
+      if (lifecycle === "close" && targetId && targetIdSet.has(targetId)) {
+        return false;
+      }
+      return true;
+    })
+    .map((raw) => mapPosition(raw, programNameMap, closersByTarget.get(raw.position_id) ?? []));
   return { ok: true, positions };
 }
