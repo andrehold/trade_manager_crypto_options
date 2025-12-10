@@ -255,6 +255,16 @@ function sortTrades(trades: TxnRow[]) {
     .map(({ trade }) => trade);
 }
 
+function deriveOpeningSign(trades: TxnRow[]): 1 | -1 | null {
+  for (const trade of trades) {
+    if (trade.action === "close") continue;
+    const side = trade.side === "sell" ? -1 : 1;
+    return side as 1 | -1;
+  }
+
+  return null;
+}
+
 function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): Leg {
   const inventory: typeof leg.openLots = [];
   let realizedPnl = 0;
@@ -262,6 +272,7 @@ function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): 
   let qtyNet = 0;
 
   const trades = sortTrades(leg.trades ?? []);
+  const openingSign = deriveOpeningSign(trades);
 
   for (const trade of trades) {
     const price = parseNumeric(trade.price);
@@ -272,9 +283,12 @@ function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): 
     let sign: 1 | -1 = side === "sell" ? -1 : 1;
 
     // Some close records ship with the same side as the opening trade, which would
-    // otherwise expand the open quantity. When we already have inventory and see a
-    // close trade with the same sign, flip it so it offsets the existing position.
-    if (trade.action === "close" && inventory.length > 0 && inventory[0].sign === sign) {
+    // otherwise expand the open quantity. If the trade is marked as a close and the
+    // sign matches either the current inventory or the expected opening direction,
+    // flip it so it offsets instead of enlarging.
+    const hasSameInventorySign = inventory.length > 0 && inventory[0].sign === sign;
+    const matchesOpeningDirection = openingSign != null && openingSign === sign && inventory.length === 0;
+    if (trade.action === "close" && (hasSameInventorySign || matchesOpeningDirection)) {
       sign = (sign === 1 ? -1 : 1) as 1 | -1;
     }
 
