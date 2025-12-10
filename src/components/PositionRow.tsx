@@ -355,7 +355,8 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                         const markPrice = markInfo?.price ?? null
 
                         const totalAbsQty = l.trades.reduce((sum, t) => sum + Math.abs(t.amount ?? 0), 0)
-                        const netPremiumPerLot = totalAbsQty > 0 ? l.netPremium / totalAbsQty : null
+                        const premiumBasisQty = l.netPremiumBasisQty ?? totalAbsQty
+                        const netPremiumPerLot = premiumBasisQty > 0 ? l.netPremium / premiumBasisQty : null
 
                         const markCell: React.ReactNode = !ref
                           ? '—'

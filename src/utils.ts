@@ -35,6 +35,7 @@ export interface Leg {
   realizedPnl: number;
   fees?: number | null;
   netPremium: number;
+  netPremiumBasisQty?: number;
   qtyNet: number;
   trades: TxnRow[];
   exchange?: Exchange;

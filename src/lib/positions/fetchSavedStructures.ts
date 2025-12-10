@@ -230,6 +230,8 @@ function coalesceLegs(legs: Leg[]): Leg[] {
     existing.trades = [...(existing.trades || []), ...(leg.trades || [])];
     existing.realizedPnl = (existing.realizedPnl ?? 0) + (leg.realizedPnl ?? 0);
     existing.netPremium = (existing.netPremium ?? 0) + (leg.netPremium ?? 0);
+    existing.netPremiumBasisQty =
+      (existing.netPremiumBasisQty ?? 0) + (leg.netPremiumBasisQty ?? leg.openLots.reduce((sum, lot) => sum + Math.abs(lot.qty), 0));
     existing.qtyNet = (existing.qtyNet ?? 0) + (leg.qtyNet ?? 0);
 
     if (!existing.expiry && leg.expiry) existing.expiry = leg.expiry;
@@ -265,14 +267,63 @@ function deriveOpeningSign(trades: TxnRow[]): 1 | -1 | null {
   return null;
 }
 
+function openingWindowNetPremium(trades: TxnRow[]) {
+  const openingTrades = trades.filter((trade) => trade.action !== "close");
+  if (openingTrades.length === 0) return { netPremium: 0, basisQty: 0 };
+
+  const openingWithTimes = openingTrades.map((trade) => {
+    const ts = trade.timestamp ? Date.parse(trade.timestamp) : Number.NaN;
+    return { trade, ts: Number.isFinite(ts) ? ts : null };
+  });
+
+  const earliestTs = openingWithTimes
+    .map((entry) => entry.ts)
+    .filter((ts): ts is number => ts != null)
+    .reduce<number | null>((min, ts) => (min == null ? ts : Math.min(min, ts)), null);
+
+  const windowEnd = earliestTs != null ? earliestTs + 10 * 60 * 1000 : null;
+
+  let premiumTrades: TxnRow[];
+  if (windowEnd != null) {
+    premiumTrades = openingWithTimes
+      .filter((entry) => entry.ts != null && entry.ts <= windowEnd)
+      .map((entry) => entry.trade);
+  } else {
+    const contiguousOpenings: TxnRow[] = [];
+    for (const trade of trades) {
+      if (trade.action === "close") break;
+      if (trade.action !== "close") contiguousOpenings.push(trade);
+    }
+    premiumTrades = contiguousOpenings.length > 0 ? contiguousOpenings : openingTrades;
+  }
+
+  const { netPremium, basisQty } = premiumTrades.reduce(
+    (acc, trade) => {
+      const price = parseNumeric(trade.price);
+      const qty = parseNumeric(trade.amount);
+      if (price == null || qty == null) return acc;
+
+      const sign = trade.side === "sell" ? -1 : 1;
+      const premiumDelta = sign === -1 ? price * Math.abs(qty) : -price * Math.abs(qty);
+      return {
+        netPremium: acc.netPremium + premiumDelta,
+        basisQty: acc.basisQty + Math.abs(qty),
+      };
+    },
+    { netPremium: 0, basisQty: 0 },
+  );
+
+  return { netPremium, basisQty };
+}
+
 function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): Leg {
   const inventory: typeof leg.openLots = [];
   let realizedPnl = 0;
-  let netPremium = 0;
   let qtyNet = 0;
 
   const trades = sortTrades(leg.trades ?? []);
   const openingSign = deriveOpeningSign(trades);
+  const { netPremium: initialNetPremium, basisQty: initialPremiumQty } = openingWindowNetPremium(trades);
 
   for (const trade of trades) {
     const price = parseNumeric(trade.price);
@@ -293,8 +344,6 @@ function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): 
     }
 
     const lot = { qty: Math.abs(qty), price, sign } as const;
-
-    netPremium += sign === -1 ? price * lot.qty : -price * lot.qty;
     qtyNet += sign * lot.qty;
 
     const isClosingTrade = trade.action === "close" || (inventory.length > 0 && inventory[0].sign !== sign);
@@ -320,13 +369,15 @@ function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): 
     inventory.length = 0;
   }
 
-  const realizedBounded = netPremium > 0 && realizedPnl > netPremium ? netPremium : realizedPnl;
+  const realizedBounded =
+    initialNetPremium > 0 && realizedPnl > initialNetPremium ? initialNetPremium : realizedPnl;
 
   return {
     ...leg,
     openLots: inventory,
     realizedPnl: realizedBounded,
-    netPremium,
+    netPremium: initialNetPremium,
+    netPremiumBasisQty: initialPremiumQty,
     qtyNet,
   };
 }
