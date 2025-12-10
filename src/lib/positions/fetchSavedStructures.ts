@@ -269,7 +269,15 @@ function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): 
     if (price == null || qty == null) continue;
 
     const side = trade.side === "sell" ? "sell" : "buy";
-    const sign: 1 | -1 = side === "sell" ? -1 : 1;
+    let sign: 1 | -1 = side === "sell" ? -1 : 1;
+
+    // Some close records ship with the same side as the opening trade, which would
+    // otherwise expand the open quantity. When we already have inventory and see a
+    // close trade with the same sign, flip it so it offsets the existing position.
+    if (trade.action === "close" && inventory.length > 0 && inventory[0].sign === sign) {
+      sign = (sign === 1 ? -1 : 1) as 1 | -1;
+    }
+
     const lot = { qty: Math.abs(qty), price, sign } as const;
 
     netPremium += sign === -1 ? price * lot.qty : -price * lot.qty;
