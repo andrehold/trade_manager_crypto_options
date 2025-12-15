@@ -1,5 +1,5 @@
 import React from 'react'
-import { Link as LinkIcon, Pencil, Save } from 'lucide-react'
+import { Link as LinkIcon, Pencil, Plus, Save } from 'lucide-react'
 import {
   Position,
   fmtPremium,
@@ -13,6 +13,7 @@ import {
 } from '../utils'
 import { buildStructureChipSummary } from '../lib/positions/structureSummary'
 import { StructureEntryOverlay } from './StructureEntryOverlay'
+import { StructureDetailOverlay } from './StructureDetailOverlay'
 
 type MarkInfo = { price: number | null; multiplier: number | null; greeks?: any }
 type MarkMap = Record<string, MarkInfo>
@@ -80,6 +81,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
 
   const [open, setOpen] = React.useState(false)
   const [showSaveOverlay, setShowSaveOverlay] = React.useState(false)
+  const [showDetailOverlay, setShowDetailOverlay] = React.useState(false)
   const statusTone =
     p.status === 'OPEN'
       ? 'success'
@@ -283,6 +285,15 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
               {canOpenOverlay ? (
                 <button
                   type="button"
+                  onClick={() => setShowDetailOverlay(true)}
+                  className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
+                  title="View transaction details"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="sr-only">Open detail overlay</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => setShowSaveOverlay(true)}
                   className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
                   title="Update saved structure"
@@ -441,6 +452,13 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           mode={isUpdateMode ? 'update' : 'create'}
           existingPositionId={isUpdateMode ? p.id : undefined}
           clientScope={clientScope}
+        />
+      ) : null}
+      {showDetailOverlay ? (
+        <StructureDetailOverlay
+          open={showDetailOverlay}
+          onClose={() => setShowDetailOverlay(false)}
+          position={p}
         />
       ) : null}
     </>
