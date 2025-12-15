@@ -1,5 +1,5 @@
 import React from 'react'
-import { ArrowDownUp, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import Overlay from './Overlay'
 import type { Position } from '../utils'
 
@@ -132,10 +132,9 @@ function SortableHeader({
           direction: isActive && sort.direction === 'asc' ? 'desc' : 'asc',
         })
       }
-      className={`flex items-center gap-1 text-left w-full ${isActive ? 'text-slate-700' : 'text-slate-500'}`}
+      className={`w-full text-left ${isActive ? 'text-slate-700' : 'text-slate-500'} hover:text-slate-700`}
     >
       <span>{label}</span>
-      <ArrowDownUp className="h-3 w-3" aria-hidden />
       <span className="sr-only">Sort {directionLabel}</span>
     </button>
   )
