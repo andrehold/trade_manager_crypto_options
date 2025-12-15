@@ -22,6 +22,7 @@ type NormalizedTrade = {
   qty: number
   price: number
   timestamp: string
+  openClose: 'open' | 'close' | null
   tradeId: string | null
   orderId: string | null
   fee: number | null
@@ -68,6 +69,12 @@ function normalizeTimestamp(raw: string | undefined): string {
     return parsed.toISOString()
   }
   return trimmed
+}
+
+function normalizeOpenClose(raw: string | undefined): 'open' | 'close' | null {
+  const normalized = sanitizeText(raw)?.toLowerCase()
+  if (normalized === 'open' || normalized === 'close') return normalized
+  return null
 }
 
 function toNumeric(value: unknown): number | null {
@@ -127,6 +134,7 @@ function normalizeTradeRow(row: TxnRow): NormalizeResult {
   }
 
   const timestamp = normalizeTimestamp(row.timestamp)
+  const openClose = normalizeOpenClose(row.action as string | undefined)
   const tradeId = extractIdentifier(row, 'trade')
   const orderId = extractIdentifier(row, 'order')
   const fee = toNumeric(row.fee)
@@ -142,6 +150,7 @@ function normalizeTradeRow(row: TxnRow): NormalizeResult {
       qty: Math.abs(qty),
       price,
       timestamp,
+      openClose,
       tradeId,
       orderId,
       fee: fee ?? null,
@@ -224,6 +233,7 @@ export async function appendTradesToStructure(
     ts: row.timestamp,
     qty: row.qty,
     price: row.price,
+    open_close: row.openClose,
     side: row.side,
     trade_id: row.tradeId,
     order_id: row.orderId,

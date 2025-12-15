@@ -110,6 +110,7 @@ export const FillSchema = z.object({
   ts: ISO_DATETIME,
   qty: z.number().positive(),
   price: z.number(),
+  open_close: z.enum(STRUCTURE_LIFECYCLES).optional(),
   leg_seq: z.number().int().positive().optional(),
   side: z.enum(SIDES).optional(),
   liquidity_role: z.enum(LIQUIDITY_ROLES).optional(),

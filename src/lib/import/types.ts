@@ -120,6 +120,7 @@ export type Fill = {
   ts: ISODateTime;
   qty: number;
   price: number;
+  open_close?: StructureLifecycle | null;
   leg_seq?: number | null;
   side?: Side | null;
   liquidity_role?: LiquidityRole | null;

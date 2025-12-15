@@ -72,6 +72,7 @@ type FillRow = {
   ts: string | null;
   qty: number | string | null;
   price: number | string | null;
+  open_close: StructureLifecycle | string | null;
   leg_seq: number | null;
   side: 'buy' | 'sell' | null;
   liquidity_role: string | null;
@@ -205,7 +206,7 @@ export async function fetchStructurePayload(
   const { data: fillsRows, error: fillsError } = await client
     .from('fills')
     .select(
-      'ts, qty, price, leg_seq, side, liquidity_role, execution_mode, provider, venue_id, order_id, trade_id, rfq_id, deal_id, fees, notes',
+      'ts, qty, price, open_close, leg_seq, side, liquidity_role, execution_mode, provider, venue_id, order_id, trade_id, rfq_id, deal_id, fees, notes',
     )
     .eq('position_id', positionId)
     .order('ts');
@@ -287,6 +288,7 @@ export async function fetchStructurePayload(
       ts: row.ts ?? '',
       qty: coalesceNumber(row.qty) ?? 0,
       price: coalesceNumber(row.price) ?? 0,
+      open_close: coalesceString(row.open_close) as StructureLifecycle | undefined,
       leg_seq: row.leg_seq ?? undefined,
       side: (row.side ?? undefined) as ImportPayload['fills'][number]['side'],
       liquidity_role:
