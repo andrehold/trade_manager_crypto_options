@@ -13,7 +13,7 @@ const DATE_FORMATTER = new Intl.DateTimeFormat(undefined, {
   hour12: false,
 })
 
-type SortKey = 'timestamp' | 'instrument' | 'qty' | 'price' | 'fee' | 'side' | 'tradeId'
+type SortKey = 'timestamp' | 'instrument' | 'qty' | 'price' | 'fee' | 'action' | 'side' | 'tradeId'
 
 type SortState = {
   key: SortKey
@@ -33,6 +33,7 @@ type TransactionRow = {
   qty: number
   price: number
   fee: number | null
+  action?: string | null
   side: string
   tradeId?: string
 }
@@ -63,6 +64,7 @@ function buildTransactionRows(position: Position): TransactionRow[] {
         qty: trade.amount ?? 0,
         price: trade.price ?? 0,
         fee: trade.fee ?? null,
+        action: trade.action ?? null,
         side: trade.side ?? '—',
         tradeId: trade.trade_id,
       })
@@ -87,6 +89,8 @@ function sortTransactions(rows: TransactionRow[], sort: SortState): TransactionR
         return row.fee ?? 0
       case 'side':
         return row.side.toLowerCase()
+      case 'action':
+        return (row.action ?? '').toLowerCase()
       case 'tradeId':
         return row.tradeId?.toLowerCase() ?? ''
       default:
@@ -192,6 +196,9 @@ export function StructureDetailOverlay({ open, onClose, position }: StructureDet
                       <SortableHeader label="Fee" column="fee" sort={sort} onChange={setSort} />
                     </th>
                     <th className="p-2 text-left">
+                      <SortableHeader label="O/C" column="action" sort={sort} onChange={setSort} />
+                    </th>
+                    <th className="p-2 text-left">
                       <SortableHeader label="Side" column="side" sort={sort} onChange={setSort} />
                     </th>
                     <th className="p-2 text-left">
@@ -207,6 +214,7 @@ export function StructureDetailOverlay({ open, onClose, position }: StructureDet
                       <td className="p-2 text-right font-mono text-slate-800">{txn.qty}</td>
                       <td className="p-2 text-right font-mono text-slate-800">{txn.price}</td>
                       <td className="p-2 text-right font-mono text-slate-800">{txn.fee ?? '—'}</td>
+                      <td className="p-2 text-slate-800 capitalize">{txn.action ?? '—'}</td>
                       <td className="p-2 text-slate-800 capitalize">{txn.side}</td>
                       <td className="p-2 text-slate-800">{txn.tradeId ?? '—'}</td>
                     </tr>
