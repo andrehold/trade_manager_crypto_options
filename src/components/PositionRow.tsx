@@ -283,24 +283,26 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                 </button>
               ) : null}
               {canOpenOverlay ? (
-                <button
-                  type="button"
-                  onClick={() => setShowDetailOverlay(true)}
-                  className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
-                  title="View transaction details"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span className="sr-only">Open detail overlay</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowSaveOverlay(true)}
-                  className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
-                  title="Update saved structure"
-                >
-                  <Pencil className="h-4 w-4" />
-                  <span className="sr-only">Open update overlay</span>
-                </button>
+                <div className="inline-flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowDetailOverlay(true)}
+                    className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
+                    title="View transaction details"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span className="sr-only">Open detail overlay</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSaveOverlay(true)}
+                    className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
+                    title="Update saved structure"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    <span className="sr-only">Open update overlay</span>
+                  </button>
+                </div>
               ) : null}
             </div>
           ) : canOpenOverlay ? (
