@@ -17,6 +17,7 @@ import {
   EXECUTION_MODES,
   LIQUIDITY_ROLES,
   OPTION_TYPES,
+  STRUCTURE_LIFECYCLES,
 } from '../lib/import/types';
 
 type PartialPayload = {
@@ -500,6 +501,7 @@ function buildInitialFills(
         qty: Math.abs(trade.amount ?? 0) || undefined,
         price: trade.price ?? undefined,
         leg_seq: idx + 1,
+        open_close: trade.action as any,
         side: trade.side as any,
         execution_mode: undefined,
         provider: trade.exchange,
@@ -1913,6 +1915,18 @@ export function StructureEntryOverlay({
                           value={getValue(form, parsePath(`fills[${index}].leg_seq`))}
                           missing={missing.has(`fills[${index}].leg_seq`)}
                           onChange={(value) => updateField(`fills[${index}].leg_seq`, value)}
+                        />
+                        <Field
+                          meta={{
+                            label: 'Open / Close',
+                            path: `fills[${index}].open_close`,
+                            valueType: 'string',
+                            type: 'select',
+                            options: STRUCTURE_LIFECYCLES,
+                          }}
+                          value={getValue(form, parsePath(`fills[${index}].open_close`))}
+                          missing={missing.has(`fills[${index}].open_close`)}
+                          onChange={(value) => updateField(`fills[${index}].open_close`, value)}
                         />
                         <Field
                           meta={{
