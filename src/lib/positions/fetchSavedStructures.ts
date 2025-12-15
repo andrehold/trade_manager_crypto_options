@@ -15,6 +15,13 @@ type RawLeg = {
 
 type RawFill = {
   leg_seq: number | null;
+  ts: string | null;
+  qty: number | string | null;
+  price: number | string | null;
+  open_close: string | null;
+  side: string | null;
+  order_id?: string | null;
+  trade_id?: string | null;
   fees: number | string | null;
 };
 
@@ -164,7 +171,13 @@ function legMergeKey(leg: Pick<Leg, "expiry" | "strike" | "optionType" | "exchan
   return `${expiryKey}::${strikeKey}::${optionKey}::${exchangeKey}`;
 }
 
-function mapLeg(position: RawPosition, leg: RawLeg, index: number, exchange: Exchange | undefined) {
+function mapLeg(
+  position: RawPosition,
+  leg: RawLeg,
+  index: number,
+  exchange: Exchange | undefined,
+  fills?: RawFill[] | null,
+) {
   const strike = parseNumeric(leg.strike) ?? undefined;
   const qtyRaw = parseNumeric(leg.qty) ?? undefined;
   const price = parseNumeric(leg.price) ?? undefined;
@@ -182,33 +195,67 @@ function mapLeg(position: RawPosition, leg: RawLeg, index: number, exchange: Exc
   const instrumentUnderlier = (position.underlier ?? "").toUpperCase() || "UNDERLIER";
   const instrument = formatInstrument(instrumentUnderlier, expiryISO ?? "", strike, optionType);
 
-  const trade: TxnRow = {
-    instrument,
-    side,
-    action: position.lifecycle === "close" ? "close" : "open",
-    amount: qty,
-    price,
-    timestamp: position.entry_ts ?? undefined,
-    trade_id: position.trade_id ?? undefined,
-    order_id: position.order_id ?? undefined,
-    info: undefined,
-    underlying: instrumentUnderlier,
-    expiry: expiryISO ?? undefined,
-    strike,
-    optionType,
-    structureId: position.position_id,
-    exchange,
-  };
+  const legSeq = leg.leg_seq != null ? Number(leg.leg_seq) : null;
+  const matchingFills = (fills ?? []).filter((fill) => {
+    const seq = fill.leg_seq != null ? Number(fill.leg_seq) : null;
+    return seq != null && legSeq != null && seq === legSeq;
+  });
+
+  const trades: TxnRow[] = (matchingFills.length > 0
+    ? matchingFills
+    : [
+        {
+          ts: position.entry_ts,
+          qty,
+          price,
+          open_close: position.lifecycle,
+          side,
+          order_id: position.order_id,
+          trade_id: position.trade_id,
+        } satisfies RawFill,
+      ]
+  ).map((fill) => {
+    const fillQty = parseNumeric(fill.qty) ?? qty ?? 0;
+    const fillPrice = parseNumeric(fill.price) ?? price ?? 0;
+    const fillSide = fill.side === "sell" ? "sell" : fill.side === "buy" ? "buy" : side;
+    const fillAction =
+      fill.open_close === "close"
+        ? "close"
+        : fill.open_close === "open"
+        ? "open"
+        : position.lifecycle === "close"
+        ? "close"
+        : "open";
+
+    return {
+      instrument,
+      side: fillSide,
+      action: fillAction,
+      amount: Math.abs(fillQty),
+      price: fillPrice,
+      fee: parseNumeric(fill.fees) ?? null,
+      timestamp: fill.ts ?? position.entry_ts ?? undefined,
+      trade_id: fill.trade_id ?? position.trade_id ?? undefined,
+      order_id: fill.order_id ?? position.order_id ?? undefined,
+      info: undefined,
+      underlying: instrumentUnderlier,
+      expiry: expiryISO ?? undefined,
+      strike,
+      optionType,
+      structureId: position.position_id,
+      exchange,
+    } as TxnRow;
+  });
 
   return {
     key: `${leg.leg_seq ?? index}-${strike}-${optionType}`,
     strike,
     optionType,
-    openLots: [{ qty, price, sign: sign as 1 | -1 }],
+    openLots: [],
     realizedPnl: 0,
-    netPremium: sign === -1 ? price * qty : -price * qty,
-    qtyNet: sign * qty,
-    trades: [trade],
+    netPremium: 0,
+    qtyNet: 0,
+    trades,
     exchange,
     expiry: expiryISO ?? undefined,
   };
@@ -443,7 +490,7 @@ function mapPosition(
     index: number,
     posExchange: Exchange | undefined,
   ) => {
-    const mapped = mapLeg(position, leg, index, posExchange);
+    const mapped = mapLeg(position, leg, index, posExchange, position.fills);
     if (!mapped) return;
     const seq = leg.leg_seq != null ? Number(leg.leg_seq) : index + 1;
     const feeSeq = Number.isFinite(seq) ? seq : null;
@@ -615,6 +662,13 @@ export async function fetchSavedStructures(
        ),
        fills:fills(
          leg_seq,
+         ts,
+         qty,
+         price,
+         open_close,
+         side,
+         order_id,
+         trade_id,
          fees
        )`
     )
