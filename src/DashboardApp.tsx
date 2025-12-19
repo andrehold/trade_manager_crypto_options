@@ -38,6 +38,7 @@ const CLIENT_LIST_STORAGE_KEY = 'tm_client_names_v1'
 const SELECTED_CLIENT_STORAGE_KEY = 'tm_selected_client_v1'
 const RAW_ROWS_STORAGE_KEY = 'deribit_raw_rows_by_client_v1'
 const POSITIONS_STORAGE_KEY = 'deribit_positions_by_client_v1'
+const EXCHANGE_POSITIONS_STORAGE_KEY = 'tm_exchange_positions_by_client_v1'
 const DEFAULT_CLIENT_NAME = 'General'
 
 const GREEK_SUMMARY_FIELDS = [
@@ -49,6 +50,18 @@ const GREEK_SUMMARY_FIELDS = [
 ] as const
 
 type GreekKey = typeof GREEK_SUMMARY_FIELDS[number]['key']
+
+type ExchangePositionSnapshot = {
+  id: string;
+  exchange: Exchange | 'unknown';
+  instrument: string;
+  expiryISO: string | null;
+  size: number | null;
+  side: string;
+  avgPrice: number | null;
+  markPrice: number | null;
+  indexPrice: number | null;
+};
 
 type DashboardAppProps = {
   onOpenPlaybookIndex?: () => void
@@ -133,6 +146,21 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     },
     [activeClientName, setPositionsByClient],
   );
+  const [exchangePositionsByClient, setExchangePositionsByClient] = useLocalStorage<Record<string, ExchangePositionSnapshot[]>>(
+    EXCHANGE_POSITIONS_STORAGE_KEY,
+    {} as Record<string, ExchangePositionSnapshot[]>,
+  );
+  const exchangePositions = exchangePositionsByClient[activeClientName] ?? [];
+  const setExchangePositions = React.useCallback(
+    (next: ExchangePositionSnapshot[] | ((prev: ExchangePositionSnapshot[]) => ExchangePositionSnapshot[])) => {
+      setExchangePositionsByClient((prev) => {
+        const current = prev[activeClientName] ?? [];
+        const resolved = typeof next === 'function' ? (next as (prev: ExchangePositionSnapshot[]) => ExchangePositionSnapshot[])(current) : next;
+        return { ...prev, [activeClientName]: resolved };
+      });
+    },
+    [activeClientName, setExchangePositionsByClient],
+  );
   const [savedStructures, setSavedStructures] = React.useState<Position[]>([]);
   const [savedStructuresLoading, setSavedStructuresLoading] = React.useState(false);
   const [savedStructuresError, setSavedStructuresError] = React.useState<string | null>(null);
@@ -165,6 +193,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     done: 0,
     errors: 0,
   });
+  const positionUploadRef = React.useRef<HTMLInputElement | null>(null);
 
   React.useEffect(() => {
     if (!clientOptions.length) {
@@ -270,6 +299,83 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       error: (e: any) => alert('CSV parse error: ' + (e && e.message ? e.message : String(e))),
     });
   }
+
+  const toOptionalNumber = React.useCallback((value: any) => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'string' && value.trim() === '') return null;
+    const parsed = toNumber(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, []);
+
+  const parseExchangePositionRow = React.useCallback((row: any, index: number): ExchangePositionSnapshot | null => {
+    const instrument = String(row.instrument_name ?? row.displayName ?? row.symbol ?? row.instrument ?? '').trim();
+    if (!instrument) return null;
+
+    const exchange: Exchange | 'unknown' = row.instrument_name
+      ? 'deribit'
+      : row.tradeSide !== undefined || row.displayName || row.symbol
+      ? 'coincall'
+      : 'unknown';
+    const exchangeForParser = exchange === 'unknown' ? 'deribit' : exchange;
+    const parsed = parseInstrumentByExchange(exchangeForParser, instrument);
+
+    const endTimeRaw = toOptionalNumber(row.endTime);
+    const expiryFromEnd = endTimeRaw
+      ? new Date(endTimeRaw < 1e12 ? endTimeRaw * 1000 : endTimeRaw).toISOString().slice(0, 10)
+      : null;
+    const expiryISO = parsed?.expiryISO ?? expiryFromEnd ?? null;
+
+    const sizeRaw = row.size ?? row.qty ?? row.position ?? row.amount;
+    const sizeValue = toOptionalNumber(sizeRaw);
+    const size = sizeValue !== null ? Math.abs(sizeValue) : null;
+
+    let side = String(row.direction ?? row.side ?? '').toLowerCase();
+    if (!side && row.tradeSide !== undefined) {
+      const tradeSide = toOptionalNumber(row.tradeSide);
+      if (tradeSide === 1) side = 'buy';
+      if (tradeSide === 2) side = 'sell';
+    }
+    if (!side && sizeValue !== null) {
+      side = sizeValue < 0 ? 'sell' : 'buy';
+    }
+
+    const avgPrice = toOptionalNumber(row.avgPrice ?? row.average_price_usd ?? row.average_price ?? row.avg_price);
+    const markPrice = toOptionalNumber(row.markPrice ?? row.mark_price);
+    const indexPrice = toOptionalNumber(row.indexPrice ?? row.index_price);
+
+    return {
+      id: `${exchange}-${instrument}-${index}`,
+      exchange,
+      instrument,
+      expiryISO,
+      size,
+      side: side || '—',
+      avgPrice,
+      markPrice,
+      indexPrice,
+    };
+  }, [toOptionalNumber]);
+
+  const handlePositionFiles = React.useCallback((files: FileList) => {
+    const file = files[0];
+    if (!file) return;
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: 'greedy',
+      transformHeader: (h: string) => h.replace(/^\ufeff/, '').trim(),
+      complete: (res: any) => {
+        const rows = res.data as any[];
+        if (!rows || !rows.length) {
+          alert('No rows found in CSV. Check the delimiter (comma vs semicolon) and header row.');
+          return;
+        }
+        const mapped = rows
+          .map((row, idx) => parseExchangePositionRow(row, idx))
+          .filter((row): row is ExchangePositionSnapshot => Boolean(row));
+        setExchangePositions(mapped);
+      },
+    });
+  }, [parseExchangePositionRow, setExchangePositions]);
 
   const filterRowsWithExistingTradeIds = React.useCallback(
     async (rows: TxnRow[]) => {
@@ -972,6 +1078,26 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     [matchesClientSelection, matchesFilter, savedStructures],
   );
 
+  const sortedExchangePositions = React.useMemo(() => {
+    const fallback = Number.MAX_SAFE_INTEGER;
+    return [...exchangePositions].sort((a, b) => {
+      const aTime = a.expiryISO ? new Date(a.expiryISO).getTime() : fallback;
+      const bTime = b.expiryISO ? new Date(b.expiryISO).getTime() : fallback;
+      if (aTime !== bTime) return aTime - bTime;
+      return a.instrument.localeCompare(b.instrument);
+    });
+  }, [exchangePositions]);
+
+  const formatQuantity = React.useCallback((value: number | null) => {
+    if (value === null) return '—';
+    return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+  }, []);
+
+  const formatPrice = React.useCallback((value: number | null) => {
+    if (value === null) return '—';
+    return value.toLocaleString(undefined, { maximumFractionDigits: 6 });
+  }, []);
+
   const savedStructureGroups = React.useMemo(
     () =>
       filteredSaved.reduce(
@@ -1482,6 +1608,81 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="px-6 py-3">
+        <details className="bg-white rounded-2xl shadow border overflow-hidden">
+          <summary className="flex items-center justify-between px-4 py-3 text-sm font-medium text-slate-700 cursor-pointer select-none">
+            <span>Exchange Positions</span>
+            <span className="text-xs font-normal text-slate-500">
+              {exchangePositions.length ? `${exchangePositions.length} loaded` : 'No positions loaded'}
+            </span>
+          </summary>
+          <div className="border-t">
+            <div className="flex flex-col gap-2 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-xs text-slate-500">
+                Upload current positions from Coincall or Deribit CSV exports.
+              </span>
+              <button
+                className="rounded-xl border px-3 py-2 text-sm inline-flex items-center gap-2"
+                onClick={() => positionUploadRef.current?.click()}
+              >
+                Upload CSV
+              </button>
+              <input
+                ref={positionUploadRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(e) => e.target.files && handlePositionFiles(e.target.files)}
+              />
+            </div>
+            {sortedExchangePositions.length === 0 ? (
+              <div className="px-4 pb-4 text-sm text-slate-500">
+                No exchange positions available yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="text-xs uppercase text-slate-500 border-t border-slate-100">
+                    <tr className="text-left">
+                      <th className="p-3">Exchange</th>
+                      <th className="p-3">Instrument</th>
+                      <th className="p-3">Expiry</th>
+                      <th className="p-3">Size</th>
+                      <th className="p-3">Side</th>
+                      <th className="p-3">Avg Price</th>
+                      <th className="p-3">Mark Price</th>
+                      <th className="p-3">Index Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedExchangePositions.map((position) => {
+                      const sideLower = position.side.toLowerCase();
+                      const sideClass = sideLower === 'buy'
+                        ? 'text-emerald-600'
+                        : sideLower === 'sell'
+                        ? 'text-rose-600'
+                        : 'text-slate-600';
+                      return (
+                        <tr key={position.id} className="border-t border-slate-100">
+                          <td className="p-3 text-xs font-semibold uppercase text-slate-500">{position.exchange}</td>
+                          <td className="p-3 font-medium text-slate-800">{position.instrument}</td>
+                          <td className="p-3 text-slate-700">{position.expiryISO ?? '—'}</td>
+                          <td className="p-3 text-slate-700">{formatQuantity(position.size)}</td>
+                          <td className={`p-3 font-semibold ${sideClass}`}>{position.side}</td>
+                          <td className="p-3 text-slate-700">{formatPrice(position.avgPrice)}</td>
+                          <td className="p-3 text-slate-700">{formatPrice(position.markPrice)}</td>
+                          <td className="p-3 text-slate-700">{formatPrice(position.indexPrice)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </details>
       </div>
 
       <div className="px-6 py-3">
