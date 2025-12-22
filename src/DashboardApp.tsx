@@ -1088,6 +1088,20 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     });
   }, [exchangePositions]);
 
+  const exchangePositionGroups = React.useMemo(() => {
+    const groups: { label: string; positions: ExchangePositionSnapshot[] }[] = [];
+    for (const position of sortedExchangePositions) {
+      const label = position.expiryISO ?? 'No expiry date';
+      const current = groups[groups.length - 1];
+      if (!current || current.label !== label) {
+        groups.push({ label, positions: [position] });
+      } else {
+        current.positions.push(position);
+      }
+    }
+    return groups;
+  }, [sortedExchangePositions]);
+
   const formatQuantity = React.useCallback((value: number | null) => {
     if (value === null) return '—';
     return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
@@ -1115,6 +1129,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   );
 
   const savedStructureColSpan = React.useMemo(() => visibleCols.length + 2, [visibleCols.length]);
+  const livePositionColSpan = React.useMemo(() => visibleCols.length + 2, [visibleCols.length]);
 
   const portfolioGreeks = React.useMemo(() => {
     const totals: Record<GreekKey, number> = {
@@ -1164,6 +1179,20 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   );
 
   const positionsForLinking = positionsForMarks;
+
+  const livePositionGroups = React.useMemo(() => {
+    const groups: { label: string; positions: Position[] }[] = [];
+    for (const position of filteredLive) {
+      const label = position.expiryISO ? position.expiryISO : 'No expiry date';
+      const current = groups[groups.length - 1];
+      if (!current || current.label !== label) {
+        groups.push({ label, positions: [position] });
+      } else {
+        current.positions.push(position);
+      }
+    }
+    return groups;
+  }, [filteredLive]);
 
   const activeProgramPlaybook = React.useMemo(() => {
     const programId = activePlaybookPosition?.programId;
@@ -1657,26 +1686,38 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedExchangePositions.map((position) => {
-                      const sideLower = position.side.toLowerCase();
-                      const sideClass = sideLower === 'buy'
-                        ? 'text-emerald-600'
-                        : sideLower === 'sell'
-                        ? 'text-rose-600'
-                        : 'text-slate-600';
-                      return (
-                        <tr key={position.id} className="border-t border-slate-100">
-                          <td className="p-3 text-xs font-semibold uppercase text-slate-500">{position.exchange}</td>
-                          <td className="p-3 font-medium text-slate-800">{position.instrument}</td>
-                          <td className="p-3 text-slate-700">{position.expiryISO ?? '—'}</td>
-                          <td className="p-3 text-slate-700">{formatQuantity(position.size)}</td>
-                          <td className={`p-3 font-semibold ${sideClass}`}>{position.side}</td>
-                          <td className="p-3 text-slate-700">{formatPrice(position.avgPrice)}</td>
-                          <td className="p-3 text-slate-700">{formatPrice(position.markPrice)}</td>
-                          <td className="p-3 text-slate-700">{formatPrice(position.indexPrice)}</td>
+                    {exchangePositionGroups.map((group) => (
+                      <React.Fragment key={group.label}>
+                        <tr className="bg-slate-100/80 border-t border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          <td colSpan={8} className="px-3 py-2 text-left">
+                            <div className="flex items-center gap-3">
+                              <span>Expiry date: {group.label}</span>
+                              <span className="h-px flex-1 bg-slate-300" aria-hidden />
+                            </div>
+                          </td>
                         </tr>
-                      );
-                    })}
+                        {group.positions.map((position) => {
+                          const sideLower = position.side.toLowerCase();
+                          const sideClass = sideLower === 'buy'
+                            ? 'text-emerald-600'
+                            : sideLower === 'sell'
+                            ? 'text-rose-600'
+                            : 'text-slate-600';
+                          return (
+                            <tr key={position.id} className="border-t border-slate-100">
+                              <td className="p-3 text-xs font-semibold uppercase text-slate-500">{position.exchange}</td>
+                              <td className="p-3 font-medium text-slate-800">{position.instrument}</td>
+                              <td className="p-3 text-slate-700">{position.expiryISO ?? '—'}</td>
+                              <td className="p-3 text-slate-700">{formatQuantity(position.size)}</td>
+                              <td className={`p-3 font-semibold ${sideClass}`}>{position.side}</td>
+                              <td className="p-3 text-slate-700">{formatPrice(position.avgPrice)}</td>
+                              <td className="p-3 text-slate-700">{formatPrice(position.markPrice)}</td>
+                              <td className="p-3 text-slate-700">{formatPrice(position.indexPrice)}</td>
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -1782,23 +1823,35 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
                 <tbody>
                   {filteredLive.length === 0 ? (
                     <tr>
-                      <td colSpan={visibleCols.length + 3} className="p-4 text-sm text-slate-500">
+                      <td colSpan={livePositionColSpan} className="p-4 text-sm text-slate-500">
                         No live positions match your filters.
                       </td>
                     </tr>
                   ) : null}
-                  {filteredLive.map((p) => (
-                    <PositionRow
-                      key={p.id}
-                      p={p}
-                      onUpdate={updatePosition}
-                      visibleCols={visibleCols}
-                      marks={legMarks}
-                      markLoading={markFetch.inProgress}
-                      allPositions={positionsForLinking}
-                      onSaved={refreshSavedStructures}
-                      clientScope={overlayClientScope}
-                    />
+                  {livePositionGroups.map((group) => (
+                    <React.Fragment key={group.label}>
+                      <tr className="bg-slate-100/80 border-y border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <td colSpan={livePositionColSpan} className="px-3 py-2 text-left">
+                          <div className="flex items-center gap-3">
+                            <span>Expiry date: {group.label}</span>
+                            <span className="h-px flex-1 bg-slate-300" aria-hidden />
+                          </div>
+                        </td>
+                      </tr>
+                      {group.positions.map((p) => (
+                        <PositionRow
+                          key={p.id}
+                          p={p}
+                          onUpdate={updatePosition}
+                          visibleCols={visibleCols}
+                          marks={legMarks}
+                          markLoading={markFetch.inProgress}
+                          allPositions={positionsForLinking}
+                          onSaved={refreshSavedStructures}
+                          clientScope={overlayClientScope}
+                        />
+                      ))}
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>
