@@ -13,6 +13,11 @@ export {
   type SaveUnprocessedTradesParams,
   type SaveUnprocessedTradesResult,
 } from "./saveUnprocessedTrades";
+export {
+  backfillLegExpiries,
+  type BackfillLegExpiriesParams,
+  type BackfillLegExpiriesResult,
+} from "./backfillLegExpiries";
 export { buildStructureChipSummary } from "./structureSummary";
 export {
   syncLinkedStructures,
