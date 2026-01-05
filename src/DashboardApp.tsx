@@ -593,7 +593,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   );
 
   const mapRowsFromMapping = React.useCallback(
-    (mapping: Record<string, string>) => {
+    (mapping: Record<string, string>, mode: 'import' | 'backfill' = 'import') => {
       const exchange = (mapping as any).__exchange || 'deribit';
       const mappedRaw: TxnRow[] = rawRows
         .map((r) => {
@@ -602,12 +602,17 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
           const mappedTradeId = resolveIdentifierFromMapping(r as Record<string, unknown>, mapping.trade_id, 'trade');
           const mappedOrderId = resolveIdentifierFromMapping(r as Record<string, unknown>, mapping.order_id, 'order');
 
+          const hasInstrument = Boolean(String(r[mapping.instrument] ?? '').trim());
+          if (!hasInstrument) {
+            return null;
+          }
+
           const provisionalRow: TxnRow = {
             instrument: String(r[mapping.instrument] ?? '').trim(),
             side: side || '',
             action,
-            amount: toNumber(r[mapping.amount]),
-            price: toNumber(r[mapping.price]),
+            amount: mapping.amount ? toNumber(r[mapping.amount]) : 0,
+            price: mapping.price ? toNumber(r[mapping.price]) : 0,
             fee: mapping.fee ? toNumber(r[mapping.fee]) : 0,
             timestamp: mapping.timestamp ? String(r[mapping.timestamp]) : undefined,
             trade_id: mappedTradeId ?? undefined,
@@ -621,18 +626,24 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
             deriveSyntheticDeliveryTradeId(provisionalRow, r as Record<string, unknown>) ??
             undefined
 
-          return {
+          const baseRow = {
             ...provisionalRow,
             trade_id: syntheticTradeId,
-          } as TxnRow
+          } as TxnRow;
+
+          if (mode === 'backfill') {
+            return baseRow;
+          }
+
+          const hasSide = baseRow.side === 'buy' || baseRow.side === 'sell';
+          const hasAmount = Number.isFinite(baseRow.amount) && Math.abs(baseRow.amount) > 0;
+          const hasPrice = Number.isFinite(baseRow.price);
+          if (!hasSide || !hasAmount || !hasPrice) {
+            return null;
+          }
+          return baseRow;
         })
-        .filter((r) => {
-          const hasInstrument = Boolean(r.instrument);
-          const hasSide = r.side === 'buy' || r.side === 'sell';
-          const hasAmount = Number.isFinite(r.amount) && Math.abs(r.amount) > 0;
-          const hasPrice = Number.isFinite(r.price);
-          return hasInstrument && hasSide && hasAmount && hasPrice;
-        });
+        .filter((row): row is TxnRow => Boolean(row));
 
       // Keep all rows, including 08:00 delivery/settlement records, so they are visible in the review overlay.
       const timeCleaned: TxnRow[] = mappedRaw;
@@ -656,7 +667,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   async function startImport(mapping: Record<string, string>) {
     const exchange = (mapping as any).__exchange || 'deribit';
     setSelectedExchange(exchange as Exchange);
-    const { rows, excludedRows } = mapRowsFromMapping(mapping);
+    const { rows, excludedRows } = mapRowsFromMapping(mapping, 'import');
     const { filtered, duplicateTradeIds, duplicateOrderIds } = await filterRowsWithExistingTradeIds(rows);
 
     setShowMapper(null);
@@ -850,9 +861,19 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         return;
       }
 
-      const { rows } = mapRowsFromMapping(mapping);
+      const { rows } = mapRowsFromMapping(mapping, 'backfill');
       if (!rows.length) {
         setBackfillStatus({ type: 'error', message: 'No valid rows found for backfill.' });
+        setShowMapper(null);
+        return;
+      }
+
+      const hasIdentifiers = rows.some((row) => row.trade_id || row.order_id);
+      if (!hasIdentifiers) {
+        setBackfillStatus({
+          type: 'error',
+          message: 'No trade/order IDs found. Map trade_id or order_id columns to run backfill.',
+        });
         setShowMapper(null);
         return;
       }
@@ -2186,6 +2207,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       {showMapper && (
         <ColumnMapper
           headers={showMapper.headers}
+          mode={showMapper.mode}
           onConfirm={(mapping) => {
             if (showMapper.mode === 'backfill') {
               return startBackfill(mapping);
