@@ -4,6 +4,7 @@ import { Toggle } from './components/Toggle'
 import { UploadBox } from './components/UploadBox'
 import { ColumnMapper } from './components/ColumnMapper'
 import { ReviewOverlay, type ReviewStructureOption } from './components/ReviewOverlay'
+import { ImportedTransactionsOverlay } from './components/ImportedTransactionsOverlay'
 import { SupabaseLogin } from './features/auth/SupabaseLogin'
 import { useAuth } from './features/auth/useAuth'
 import { tryGetSupabaseClient } from './lib/supabase'
@@ -12,7 +13,7 @@ import {
   useLocalStorage, devQuickTests,
   parseActionSide, toNumber, parseInstrumentByExchange, normalizeSecond,
   daysTo, daysSince, fifoMatchAndRealize, classifyStatus,
-  Exchange, getLegMarkRef, fmtGreek, legGreekExposure
+  Exchange, getLegMarkRef, fmtGreek, legGreekExposure, toDeribitInstrument
 } from './utils'
 import { PositionRow } from './components/PositionRow'
 import { PlaybookDrawer } from './components/PlaybookDrawer'
@@ -22,6 +23,7 @@ import {
   archiveStructure,
   fetchSavedStructures,
   appendTradesToStructure,
+  backfillLegExpiries,
   saveUnprocessedTrades,
   buildStructureChipSummary,
   fetchProgramPlaybooks,
@@ -169,13 +171,37 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   const [programPlaybooksLoading, setProgramPlaybooksLoading] = React.useState(false);
   const [programPlaybooksError, setProgramPlaybooksError] = React.useState<string | null>(null);
   const [archiving, setArchiving] = React.useState<Record<string, boolean>>({});
-  const [showMapper, setShowMapper] = React.useState<{ headers: string[] } | null>(null);
+  const [showMapper, setShowMapper] = React.useState<{ headers: string[]; mode: 'import' | 'backfill' } | null>(null);
   const [showReview, setShowReview] = React.useState<{
     rows: TxnRow[];
     excludedRows: TxnRow[];
     duplicateTradeIds?: string[];
     duplicateOrderIds?: string[];
   } | null>(null);
+  const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
+  const [importedRows, setImportedRows] = React.useState<
+    Array<{
+      id: string;
+      timestamp: string | null;
+      instrument: string;
+      side: string;
+      amount: number | null;
+      price: number | null;
+      fee: number | null;
+      tradeId: string | null;
+      orderId: string | null;
+      status: 'linked' | 'unprocessed';
+      structureId?: string | null;
+      structureLabel?: string | null;
+      warning?: string | null;
+    }>
+  >([]);
+  const [importedLoading, setImportedLoading] = React.useState(false);
+  const [importedError, setImportedError] = React.useState<string | null>(null);
+  const [backfillStatus, setBackfillStatus] = React.useState<{
+    type: 'idle' | 'running' | 'success' | 'error';
+    message?: string;
+  }>({ type: 'idle' });
   const [activePlaybookPosition, setActivePlaybookPosition] = React.useState<Position | null>(null);
   const [alertsOnly, setAlertsOnly] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -194,6 +220,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     errors: 0,
   });
   const positionUploadRef = React.useRef<HTMLInputElement | null>(null);
+  const backfillUploadRef = React.useRef<HTMLInputElement | null>(null);
 
   React.useEffect(() => {
     if (!clientOptions.length) {
@@ -262,7 +289,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     }
   }, [isAdmin, setClientOptions, setSelectedClient, supabase, user]);
 
-  function handleFiles(files: FileList) {
+  function handleFiles(files: FileList, mode: 'import' | 'backfill' = 'import') {
     const file = files[0];
     const common: any = {
       header: true,
@@ -277,7 +304,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       }
       setRawRows(rows);
       const headers = Object.keys(rows[0] || {});
-      setShowMapper({ headers });
+      setShowMapper({ headers, mode });
     };
 
     Papa.parse(file, {
@@ -299,6 +326,13 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       error: (e: any) => alert('CSV parse error: ' + (e && e.message ? e.message : String(e))),
     });
   }
+
+  const handleBackfillFiles = React.useCallback(
+    (files: FileList) => {
+      handleFiles(files, 'backfill');
+    },
+    [],
+  );
 
   const toOptionalNumber = React.useCallback((value: any) => {
     if (value === null || value === undefined) return null;
@@ -558,57 +592,90 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     [],
   );
 
+  const mapRowsFromMapping = React.useCallback(
+    (mapping: Record<string, string>, mode: 'import' | 'backfill' = 'import') => {
+      const exchange = (mapping as any).__exchange || 'deribit';
+      let rowsWithInstrument = 0;
+      const mappedRaw: TxnRow[] = rawRows
+        .map((r) => {
+          const rawSide = String(r[mapping.side] ?? '');
+          const { action, side } = parseActionSide(rawSide);
+          const mappedTradeId = resolveIdentifierFromMapping(r as Record<string, unknown>, mapping.trade_id, 'trade');
+          const mappedOrderId = resolveIdentifierFromMapping(r as Record<string, unknown>, mapping.order_id, 'order');
+
+          const hasInstrument = Boolean(String(r[mapping.instrument] ?? '').trim());
+          if (!hasInstrument) {
+            return null;
+          }
+          rowsWithInstrument += 1;
+
+          const provisionalRow: TxnRow = {
+            instrument: String(r[mapping.instrument] ?? '').trim(),
+            side: side || '',
+            action,
+            amount: mapping.amount ? toNumber(r[mapping.amount]) : 0,
+            price: mapping.price ? toNumber(r[mapping.price]) : 0,
+            fee: mapping.fee ? toNumber(r[mapping.fee]) : 0,
+            timestamp: mapping.timestamp ? String(r[mapping.timestamp]) : undefined,
+            trade_id: mappedTradeId ?? undefined,
+            order_id: mappedOrderId ?? undefined,
+            info: mapping.info ? String(r[mapping.info]) : undefined,
+            exchange: exchange as Exchange,
+          }
+
+          const syntheticTradeId =
+            provisionalRow.trade_id ??
+            deriveSyntheticDeliveryTradeId(provisionalRow, r as Record<string, unknown>) ??
+            undefined
+
+          const baseRow = {
+            ...provisionalRow,
+            trade_id: syntheticTradeId,
+          } as TxnRow;
+
+          if (mode === 'backfill') {
+            return baseRow;
+          }
+
+          const hasSide = baseRow.side === 'buy' || baseRow.side === 'sell';
+          const hasAmount = Number.isFinite(baseRow.amount) && Math.abs(baseRow.amount) > 0;
+          const hasPrice = Number.isFinite(baseRow.price);
+          if (!hasSide || !hasAmount || !hasPrice) {
+            return null;
+          }
+          return baseRow;
+        })
+        .filter((row): row is TxnRow => Boolean(row));
+
+      // Keep all rows, including 08:00 delivery/settlement records, so they are visible in the review overlay.
+      const timeCleaned: TxnRow[] = mappedRaw;
+
+      const optionsOnly: TxnRow[] = [];
+      const excludedRows: TxnRow[] = [];
+      for (const row of timeCleaned) {
+        const parsed = parseInstrumentByExchange(exchange as Exchange, row.instrument);
+        if (parsed) optionsOnly.push(row); else excludedRows.push(row);
+      }
+
+      return {
+        exchange: exchange as Exchange,
+        rows: optionsOnly,
+        excludedRows,
+        stats: {
+          totalRows: rawRows.length,
+          rowsWithInstrument,
+          parsedOptionRows: optionsOnly.length,
+        },
+      };
+    },
+    [rawRows, resolveIdentifierFromMapping],
+  );
+
   async function startImport(mapping: Record<string, string>) {
     const exchange = (mapping as any).__exchange || 'deribit';
     setSelectedExchange(exchange as Exchange);
-    const mappedRaw: TxnRow[] = rawRows.map((r) => {
-      const rawSide = String(r[mapping.side] ?? '');
-      const { action, side } = parseActionSide(rawSide);
-      const mappedTradeId = resolveIdentifierFromMapping(r as Record<string, unknown>, mapping.trade_id, 'trade');
-      const mappedOrderId = resolveIdentifierFromMapping(r as Record<string, unknown>, mapping.order_id, 'order');
-
-      const provisionalRow: TxnRow = {
-        instrument: String(r[mapping.instrument] ?? '').trim(),
-        side: side || '',
-        action,
-        amount: toNumber(r[mapping.amount]),
-        price: toNumber(r[mapping.price]),
-        fee: mapping.fee ? toNumber(r[mapping.fee]) : 0,
-        timestamp: mapping.timestamp ? String(r[mapping.timestamp]) : undefined,
-        trade_id: mappedTradeId ?? undefined,
-        order_id: mappedOrderId ?? undefined,
-        info: mapping.info ? String(r[mapping.info]) : undefined,
-        exchange: exchange as Exchange,
-      }
-
-      const syntheticTradeId =
-        provisionalRow.trade_id ??
-        deriveSyntheticDeliveryTradeId(provisionalRow, r as Record<string, unknown>) ??
-        undefined
-
-      return {
-        ...provisionalRow,
-        trade_id: syntheticTradeId,
-      } as TxnRow
-    }).filter((r) => {
-      const hasInstrument = Boolean(r.instrument);
-      const hasSide = r.side === 'buy' || r.side === 'sell';
-      const hasAmount = Number.isFinite(r.amount) && Math.abs(r.amount) > 0;
-      const hasPrice = Number.isFinite(r.price);
-      return hasInstrument && hasSide && hasAmount && hasPrice;
-    });
-
-    // Keep all rows, including 08:00 delivery/settlement records, so they are visible in the review overlay.
-    const timeCleaned: TxnRow[] = mappedRaw;
-
-    const optionsOnly: TxnRow[] = [];
-    const excludedRows: TxnRow[] = [];
-    for (const row of timeCleaned) {
-      const parsed = parseInstrumentByExchange(exchange as Exchange, row.instrument);
-      if (parsed) optionsOnly.push(row); else excludedRows.push(row);
-    }
-
-    const { filtered, duplicateTradeIds, duplicateOrderIds } = await filterRowsWithExistingTradeIds(optionsOnly);
+    const { rows, excludedRows } = mapRowsFromMapping(mapping, 'import');
+    const { filtered, duplicateTradeIds, duplicateOrderIds } = await filterRowsWithExistingTradeIds(rows);
 
     setShowMapper(null);
     setShowReview({
@@ -618,6 +685,250 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       duplicateOrderIds: duplicateOrderIds.length ? duplicateOrderIds : undefined,
     });
   }
+
+  const loadImportedTransactions = React.useCallback(async () => {
+    if (!supabase) {
+      setImportedError('Supabase is not configured.');
+      return;
+    }
+    if (!user) {
+      setImportedError('Sign in to view imported transactions.');
+      return;
+    }
+
+    setImportedLoading(true);
+    setImportedError(null);
+    try {
+      const parseNumeric = (value: number | string | null | undefined) => {
+        if (value == null) return null;
+        const numeric = typeof value === 'number' ? value : Number(value);
+        return Number.isFinite(numeric) ? numeric : null;
+      };
+
+      const clientFilter = activeClientName?.trim();
+      const restrictByClient = Boolean(clientFilter) && !isAdmin;
+
+      let positionQuery = supabase
+        .from('positions')
+        .select('position_id, underlier, client_name');
+
+      if (restrictByClient && clientFilter) {
+        positionQuery = positionQuery.eq('client_name', clientFilter);
+      }
+
+      const { data: positionsData, error: positionsError } = await positionQuery;
+      if (positionsError) {
+        throw positionsError;
+      }
+
+      const positionsList = positionsData ?? [];
+      const positionIds = positionsList.map((row) => row.position_id).filter(Boolean);
+      const underlierMap = new Map<string, string>();
+      for (const row of positionsList) {
+        if (row.position_id) {
+          underlierMap.set(row.position_id, row.underlier ?? '');
+        }
+      }
+
+      const legsMap = new Map<string, { expiry: string | null; strike: number | null; optionType: string | null }>();
+      if (positionIds.length > 0) {
+        const { data: legsData, error: legsError } = await supabase
+          .from('legs')
+          .select('position_id, leg_seq, expiry, strike, option_type')
+          .in('position_id', positionIds);
+        if (legsError) {
+          throw legsError;
+        }
+        for (const leg of legsData ?? []) {
+          const key = `${leg.position_id}::${leg.leg_seq}`;
+          legsMap.set(key, {
+            expiry: leg.expiry ?? null,
+            strike: parseNumeric(leg.strike),
+            optionType: leg.option_type ?? null,
+          });
+        }
+      }
+
+      let fills: Array<{
+        position_id: string;
+        leg_seq: number | null;
+        ts: string | null;
+        qty: number | string | null;
+        price: number | string | null;
+        fees: number | string | null;
+        side: string | null;
+        trade_id: string | null;
+        order_id: string | null;
+        open_close: string | null;
+      }> = [];
+
+      if (positionIds.length > 0) {
+        const { data: fillsData, error: fillsError } = await supabase
+          .from('fills')
+          .select('position_id, leg_seq, ts, qty, price, fees, side, trade_id, order_id, open_close')
+          .in('position_id', positionIds)
+          .order('ts', { ascending: false })
+          .limit(500);
+        if (fillsError) {
+          throw fillsError;
+        }
+        fills = fillsData ?? [];
+      }
+
+      let unprocessedQuery = supabase
+        .from('unprocessed_imports')
+        .select('id, instrument, side, amount, price, fee, timestamp, trade_id, order_id, client_name')
+        .order('timestamp', { ascending: false })
+        .limit(500);
+      if (restrictByClient && clientFilter) {
+        unprocessedQuery = unprocessedQuery.eq('client_name', clientFilter);
+      }
+
+      const { data: unprocessedRows, error: unprocessedError } = await unprocessedQuery;
+      if (unprocessedError) {
+        throw unprocessedError;
+      }
+
+      const savedStructureMap = new Map<string, string>();
+      for (const position of savedStructures) {
+        const label = `${position.underlying} • ${position.structureId ?? position.id}`;
+        savedStructureMap.set(position.id, label);
+      }
+
+      const linkedRows = fills.map((fill, idx) => {
+        const legKey = `${fill.position_id}::${fill.leg_seq ?? ''}`;
+        const leg = legsMap.get(legKey);
+        const underlier = underlierMap.get(fill.position_id) ?? '';
+        const expiry = leg?.expiry ?? null;
+        const strike = leg?.strike ?? null;
+        const optionType = leg?.optionType ?? null;
+        const instrument =
+          underlier && expiry && Number.isFinite(strike ?? NaN) && optionType
+            ? toDeribitInstrument(underlier, expiry, strike ?? 0, optionType)
+            : '—';
+        const warning =
+          instrument === '—' ? 'Missing leg details for instrument.' : null;
+        const structureLabel = savedStructureMap.get(fill.position_id) ?? fill.position_id;
+        return {
+          id: `fill-${fill.position_id}-${fill.leg_seq ?? 'x'}-${idx}`,
+          timestamp: fill.ts ?? null,
+          instrument,
+          side: fill.side ?? '—',
+          amount: parseNumeric(fill.qty),
+          price: parseNumeric(fill.price),
+          fee: parseNumeric(fill.fees),
+          tradeId: fill.trade_id ?? null,
+          orderId: fill.order_id ?? null,
+          status: 'linked' as const,
+          structureId: fill.position_id,
+          structureLabel,
+          warning,
+        };
+      });
+
+      const unprocessedList = (unprocessedRows ?? []).map((row: any) => ({
+        id: `unprocessed-${row.id ?? row.trade_id ?? row.order_id ?? Math.random().toString(36).slice(2)}`,
+        timestamp: row.timestamp ?? null,
+        instrument: row.instrument ?? '—',
+        side: row.side ?? '—',
+        amount: parseNumeric(row.amount),
+        price: parseNumeric(row.price),
+        fee: parseNumeric(row.fee),
+        tradeId: row.trade_id ?? null,
+        orderId: row.order_id ?? null,
+        status: 'unprocessed' as const,
+        structureId: null,
+        structureLabel: null,
+        warning: null,
+      }));
+
+      const merged = [...linkedRows, ...unprocessedList].sort((a, b) => {
+        const ta = a.timestamp ? Date.parse(a.timestamp) : 0;
+        const tb = b.timestamp ? Date.parse(b.timestamp) : 0;
+        return tb - ta;
+      });
+
+      setImportedRows(merged);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load imported transactions.';
+      setImportedError(message);
+    } finally {
+      setImportedLoading(false);
+    }
+  }, [activeClientName, isAdmin, savedStructures, supabase, user]);
+
+  const startBackfill = React.useCallback(
+    async (mapping: Record<string, string>) => {
+      if (!supabase) {
+        alert('Supabase is not configured. Configure environment variables to run backfill.');
+        return;
+      }
+      if (!user) {
+        alert('Sign in to Supabase to run backfill.');
+        return;
+      }
+
+      const { rows, stats } = mapRowsFromMapping(mapping, 'backfill');
+      if (!rows.length) {
+        if (stats.totalRows > 0 && stats.rowsWithInstrument === 0) {
+          setBackfillStatus({
+            type: 'error',
+            message: 'No instrument column mapped. Map the instrument column and try again.',
+          });
+        } else if (stats.rowsWithInstrument > 0 && stats.parsedOptionRows === 0) {
+          setBackfillStatus({
+            type: 'error',
+            message: 'No option instruments parsed. Check the exchange selection or instrument format.',
+          });
+        } else {
+          setBackfillStatus({ type: 'error', message: 'No valid rows found for backfill.' });
+        }
+        setShowMapper(null);
+        return;
+      }
+
+      const hasIdentifiers = rows.some((row) => row.trade_id || row.order_id);
+      if (!hasIdentifiers) {
+        setBackfillStatus({
+          type: 'error',
+          message: 'No trade/order IDs found. Map trade_id or order_id columns to run backfill.',
+        });
+        setShowMapper(null);
+        return;
+      }
+
+      setBackfillStatus({ type: 'running', message: 'Backfill in progress…' });
+      setShowMapper(null);
+      try {
+        const result = await backfillLegExpiries(supabase, {
+          rows,
+          clientScope: { clientName: activeClientName, isAdmin },
+        });
+
+        if (!result.ok) {
+          setBackfillStatus({ type: 'error', message: result.error });
+          return;
+        }
+
+        setBackfillStatus({
+          type: 'success',
+          message: `Backfill complete: updated ${result.updated} legs.`,
+        });
+        if (showImportedOverlay) {
+          void loadImportedTransactions();
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Backfill failed.';
+        setBackfillStatus({ type: 'error', message });
+      }
+    },
+    [activeClientName, backfillLegExpiries, isAdmin, loadImportedTransactions, mapRowsFromMapping, showImportedOverlay, supabase, user],
+  );
+
+  React.useEffect(() => {
+    if (!showImportedOverlay) return;
+    void loadImportedTransactions();
+  }, [loadImportedTransactions, showImportedOverlay]);
 
   async function finalizeImport(selectedRows: TxnRow[], unprocessedRows: TxnRow[]) {
     const rows: TxnRow[] = selectedRows.map((r, index) => {
@@ -1587,6 +1898,17 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
             )}
           </button>
           <button
+            className="rounded-xl border px-3 py-2 text-sm inline-flex items-center gap-2 disabled:opacity-60"
+            onClick={() => {
+              setBackfillStatus({ type: 'idle' });
+              setShowImportedOverlay(true);
+            }}
+            disabled={!supabase || !user}
+            title="Review imported and unprocessed transactions"
+          >
+            Imported Transactions
+          </button>
+          <button
             onClick={() => { setPositions([]); setRawRows([]); }}
             className="text-sm text-slate-600 underline"
           >Clear {selectedClient} data</button>
@@ -1869,6 +2191,27 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         error={programPlaybooksError}
       />
 
+      <ImportedTransactionsOverlay
+        open={showImportedOverlay}
+        rows={importedRows}
+        loading={importedLoading}
+        error={importedError}
+        backfillStatus={backfillStatus}
+        onClose={() => {
+          setShowImportedOverlay(false);
+          setBackfillStatus({ type: 'idle' });
+        }}
+        onRefresh={loadImportedTransactions}
+        onBackfill={() => backfillUploadRef.current?.click()}
+      />
+      <input
+        ref={backfillUploadRef}
+        type="file"
+        accept=".csv,text/csv"
+        className="hidden"
+        onChange={(e) => e.target.files && handleBackfillFiles(e.target.files)}
+      />
+
       {showReview && (
         <ReviewOverlay
           rows={showReview.rows}
@@ -1883,7 +2226,13 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       {showMapper && (
         <ColumnMapper
           headers={showMapper.headers}
-          onConfirm={startImport}
+          mode={showMapper.mode}
+          onConfirm={(mapping) => {
+            if (showMapper.mode === 'backfill') {
+              return startBackfill(mapping);
+            }
+            return startImport(mapping);
+          }}
           onCancel={() => setShowMapper(null)}
         />
       )}

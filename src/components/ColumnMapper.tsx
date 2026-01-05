@@ -1,10 +1,11 @@
 import React from 'react'
 import { EXPECTED_FIELDS } from '../utils'
 
-export function ColumnMapper({ headers, onConfirm, onCancel }: {
+export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: {
   headers: string[];
   onConfirm: (map: Record<string, string>) => void;
   onCancel: () => void;
+  mode?: 'import' | 'backfill';
 }) {
   const [mapping, setMapping] = React.useState<Record<string, string>>({});
   const [exchange, setExchange] = React.useState<'deribit' | 'coincall' | 'cme'>('deribit');
@@ -37,7 +38,11 @@ export function ColumnMapper({ headers, onConfirm, onCancel }: {
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6">
         <h3 className="text-lg font-semibold">Map CSV Columns</h3>
-        <p className="text-sm text-slate-600 mb-4">Tell the importer which CSV columns correspond to the required fields.</p>
+        <p className="text-sm text-slate-600 mb-4">
+          {mode === 'backfill'
+            ? 'Select the instrument column plus trade_id or order_id to backfill legs. Other fields are optional.'
+            : 'Tell the importer which CSV columns correspond to the required fields.'}
+        </p>
         {/* NEW: Exchange selector */}
         <div className="mb-4">
           <label className="text-sm block text-slate-600 mb-1">Exchange</label>
@@ -73,7 +78,7 @@ export function ColumnMapper({ headers, onConfirm, onCancel }: {
           <button
             onClick={() => onConfirm({ ...mapping, __exchange: exchange } as any)}
             className="px-4 py-2 rounded-xl bg-slate-900 text-white">
-            Start Import
+            {mode === 'backfill' ? 'Start Backfill' : 'Start Import'}
           </button>
         </div>
       </div>

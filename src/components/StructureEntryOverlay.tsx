@@ -474,11 +474,12 @@ function buildInitialLegs(position: Position): Array<Partial<ImportPayload['legs
     const first = leg.trades?.[0];
     const side = (first?.side ?? (leg.qtyNet >= 0 ? 'buy' : 'sell')) as 'buy' | 'sell';
     const optionType = leg.optionType?.toLowerCase() === 'p' ? 'put' : 'call';
+    const expiry = leg.expiry ?? first?.expiry ?? position.expiryISO;
     return {
       leg_seq: idx + 1,
       side,
       option_type: optionType as (typeof OPTION_TYPES)[number],
-      expiry: position.expiryISO,
+      expiry,
       strike: leg.strike,
       qty,
       price: avgPrice ?? first?.price ?? undefined,
@@ -2012,4 +2013,3 @@ export function StructureEntryOverlay({
     </Overlay>
   );
 }
-
