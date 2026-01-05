@@ -40,7 +40,7 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
         <h3 className="text-lg font-semibold">Map CSV Columns</h3>
         <p className="text-sm text-slate-600 mb-4">
           {mode === 'backfill'
-            ? 'Select instrument and trade/order ID columns to backfill legs. Other fields are optional.'
+            ? 'Select the instrument column plus trade_id or order_id to backfill legs. Other fields are optional.'
             : 'Tell the importer which CSV columns correspond to the required fields.'}
         </p>
         {/* NEW: Exchange selector */}

@@ -595,6 +595,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   const mapRowsFromMapping = React.useCallback(
     (mapping: Record<string, string>, mode: 'import' | 'backfill' = 'import') => {
       const exchange = (mapping as any).__exchange || 'deribit';
+      let rowsWithInstrument = 0;
       const mappedRaw: TxnRow[] = rawRows
         .map((r) => {
           const rawSide = String(r[mapping.side] ?? '');
@@ -606,6 +607,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
           if (!hasInstrument) {
             return null;
           }
+          rowsWithInstrument += 1;
 
           const provisionalRow: TxnRow = {
             instrument: String(r[mapping.instrument] ?? '').trim(),
@@ -659,6 +661,11 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         exchange: exchange as Exchange,
         rows: optionsOnly,
         excludedRows,
+        stats: {
+          totalRows: rawRows.length,
+          rowsWithInstrument,
+          parsedOptionRows: optionsOnly.length,
+        },
       };
     },
     [rawRows, resolveIdentifierFromMapping],
@@ -861,9 +868,21 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         return;
       }
 
-      const { rows } = mapRowsFromMapping(mapping, 'backfill');
+      const { rows, stats } = mapRowsFromMapping(mapping, 'backfill');
       if (!rows.length) {
-        setBackfillStatus({ type: 'error', message: 'No valid rows found for backfill.' });
+        if (stats.totalRows > 0 && stats.rowsWithInstrument === 0) {
+          setBackfillStatus({
+            type: 'error',
+            message: 'No instrument column mapped. Map the instrument column and try again.',
+          });
+        } else if (stats.rowsWithInstrument > 0 && stats.parsedOptionRows === 0) {
+          setBackfillStatus({
+            type: 'error',
+            message: 'No option instruments parsed. Check the exchange selection or instrument format.',
+          });
+        } else {
+          setBackfillStatus({ type: 'error', message: 'No valid rows found for backfill.' });
+        }
         setShowMapper(null);
         return;
       }
