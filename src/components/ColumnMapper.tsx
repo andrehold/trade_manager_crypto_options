@@ -9,6 +9,7 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
 }) {
   const [mapping, setMapping] = React.useState<Record<string, string>>({});
   const [exchange, setExchange] = React.useState<'deribit' | 'coincall' | 'cme'>('deribit');
+  const [importHistoricalRows, setImportHistoricalRows] = React.useState(false);
 
   React.useEffect(() => {
     const lower = headers.map((h) => h.toLowerCase());
@@ -73,10 +74,24 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
             </label>
           ))}
         </div>
+        {mode === 'import' ? (
+          <label className="mt-4 inline-flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={importHistoricalRows}
+              onChange={(e) => setImportHistoricalRows(e.target.checked)}
+            />
+            <span>Import historical rows (allow duplicates)</span>
+          </label>
+        ) : null}
         <div className="mt-6 flex gap-3 justify-end">
           <button onClick={onCancel} className="px-4 py-2 rounded-xl border">Cancel</button>
           <button
-            onClick={() => onConfirm({ ...mapping, __exchange: exchange } as any)}
+            onClick={() => onConfirm({
+              ...mapping,
+              __exchange: exchange,
+              __importHistorical: importHistoricalRows,
+            } as any)}
             className="px-4 py-2 rounded-xl bg-slate-900 text-white">
             {mode === 'backfill' ? 'Start Backfill' : 'Start Import'}
           </button>

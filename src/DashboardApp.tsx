@@ -177,6 +177,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     excludedRows: TxnRow[];
     duplicateTradeIds?: string[];
     duplicateOrderIds?: string[];
+    importHistorical?: boolean;
   } | null>(null);
   const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
   const [importedRows, setImportedRows] = React.useState<
@@ -673,8 +674,19 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
 
   async function startImport(mapping: Record<string, string>) {
     const exchange = (mapping as any).__exchange || 'deribit';
+    const importHistorical = Boolean((mapping as any).__importHistorical);
     setSelectedExchange(exchange as Exchange);
     const { rows, excludedRows } = mapRowsFromMapping(mapping, 'import');
+    if (importHistorical) {
+      setShowMapper(null);
+      setShowReview({
+        rows,
+        excludedRows,
+        importHistorical: true,
+      });
+      return;
+    }
+
     const { filtered, duplicateTradeIds, duplicateOrderIds } = await filterRowsWithExistingTradeIds(rows);
 
     setShowMapper(null);
@@ -683,6 +695,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       excludedRows,
       duplicateTradeIds: duplicateTradeIds.length ? duplicateTradeIds : undefined,
       duplicateOrderIds: duplicateOrderIds.length ? duplicateOrderIds : undefined,
+      importHistorical: false,
     });
   }
 
@@ -2217,6 +2230,8 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
           rows={showReview.rows}
           excludedRows={showReview.excludedRows}
           duplicateTradeIds={showReview.duplicateTradeIds}
+          duplicateOrderIds={showReview.duplicateOrderIds}
+          importHistorical={showReview.importHistorical}
           onConfirm={finalizeImport}
           onCancel={() => setShowReview(null)}
           availableStructures={selectableStructureOptions}

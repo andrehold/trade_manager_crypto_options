@@ -13,6 +13,7 @@ type ReviewOverlayProps = {
   excludedRows: TxnRow[];
   duplicateTradeIds?: string[];
   duplicateOrderIds?: string[];
+  importHistorical?: boolean;
   onConfirm: (rows: TxnRow[], unprocessedRows: TxnRow[]) => void | Promise<void>;
   onCancel: () => void;
   availableStructures?: ReviewStructureOption[];
@@ -26,6 +27,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
     onCancel,
     duplicateTradeIds,
     duplicateOrderIds,
+    importHistorical,
   } = props
   const [activeTab, setActiveTab] = React.useState<'included'|'excluded'>('included');
   const [selected, setSelected] = React.useState<boolean[]>(() => rows.map(() => true));
@@ -177,6 +179,13 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
             <button className={`px-3 py-1 rounded-lg border ${activeTab==='excluded' ? 'bg-slate-900 text-white' : ''}`} onClick={() => setActiveTab('excluded')}>Excluded ({excludedRows.length})</button>
           </div>
         </div>
+        {importHistorical ? (
+          <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-900 text-sm p-3">
+            <p className="font-medium">
+              Historical mode is enabled. Duplicate trade or order IDs may already exist in your saved imports.
+            </p>
+          </div>
+        ) : null}
         {(duplicateTradeIds?.length || duplicateOrderIds?.length) ? (
           <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 text-sm p-3">
             <p className="font-medium">
