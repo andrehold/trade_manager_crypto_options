@@ -12,7 +12,7 @@ import {
   Position, TxnRow, Lot,
   useLocalStorage, devQuickTests,
   parseActionSide, toNumber, parseInstrumentByExchange, normalizeSecond,
-  daysTo, daysSince, fifoMatchAndRealize, classifyStatus,
+  daysTo, daysSince, fifoMatchAndRealize, classifyStatus, calculatePnlPct,
   Exchange, getLegMarkRef, fmtGreek, legGreekExposure, toDeribitInstrument
 } from './utils'
 import { PositionRow } from './components/PositionRow'
@@ -1317,7 +1317,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       const realizedPnl = legs.reduce((a: number, l: any) => a + l.realizedPnl, 0);
       const netPremiumSigned = legs.reduce((a: number, l: any) => a + l.netPremium, 0);
       const netPremium = Math.abs(netPremiumSigned);
-      const pnlPct = netPremium > 0 ? (realizedPnl / netPremium) * 100 : null;
+      const pnlPct = calculatePnlPct(realizedPnl, legs, netPremium);
       const dte = primaryExpiry ? daysTo(primaryExpiry) : 0;
       const status = classifyStatus(dte, pnlPct, realizedPnl);
 

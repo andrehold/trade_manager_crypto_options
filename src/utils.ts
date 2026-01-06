@@ -72,6 +72,72 @@ export interface Position {
   clientName?: string | null;
 }
 
+type CashFlowPoint = {
+  timestamp?: string;
+  index: number;
+  netCashFlow: number;
+};
+
+function parseTimestamp(value: string | undefined): number {
+  if (!value) return Number.MAX_SAFE_INTEGER;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
+}
+
+export function summarizeCashFlows(legs: Leg[]) {
+  const points: CashFlowPoint[] = [];
+  let index = 0;
+
+  for (const leg of legs) {
+    for (const trade of leg.trades ?? []) {
+      const price = Number(trade.price);
+      const qty = Number(trade.amount);
+      if (!Number.isFinite(price) || !Number.isFinite(qty)) {
+        index += 1;
+        continue;
+      }
+
+      const side = trade.side === 'sell' ? 'sell' : trade.side === 'buy' ? 'buy' : null;
+      if (!side) {
+        index += 1;
+        continue;
+      }
+
+      const fee = Number.isFinite(Number(trade.fee)) ? Number(trade.fee) : 0;
+      const signedCashFlow = (side === 'sell' ? 1 : -1) * price * Math.abs(qty);
+      const netCashFlow = signedCashFlow - fee;
+
+      points.push({ timestamp: trade.timestamp, index, netCashFlow });
+      index += 1;
+    }
+  }
+
+  const sorted = points.sort((a, b) => {
+    const ta = parseTimestamp(a.timestamp);
+    const tb = parseTimestamp(b.timestamp);
+    if (ta !== tb) return ta - tb;
+    return a.index - b.index;
+  });
+
+  let cumulative = 0;
+  let base = 0;
+
+  for (const point of sorted) {
+    cumulative += point.netCashFlow;
+    base = Math.max(base, Math.abs(cumulative));
+  }
+
+  return { base, pnl: cumulative };
+}
+
+export function calculatePnlPct(pnl: number, legs: Leg[], fallbackBase?: number | null) {
+  const { base } = summarizeCashFlows(legs);
+  const effectiveBase =
+    base > 0 ? base : fallbackBase != null && Number.isFinite(fallbackBase) && fallbackBase > 0 ? fallbackBase : 0;
+  if (effectiveBase <= 0) return null;
+  return (pnl / effectiveBase) * 100;
+}
+
 export const EXPECTED_FIELDS = [
   { key: "instrument", label: "Instrument (e.g., BTC-27DEC24-50000-C)" },
   { key: "side", label: "Side (open/close + buy/sell)" },
