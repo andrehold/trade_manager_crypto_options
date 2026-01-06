@@ -24,6 +24,7 @@ import {
   fetchSavedStructures,
   appendTradesToStructure,
   backfillLegExpiries,
+  saveTransactionLogs,
   saveUnprocessedTrades,
   buildStructureChipSummary,
   fetchProgramPlaybooks,
@@ -671,9 +672,64 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     [rawRows, resolveIdentifierFromMapping],
   );
 
+  const saveRawTransactionLogs = React.useCallback(
+    async (mapping: Record<string, string>, exchange: Exchange) => {
+      if (!supabase) {
+        console.warn('Supabase is not configured; skipping transaction log save.');
+        return;
+      }
+      if (!user) {
+        console.warn('Sign in to save transaction logs.');
+        return;
+      }
+
+      const hasValue = (value: unknown) => {
+        if (value == null) return false;
+        if (typeof value === 'string') return value.trim().length > 0;
+        return true;
+      };
+
+      const isEmptyRow = (row: Record<string, unknown>) =>
+        !Object.values(row).some((value) => hasValue(value));
+
+      const entries = rawRows
+        .filter((row) => row && !isEmptyRow(row as Record<string, unknown>))
+        .map((row) => {
+          const instrumentKey = mapping.instrument;
+          const timestampKey = mapping.timestamp;
+          const instrument = instrumentKey ? String((row as any)[instrumentKey] ?? '').trim() : '';
+          const timestamp = timestampKey ? String((row as any)[timestampKey] ?? '').trim() : '';
+          return {
+            exchange,
+            raw: row as Record<string, unknown>,
+            instrument: instrument || null,
+            timestamp: timestamp || null,
+            tradeId: resolveIdentifierFromMapping(row as Record<string, unknown>, mapping.trade_id, 'trade'),
+            orderId: resolveIdentifierFromMapping(row as Record<string, unknown>, mapping.order_id, 'order'),
+          };
+        });
+
+      if (!entries.length) {
+        return;
+      }
+
+      const result = await saveTransactionLogs(supabase, {
+        entries,
+        clientScope: { clientName: activeClientName, isAdmin },
+        createdBy: user.id,
+      });
+
+      if (!result.ok) {
+        console.warn('Failed to save transaction logs.', result.error);
+      }
+    },
+    [activeClientName, isAdmin, rawRows, resolveIdentifierFromMapping, saveTransactionLogs, supabase, user],
+  );
+
   async function startImport(mapping: Record<string, string>) {
     const exchange = (mapping as any).__exchange || 'deribit';
     setSelectedExchange(exchange as Exchange);
+    await saveRawTransactionLogs(mapping, exchange as Exchange);
     const { rows, excludedRows } = mapRowsFromMapping(mapping, 'import');
     const { filtered, duplicateTradeIds, duplicateOrderIds } = await filterRowsWithExistingTradeIds(rows);
 
