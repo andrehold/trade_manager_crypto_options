@@ -106,11 +106,11 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   clientScope,
   onPlaybookOpen,
 }) => {
-  const fmtFiveDecimals = React.useCallback(
+  const fmtFourDecimals = React.useCallback(
     (value: number) =>
       value.toLocaleString(undefined, {
-        minimumFractionDigits: 5,
-        maximumFractionDigits: 5,
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 4,
       }),
     [],
   )
@@ -401,7 +401,6 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                         <th className="text-right p-2">Mark</th>
                         <th className="text-right p-2">uPnL</th>
                         <th className="text-right p-2">Fee</th>
-                        <th className="text-left p-2">Open Lots</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -421,7 +420,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                           ? markLoading
                             ? <CellSpinner />
                             : '—'
-                          : fmtFiveDecimals(markPrice)
+                          : fmtFourDecimals(markPrice)
 
                         let unrealizedCell: React.ReactNode = '—'
                         if (!ref) {
@@ -433,7 +432,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                           const u = legUnrealizedPnL(l, markPrice, multiplier)
                           unrealizedCell = (
                             <span className={u < 0 ? 'text-rose-600' : 'text-emerald-600'}>
-                              {fmtPremium(u, p.underlying, 5)}
+                              {fmtPremium(u, p.underlying, 4)}
                             </span>
                           )
                         }
@@ -444,26 +443,17 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                               <td className="p-2">
                                 {formatLegInstrument(l, ref)}
                               </td>
-                              <td className="p-2 text-right font-mono tabular-nums">{fmtFiveDecimals(l.qtyNet)}</td>
+                              <td className="p-2 text-right font-mono tabular-nums">{fmtFourDecimals(l.qtyNet)}</td>
                               <td className={`p-2 text-right font-mono tabular-nums ${l.realizedPnl < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                                {fmtPremium(l.realizedPnl, p.underlying, 5)}
+                                {fmtPremium(l.realizedPnl, p.underlying, 4)}
                               </td>
                               <td className="p-2 text-right font-mono tabular-nums">
-                                {netPremiumPerLot != null ? fmtPremium(netPremiumPerLot, p.underlying, 5) : '—'}
+                                {netPremiumPerLot != null ? fmtPremium(netPremiumPerLot, p.underlying, 4) : '—'}
                               </td>
                               <td className="p-2 text-right font-mono tabular-nums">{markCell}</td>
                               <td className="p-2 text-right font-mono tabular-nums">{unrealizedCell}</td>
                               <td className="p-2 text-right font-mono tabular-nums">
-                                {l.fees != null ? fmtPremium(l.fees, p.underlying, 5) : '—'}
-                              </td>
-                              <td className="p-2">
-                                {l.openLots.length
-                                  ? l.openLots.map((o, i) => (
-                                      <span key={i} className="inline-block mr-2">
-                                        {o.sign === 1 ? 'Long' : 'Short'} {o.qty}@{fmtNumber(o.price)}
-                                      </span>
-                                    ))
-                                  : '—'}
+                                {l.fees != null ? fmtPremium(l.fees, p.underlying, 4) : '—'}
                               </td>
                             </tr>
                           </React.Fragment>
