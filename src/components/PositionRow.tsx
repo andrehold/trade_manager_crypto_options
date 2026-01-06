@@ -15,6 +15,41 @@ import { buildStructureChipSummary } from '../lib/positions/structureSummary'
 import { StructureEntryOverlay } from './StructureEntryOverlay'
 import { StructureDetailOverlay } from './StructureDetailOverlay'
 
+const MONTHS = [
+  'JAN',
+  'FEB',
+  'MAR',
+  'APR',
+  'MAY',
+  'JUN',
+  'JUL',
+  'AUG',
+  'SEP',
+  'OCT',
+  'NOV',
+  'DEC',
+]
+
+function formatInstrumentLabel(
+  underlying: string,
+  expiryISO: string | null | undefined,
+  strike: number,
+  optionType: string,
+) {
+  const normalizedUnderlying = (underlying || '').toUpperCase().trim() || '—'
+  const normalizedOption = (optionType || '').toUpperCase().startsWith('P') ? 'P' : 'C'
+  if (!expiryISO || expiryISO.length < 10) {
+    return `${normalizedUnderlying}-${strike}-${normalizedOption}`
+  }
+  const [yearStr, monthStr, dayStr] = expiryISO.split('-')
+  const monthIdx = Number(monthStr) - 1
+  const monthText = MONTHS[monthIdx] ?? monthStr
+  const yearShort = yearStr.slice(-2)
+  const dayNum = Number(dayStr)
+  const dayText = Number.isFinite(dayNum) ? String(dayNum) : dayStr
+  return `${normalizedUnderlying}-${dayText}${monthText}${yearShort}-${strike}-${normalizedOption}`
+}
+
 type MarkInfo = { price: number | null; multiplier: number | null; greeks?: any }
 type MarkMap = Record<string, MarkInfo>
 
@@ -98,6 +133,15 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
     if (!p.expiries || p.expiries.length <= 1) return p.expiryISO
     return `${p.expiries[0]} (+${p.expiries.length - 1} more)`
   }, [p.expiries, p.expiryISO])
+
+  const formatLegInstrument = React.useCallback(
+    (leg: Position['legs'][number], ref: LegMarkRef | null) => {
+      if (ref?.symbol) return ref.symbol
+      const expiryISO = leg.expiry ?? p.expiryISO
+      return formatInstrumentLabel(p.underlying, expiryISO, leg.strike, leg.optionType)
+    },
+    [p.expiryISO, p.underlying],
+  )
 
   const legMarkData = React.useMemo(() => {
     const map = new Map<string, { ref: LegMarkRef | null; mark: MarkInfo | undefined }>()
@@ -398,14 +442,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                           <React.Fragment key={l.key}>
                             <tr className="border-t">
                               <td className="p-2">
-                                {hasMultipleExpiries && l.expiry ? (
-                                  <div>
-                                    <div>{l.strike} {l.optionType}</div>
-                                    <div className="text-[11px] text-slate-500">{l.expiry}</div>
-                                  </div>
-                                ) : (
-                                  <>{l.strike} {l.optionType}</>
-                                )}
+                                {formatLegInstrument(l, ref)}
                               </td>
                               <td className="p-2 text-right font-mono tabular-nums">{fmtFiveDecimals(l.qtyNet)}</td>
                               <td className={`p-2 text-right font-mono tabular-nums ${l.realizedPnl < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
