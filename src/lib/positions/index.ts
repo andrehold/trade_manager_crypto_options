@@ -14,6 +14,12 @@ export {
   type SaveUnprocessedTradesResult,
 } from "./saveUnprocessedTrades";
 export {
+  saveTransactionLogs,
+  type SaveTransactionLogsParams,
+  type SaveTransactionLogsResult,
+  type TransactionLogEntry,
+} from "./saveTransactionLogs";
+export {
   backfillLegExpiries,
   type BackfillLegExpiriesParams,
   type BackfillLegExpiriesResult,
