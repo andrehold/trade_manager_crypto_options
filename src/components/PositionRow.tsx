@@ -9,6 +9,7 @@ import {
   positionGreeks,
   fmtGreek,
   getLegMarkRef,
+  calculatePnlPct,
   type LegMarkRef,
 } from '../utils'
 import { buildStructureChipSummary } from '../lib/positions/structureSummary'
@@ -160,7 +161,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
 
   const posTotalPnl = p.realizedPnl + posUnrealized
 
-  const { netPremiumForPct, pnlPctSignedBasis } = React.useMemo(() => {
+  const { pnlPctBaseFallback, pnlPctSignedBasis } = React.useMemo(() => {
     const legsPremium = p.legs?.reduce((sum, leg) => sum + (Number.isFinite(leg.netPremium) ? leg.netPremium : 0), 0) ?? 0
 
     const premiumAbs = (() => {
@@ -169,13 +170,12 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
       return 0
     })()
 
-    return { netPremiumForPct: premiumAbs, pnlPctSignedBasis: posTotalPnl }
+    return { pnlPctBaseFallback: premiumAbs, pnlPctSignedBasis: posTotalPnl }
   }, [p.legs, p.netPremium, posTotalPnl])
 
   const markAwarePnlPct = React.useMemo(() => {
-    if (netPremiumForPct <= 0) return null
-    return (pnlPctSignedBasis / netPremiumForPct) * 100
-  }, [netPremiumForPct, pnlPctSignedBasis])
+    return calculatePnlPct(pnlPctSignedBasis, p.legs ?? [], pnlPctBaseFallback)
+  }, [p.legs, pnlPctBaseFallback, pnlPctSignedBasis])
 
   const structureGreeks = React.useMemo(
     () => (marks ? positionGreeks(p, marks) : { delta: 0, gamma: 0, theta: 0, vega: 0, rho: 0 }),
