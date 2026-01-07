@@ -81,7 +81,7 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
               checked={importHistoricalRows}
               onChange={(e) => setImportHistoricalRows(e.target.checked)}
             />
-            <span>Import historical rows (allow duplicates)</span>
+            <span>Import historical rows (skip duplicates)</span>
           </label>
         ) : null}
         <div className="mt-6 flex gap-3 justify-end">
