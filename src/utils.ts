@@ -273,12 +273,12 @@ export function fifoMatchAndRealize(inventory: Lot[], trade: Lot): { realized: n
       lot.qty -= closeQty;
     } else if (lot.sign === -1 && trade.sign === 1) {
       realized += (lot.price - trade.price) * closeQty;
-      lot.qty += closeQty;
+      lot.qty -= closeQty;
     }
     remainingQty -= closeQty;
     if (Math.abs(lot.qty) <= 1e-9) inventory.shift();
   }
-  const leftover = remainingQty > 0 ? { ...trade, qty: remainingQty * (trade.sign) } : undefined;
+  const leftover = remainingQty > 0 ? { ...trade, qty: remainingQty } : undefined;
   return { realized, remainder: leftover };
 }
 
@@ -316,6 +316,9 @@ export function devQuickTests() {
     const inv: Lot[] = [{ qty: 1, price: 100, sign: 1 }];
     const { realized } = fifoMatchAndRealize(inv, { qty: 1, price: 120, sign: -1 });
     console.assert(Math.abs(realized - 20) < 1e-9, 'fifoMatchAndRealize failed');
+    const invShort: Lot[] = [{ qty: 1, price: 100, sign: -1 }];
+    const { realized: realizedShort } = fifoMatchAndRealize(invShort, { qty: 1, price: 80, sign: 1 });
+    console.assert(Math.abs(realizedShort - 20) < 1e-9 && invShort.length === 0, 'fifoMatchAndRealize short failed');
 
     console.assert(Math.abs(toNumber('1,234.56') - 1234.56) < 1e-9, 'toNumber US');
     console.assert(Math.abs(toNumber('1.234,56') - 1234.56) < 1e-9, 'toNumber EU');
