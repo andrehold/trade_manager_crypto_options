@@ -13,7 +13,8 @@ import {
   useLocalStorage, devQuickTests,
   parseActionSide, toNumber, parseInstrumentByExchange, normalizeSecond,
   daysTo, daysSince, fifoMatchAndRealize, classifyStatus, calculatePnlPct,
-  Exchange, getLegMarkRef, fmtGreek, legGreekExposure, toDeribitInstrument
+  Exchange, getLegMarkRef, fmtGreek, legGreekExposure, toDeribitInstrument,
+  positionGreeks, positionUnrealizedPnL
 } from './utils'
 import { PositionRow } from './components/PositionRow'
 import { PlaybookDrawer } from './components/PlaybookDrawer'
@@ -1458,6 +1459,47 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     [matchesClientSelection, matchesFilter, savedStructures],
   );
 
+  const sortedSaved = React.useMemo(() => {
+    const baseValue = (value: number | null | undefined) =>
+      typeof value === 'number' && Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
+    const withStats = filteredSaved.map((position) => {
+      const posUnrealized = positionUnrealizedPnL(position, legMarks);
+      const posTotalPnl = position.realizedPnl + posUnrealized;
+      const legsPremium = position.legs?.reduce(
+        (sum, leg) => sum + (Number.isFinite(leg.netPremium) ? leg.netPremium : 0),
+        0,
+      ) ?? 0;
+      const premiumAbs = (() => {
+        if (Number.isFinite(position.netPremium) && Math.abs(position.netPremium as number) > 0) {
+          return Math.abs(position.netPremium as number);
+        }
+        if (Math.abs(legsPremium) > 0) return Math.abs(legsPremium);
+        return 0;
+      })();
+      const pnlPct = calculatePnlPct(posTotalPnl, position.legs ?? [], premiumAbs);
+      const greeks = positionGreeks(position, legMarks);
+      return { position, pnlPct, greeks };
+    });
+
+    return withStats
+      .sort((a, b) => {
+        const pnlDelta = baseValue(b.pnlPct) - baseValue(a.pnlPct);
+        if (pnlDelta !== 0) return pnlDelta;
+        const deltaDelta = baseValue(b.greeks.delta) - baseValue(a.greeks.delta);
+        if (deltaDelta !== 0) return deltaDelta;
+        const gammaDelta = baseValue(b.greeks.gamma) - baseValue(a.greeks.gamma);
+        if (gammaDelta !== 0) return gammaDelta;
+        const thetaDelta = baseValue(b.greeks.theta) - baseValue(a.greeks.theta);
+        if (thetaDelta !== 0) return thetaDelta;
+        const vegaDelta = baseValue(b.greeks.vega) - baseValue(a.greeks.vega);
+        if (vegaDelta !== 0) return vegaDelta;
+        const rhoDelta = baseValue(b.greeks.rho) - baseValue(a.greeks.rho);
+        if (rhoDelta !== 0) return rhoDelta;
+        return a.position.structureId?.localeCompare(b.position.structureId ?? '') ?? 0;
+      })
+      .map(({ position }) => position);
+  }, [filteredSaved, legMarks]);
+
   const sortedExchangePositions = React.useMemo(() => {
     const fallback = Number.MAX_SAFE_INTEGER;
     return [...exchangePositions].sort((a, b) => {
@@ -1494,7 +1536,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
 
   const savedStructureGroups = React.useMemo(
     () =>
-      filteredSaved.reduce(
+      sortedSaved.reduce(
         (acc, position) => {
           if (position.status === 'CLOSED') {
             acc.closed.push(position);
@@ -1505,7 +1547,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         },
         { open: [] as Position[], closed: [] as Position[] },
       ),
-    [filteredSaved],
+    [sortedSaved],
   );
 
   const savedStructureColSpan = React.useMemo(() => visibleCols.length + 2, [visibleCols.length]);
