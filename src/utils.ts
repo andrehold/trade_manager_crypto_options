@@ -154,6 +154,26 @@ const MONTHS_MAP: Record<string, number> = {
   JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11,
 };
 
+export function formatInstrumentLabel(
+  underlying: string,
+  expiryISO: string | null | undefined,
+  strike: number,
+  optionType: string,
+) {
+  const normalizedUnderlying = (underlying || '').toUpperCase().trim() || '—'
+  const normalizedOption = (optionType || '').toUpperCase().startsWith('P') ? 'P' : 'C'
+  if (!expiryISO || expiryISO.length < 10) {
+    return `${normalizedUnderlying}-${strike}-${normalizedOption}`
+  }
+  const [yearStr, monthStr, dayStr] = expiryISO.split('-')
+  const monthIdx = Number(monthStr) - 1
+  const monthText = Object.keys(MONTHS_MAP).find((key) => MONTHS_MAP[key] === monthIdx) ?? monthStr
+  const yearShort = yearStr.slice(-2)
+  const dayNum = Number(dayStr)
+  const dayText = Number.isFinite(dayNum) ? String(dayNum) : dayStr
+  return `${normalizedUnderlying}-${dayText}${monthText}${yearShort}-${strike}-${normalizedOption}`
+}
+
 export function parseInstrumentByExchange(exchange: Exchange, instr: string) {
   switch (exchange) {
     case 'deribit':
