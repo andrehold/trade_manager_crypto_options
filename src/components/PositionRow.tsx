@@ -1,5 +1,5 @@
 import React from 'react'
-import { Link as LinkIcon, Pencil, Plus, Save } from 'lucide-react'
+import { Download, Link as LinkIcon, Pencil, Plus, Save } from 'lucide-react'
 import {
   Position,
   fmtPremium,
@@ -9,47 +9,14 @@ import {
   positionGreeks,
   fmtGreek,
   getLegMarkRef,
+  formatInstrumentLabel,
   calculatePnlPct,
   type LegMarkRef,
 } from '../utils'
 import { buildStructureChipSummary } from '../lib/positions/structureSummary'
 import { StructureEntryOverlay } from './StructureEntryOverlay'
 import { StructureDetailOverlay } from './StructureDetailOverlay'
-
-const MONTHS = [
-  'JAN',
-  'FEB',
-  'MAR',
-  'APR',
-  'MAY',
-  'JUN',
-  'JUL',
-  'AUG',
-  'SEP',
-  'OCT',
-  'NOV',
-  'DEC',
-]
-
-function formatInstrumentLabel(
-  underlying: string,
-  expiryISO: string | null | undefined,
-  strike: number,
-  optionType: string,
-) {
-  const normalizedUnderlying = (underlying || '').toUpperCase().trim() || '—'
-  const normalizedOption = (optionType || '').toUpperCase().startsWith('P') ? 'P' : 'C'
-  if (!expiryISO || expiryISO.length < 10) {
-    return `${normalizedUnderlying}-${strike}-${normalizedOption}`
-  }
-  const [yearStr, monthStr, dayStr] = expiryISO.split('-')
-  const monthIdx = Number(monthStr) - 1
-  const monthText = MONTHS[monthIdx] ?? monthStr
-  const yearShort = yearStr.slice(-2)
-  const dayNum = Number(dayStr)
-  const dayText = Number.isFinite(dayNum) ? String(dayNum) : dayStr
-  return `${normalizedUnderlying}-${dayText}${monthText}${yearShort}-${strike}-${normalizedOption}`
-}
+import { TradeJsonExportOverlay } from './TradeJsonExportOverlay'
 
 type MarkInfo = { price: number | null; multiplier: number | null; greeks?: any }
 type MarkMap = Record<string, MarkInfo>
@@ -118,6 +85,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   const [open, setOpen] = React.useState(false)
   const [showSaveOverlay, setShowSaveOverlay] = React.useState(false)
   const [showDetailOverlay, setShowDetailOverlay] = React.useState(false)
+  const [showExportOverlay, setShowExportOverlay] = React.useState(false)
   const statusTone =
     p.status === 'OPEN'
       ? 'success'
@@ -346,6 +314,15 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                     <Pencil className="h-4 w-4" />
                     <span className="sr-only">Open update overlay</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowExportOverlay(true)}
+                    className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
+                    title="Export trade JSON"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span className="sr-only">Open trade export overlay</span>
+                  </button>
                 </div>
               ) : null}
             </div>
@@ -488,6 +465,14 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           open={showDetailOverlay}
           onClose={() => setShowDetailOverlay(false)}
           position={p}
+        />
+      ) : null}
+      {showExportOverlay ? (
+        <TradeJsonExportOverlay
+          open={showExportOverlay}
+          onClose={() => setShowExportOverlay(false)}
+          position={p}
+          marks={marks}
         />
       ) : null}
     </>
