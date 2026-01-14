@@ -41,16 +41,23 @@ function normalizeQty(value: number) {
 }
 
 function buildDefaultLegRows(position: Position): TradeLegRow[] {
-  return position.legs.map((leg) => {
-    const qtyNet = legNetQty(leg)
-    const side = qtyNet >= 0 ? 'BUY' : 'SELL'
-    return {
-      id: leg.key,
-      instrument: getLegInstrument(position, leg),
-      qty: Math.abs(qtyNet),
-      side,
-    }
-  })
+  return [...position.legs]
+    .sort((a, b) => {
+      const expiryA = a.expiry ?? position.expiryISO ?? ''
+      const expiryB = b.expiry ?? position.expiryISO ?? ''
+      if (expiryA !== expiryB) return expiryA.localeCompare(expiryB)
+      return (a.strike ?? 0) - (b.strike ?? 0)
+    })
+    .map((leg) => {
+      const qtyNet = legNetQty(leg)
+      const side = qtyNet >= 0 ? 'BUY' : 'SELL'
+      return {
+        id: leg.key,
+        instrument: getLegInstrument(position, leg),
+        qty: Math.abs(qtyNet),
+        side,
+      }
+    })
 }
 
 function computeNetMark(position: Position, marks?: MarkMap) {
