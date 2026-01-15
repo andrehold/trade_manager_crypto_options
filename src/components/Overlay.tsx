@@ -21,12 +21,12 @@ const backdropStyle: React.CSSProperties = {
 const panelStyle: React.CSSProperties = {
   minWidth: 520,
   minHeight: 280,
-  background: '#fff',
-  color: '#0f172a',
+  background: 'transparent',
+  color: 'inherit',
   borderRadius: 12,
-  boxShadow: '0 18px 45px rgba(15, 23, 42, 0.15)',
+  boxShadow: 'none',
   outline: 'none',
-  border: '1px solid rgba(15, 23, 42, 0.08)',
+  border: 'none',
 };
 
 export default function Overlay({ open, onClose, title = 'empty overlay', children }: OverlayProps) {
