@@ -1,12 +1,19 @@
 import React from 'react'
-import { TxnRow, normalizeSecond } from '../utils'
+import { Exchange, TxnRow, formatInstrumentLabel, normalizeSecond, parseInstrumentByExchange } from '../utils'
 
-export type ReviewStructureOption = { value: string; label: string }
+export type ReviewStructureOption = { value: string; label: string; legInstrumentKeys?: string[] }
 
 const autoStructureKey = (row: TxnRow, index: number) => {
   const normalized = normalizeSecond(row.timestamp)
   return normalized === 'NO_TS' ? `NO_TS_${index}` : normalized
 }
+
+const getRowInstrumentKey = (row: TxnRow) => {
+  const exchange = (row.exchange ?? 'deribit') as Exchange;
+  const parsed = parseInstrumentByExchange(exchange, row.instrument);
+  if (!parsed) return null;
+  return formatInstrumentLabel(parsed.underlying, parsed.expiryISO, parsed.strike, parsed.optionType);
+};
 
 type AllocationEntry = {
   structureId: string | null;
@@ -85,11 +92,35 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
     return map;
   }, [availableStructures]);
 
+  const availableStructureIdsByRow = React.useMemo(
+    () =>
+      rows.map((row) => {
+        if (row.action !== 'close') return null;
+        const rowKey = getRowInstrumentKey(row);
+        if (!rowKey) return null;
+        const allowedIds = availableStructures
+          .filter((option) => option.legInstrumentKeys?.includes(rowKey))
+          .map((option) => option.value);
+        return new Set(allowedIds);
+      }),
+    [availableStructures, rows],
+  );
+
   React.useEffect(() => {
     setLinkedStructures((prev) =>
       prev.map((value) => (value && availableStructureMap.has(value) ? value : null)),
     );
   }, [availableStructureMap]);
+
+  React.useEffect(() => {
+    setLinkedStructures((prev) =>
+      prev.map((value, index) => {
+        const allowedIds = availableStructureIdsByRow[index];
+        if (!allowedIds || !value) return value;
+        return allowedIds.has(value) ? value : null;
+      }),
+    );
+  }, [availableStructureIdsByRow]);
 
   const toggleAll = (v: boolean) => {
     setSelected(Array(rows.length).fill(v));
@@ -306,7 +337,15 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                     const selectedStructureLabel = selectedStructureId
                       ? availableStructureMap.get(selectedStructureId)?.label ?? selectedStructureId
                       : null;
-                    const hasSavedStructures = availableStructures.length > 0;
+                    const rowInstrumentKey = getRowInstrumentKey(r);
+                    const isCloseAction = r.action === 'close';
+                    const rowAvailableStructures =
+                      isCloseAction && rowInstrumentKey
+                        ? availableStructures.filter((option) =>
+                            option.legInstrumentKeys?.includes(rowInstrumentKey),
+                          )
+                        : availableStructures;
+                    const hasSavedStructures = rowAvailableStructures.length > 0;
                     const isUnprocessed = notProcessed[i];
                     const rowAllocations = allocations[i] ?? [];
                     const hasAllocations = allowAllocations && rowAllocations.length > 0;
@@ -368,7 +407,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                               disabled={!hasSavedStructures || isUnprocessed || hasAllocations}
                             >
                               <option value="">{`Auto • ${structure}`}</option>
-                              {availableStructures.map((option) => (
+                              {rowAvailableStructures.map((option) => (
                                 <option key={option.value} value={option.value}>
                                   {option.label}
                                 </option>
@@ -382,7 +421,11 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                                 : selectedStructureId
                                 ? `Linked to ${selectedStructureLabel}. Structure # input disabled.`
                                 : hasSavedStructures
-                                ? 'Auto grouping until you choose a saved structure.'
+                                ? isCloseAction && rowInstrumentKey
+                                  ? 'Showing saved structures that match this closing leg.'
+                                  : 'Auto grouping until you choose a saved structure.'
+                                : isCloseAction && rowInstrumentKey
+                                ? 'No saved structures match this closing leg.'
                                 : 'No saved structures available for this client.'}
                             </span>
                             {allowAllocations && !isUnprocessed ? (
@@ -433,7 +476,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                                             }
                                           >
                                             <option value="">Select structure</option>
-                                            {availableStructures.map((option) => (
+                                            {rowAvailableStructures.map((option) => (
                                               <option key={option.value} value={option.value}>
                                                 {option.label}
                                               </option>

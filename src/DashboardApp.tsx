@@ -14,7 +14,7 @@ import {
   parseActionSide, toNumber, parseInstrumentByExchange, normalizeSecond,
   daysTo, daysSince, fifoMatchAndRealize, classifyStatus, calculatePnlPct,
   Exchange, getLegMarkRef, fmtGreek, legGreekExposure, toDeribitInstrument,
-  positionGreeks, positionUnrealizedPnL
+  positionGreeks, positionUnrealizedPnL, formatInstrumentLabel
 } from './utils'
 import { PositionRow } from './components/PositionRow'
 import { PlaybookDrawer } from './components/PlaybookDrawer'
@@ -1728,10 +1728,20 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         if (isArchived) return false;
         return true;
       })
-      .map((structure) => ({
-        value: structure.id,
-        label: labelForStructure(structure),
-      }));
+      .map((structure) => {
+        const legInstrumentKeys = structure.legs
+          .map((leg) =>
+            leg.expiry
+              ? formatInstrumentLabel(structure.underlying, leg.expiry, leg.strike, leg.optionType)
+              : null,
+          )
+          .filter((key): key is string => Boolean(key));
+        return {
+          value: structure.id,
+          label: labelForStructure(structure),
+          legInstrumentKeys,
+        };
+      });
   }, [activeClientName, savedStructures]);
 
   const tableHead = (
