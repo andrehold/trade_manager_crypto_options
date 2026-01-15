@@ -1,4 +1,5 @@
 :root {
+  --surface-0: #ffffff;
   --slate-50: #f8fafc;
   --slate-100: #f1f5f9;
   --slate-200: #e2e8f0;
@@ -19,6 +20,32 @@
   --rose-600: #e11d48;
   --amber-500: #f59e0b;
   --blue-600: #2563eb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-0: #1c212b;
+    --slate-50: #0f131a;
+    --slate-100: #151a23;
+    --slate-200: #1f2632;
+    --slate-300: #2b3442;
+    --slate-400: #475164;
+    --slate-500: #6b7586;
+    --slate-600: #98a1b2;
+    --slate-700: #c2c9d4;
+    --slate-800: #e2e7ef;
+    --slate-900: #f8fafc;
+    --emerald-50: #0d1f1a;
+    --emerald-200: #1e4d40;
+    --emerald-500: #22c58b;
+    --emerald-600: #16a373;
+    --rose-50: #2a1418;
+    --rose-400: #ff94a7;
+    --rose-500: #ff5f7f;
+    --rose-600: #ff4d70;
+    --amber-500: #f8b24a;
+    --blue-600: #4f83ff;
+  }
 }
 
 *,
@@ -188,9 +215,9 @@ select {
 .text-rose-600 { color: var(--rose-600); }
 
 /* Backgrounds */
-.bg-white { background-color: #ffffff; }
+.bg-white { background-color: var(--surface-0); }
 .bg-slate-50 { background-color: var(--slate-50); }
-.bg-slate-50\/60 { background-color: rgba(248, 250, 252, 0.6); }
+.bg-slate-50\/60 { background-color: color-mix(in srgb, var(--slate-50) 60%, transparent); }
 .bg-slate-100 { background-color: var(--slate-100); }
 .bg-slate-200 { background-color: var(--slate-200); }
 .bg-slate-300 { background-color: var(--slate-300); }
