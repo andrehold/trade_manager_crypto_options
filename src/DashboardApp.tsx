@@ -55,6 +55,21 @@ const GREEK_SUMMARY_FIELDS = [
 
 type GreekKey = typeof GREEK_SUMMARY_FIELDS[number]['key']
 
+type SavedSortKey =
+  | 'status'
+  | 'structure'
+  | 'dte'
+  | 'legs'
+  | 'strategy'
+  | 'pnl'
+  | 'pnlpct'
+  | 'delta'
+  | 'gamma'
+  | 'theta'
+  | 'vega'
+  | 'rho'
+  | 'playbook'
+
 type ExchangePositionSnapshot = {
   id: string;
   exchange: Exchange | 'unknown';
@@ -208,6 +223,10 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   const [activePlaybookPosition, setActivePlaybookPosition] = React.useState<Position | null>(null);
   const [alertsOnly, setAlertsOnly] = React.useState(false);
   const [query, setQuery] = React.useState("");
+  const [savedSort, setSavedSort] = React.useState<{ key: SavedSortKey; direction: 'asc' | 'desc' }>({
+    key: 'pnlpct',
+    direction: 'desc',
+  });
   const [visibleCols, setVisibleCols] = useLocalStorage<string[]>("visible_cols_v2", [
     "status","structure","dte","legs","strategy","pnl","pnlpct","delta","gamma","theta","vega","rho","playbook"
   ]);
@@ -1460,8 +1479,18 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   );
 
   const sortedSaved = React.useMemo(() => {
-    const baseValue = (value: number | null | undefined) =>
-      typeof value === 'number' && Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
+    const numericValue = (value: number | null | undefined) =>
+      typeof value === 'number' && Number.isFinite(value)
+        ? value
+        : savedSort.direction === 'asc'
+        ? Number.POSITIVE_INFINITY
+        : Number.NEGATIVE_INFINITY;
+    const statusRank: Record<Position['status'], number> = {
+      OPEN: 1,
+      ATTENTION: 2,
+      ALERT: 3,
+      CLOSED: 4,
+    };
     const withStats = filteredSaved.map((position) => {
       const posUnrealized = positionUnrealizedPnL(position, legMarks);
       const posTotalPnl = position.realizedPnl + posUnrealized;
@@ -1478,27 +1507,51 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       })();
       const pnlPct = calculatePnlPct(posTotalPnl, position.legs ?? [], premiumAbs);
       const greeks = positionGreeks(position, legMarks);
-      return { position, pnlPct, greeks };
+      const programLabel = position.source === 'supabase' ? (position.programName ?? '').trim() : '';
+      const strategyLabel = (programLabel || position.strategy || '').trim();
+      const playbookLabel = (position.playbook ?? position.programId ?? '').toString().trim();
+      return { position, pnlPct, greeks, posTotalPnl, strategyLabel, playbookLabel, statusRank: statusRank[position.status] };
     });
+
+    const directionFactor = savedSort.direction === 'asc' ? 1 : -1;
 
     return withStats
       .sort((a, b) => {
-        const pnlDelta = baseValue(b.pnlPct) - baseValue(a.pnlPct);
-        if (pnlDelta !== 0) return pnlDelta;
-        const deltaDelta = baseValue(b.greeks.delta) - baseValue(a.greeks.delta);
-        if (deltaDelta !== 0) return deltaDelta;
-        const gammaDelta = baseValue(b.greeks.gamma) - baseValue(a.greeks.gamma);
-        if (gammaDelta !== 0) return gammaDelta;
-        const thetaDelta = baseValue(b.greeks.theta) - baseValue(a.greeks.theta);
-        if (thetaDelta !== 0) return thetaDelta;
-        const vegaDelta = baseValue(b.greeks.vega) - baseValue(a.greeks.vega);
-        if (vegaDelta !== 0) return vegaDelta;
-        const rhoDelta = baseValue(b.greeks.rho) - baseValue(a.greeks.rho);
-        if (rhoDelta !== 0) return rhoDelta;
-        return a.position.structureId?.localeCompare(b.position.structureId ?? '') ?? 0;
+        const compareString = (left: string, right: string) =>
+          directionFactor * left.localeCompare(right, undefined, { sensitivity: 'base' });
+        switch (savedSort.key) {
+          case 'status':
+            return directionFactor * (a.statusRank - b.statusRank);
+          case 'structure':
+            return compareString(a.position.structureId ?? '', b.position.structureId ?? '');
+          case 'dte':
+            return directionFactor * (numericValue(a.position.dte) - numericValue(b.position.dte));
+          case 'legs':
+            return directionFactor * (numericValue(a.position.legsCount) - numericValue(b.position.legsCount));
+          case 'strategy':
+            return compareString(a.strategyLabel, b.strategyLabel);
+          case 'pnl':
+            return directionFactor * (numericValue(a.posTotalPnl) - numericValue(b.posTotalPnl));
+          case 'pnlpct':
+            return directionFactor * (numericValue(a.pnlPct) - numericValue(b.pnlPct));
+          case 'delta':
+            return directionFactor * (numericValue(a.greeks.delta) - numericValue(b.greeks.delta));
+          case 'gamma':
+            return directionFactor * (numericValue(a.greeks.gamma) - numericValue(b.greeks.gamma));
+          case 'theta':
+            return directionFactor * (numericValue(a.greeks.theta) - numericValue(b.greeks.theta));
+          case 'vega':
+            return directionFactor * (numericValue(a.greeks.vega) - numericValue(b.greeks.vega));
+          case 'rho':
+            return directionFactor * (numericValue(a.greeks.rho) - numericValue(b.greeks.rho));
+          case 'playbook':
+            return compareString(a.playbookLabel, b.playbookLabel);
+          default:
+            return 0;
+        }
       })
       .map(({ position }) => position);
-  }, [filteredSaved, legMarks]);
+  }, [filteredSaved, legMarks, savedSort.direction, savedSort.key]);
 
   const sortedExchangePositions = React.useMemo(() => {
     const fallback = Number.MAX_SAFE_INTEGER;
@@ -1683,6 +1736,78 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
           </th>
         )}
         {visibleCols.includes("playbook") && <th className="p-3 text-left">Playbook</th>}
+        <th className="p-3 text-right w-12">
+          <span className="sr-only">Save position</span>
+        </th>
+      </tr>
+    </thead>
+  );
+
+  const renderSavedSortHeader = (label: string, key: SavedSortKey) => {
+    const isAsc = savedSort.key === key && savedSort.direction === 'asc';
+    const isDesc = savedSort.key === key && savedSort.direction === 'desc';
+    return (
+      <div className="inline-flex items-center gap-2">
+        <span>{label}</span>
+        <span className="inline-flex flex-col -space-y-1">
+          <button
+            type="button"
+            className={`text-[10px] leading-none ${isAsc ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+            aria-label={`Sort ${label} ascending`}
+            onClick={() => setSavedSort({ key, direction: 'asc' })}
+          >
+            ▲
+          </button>
+          <button
+            type="button"
+            className={`text-[10px] leading-none ${isDesc ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+            aria-label={`Sort ${label} descending`}
+            onClick={() => setSavedSort({ key, direction: 'desc' })}
+          >
+            ▼
+          </button>
+        </span>
+      </div>
+    );
+  };
+
+  const savedTableHead = (
+    <thead className="bg-slate-50 text-slate-600">
+      <tr>
+        <th className="p-3 text-left w-10"> </th>
+        {visibleCols.includes("status") && <th className="p-3 text-left">{renderSavedSortHeader('Status', 'status')}</th>}
+        {visibleCols.includes("structure") && <th className="p-3 text-left">{renderSavedSortHeader('Structure', 'structure')}</th>}
+        {visibleCols.includes("dte") && <th className="p-3 text-left">{renderSavedSortHeader('DTE/Since', 'dte')}</th>}
+        {visibleCols.includes("legs") && <th className="p-3 text-left">{renderSavedSortHeader('Legs', 'legs')}</th>}
+        {visibleCols.includes("strategy") && <th className="p-3 text-left">{renderSavedSortHeader('Strategy', 'strategy')}</th>}
+        {visibleCols.includes("pnl") && <th className="p-3 text-left">{renderSavedSortHeader('PnL', 'pnl')}</th>}
+        {visibleCols.includes("pnlpct") && <th className="p-3 text-left">{renderSavedSortHeader('PnL %', 'pnlpct')}</th>}
+        {visibleCols.includes("delta") && (
+          <th className="p-3 text-left">
+            {renderSavedSortHeader('Δ', 'delta')}
+          </th>
+        )}
+        {visibleCols.includes("gamma") && (
+          <th className="p-3 text-left">
+            {renderSavedSortHeader('Γ', 'gamma')}
+          </th>
+        )}
+        {visibleCols.includes("theta") && (
+          <th className="p-3 text-left">
+            {renderSavedSortHeader('Θ', 'theta')}
+          </th>
+        )}
+        {visibleCols.includes("vega") && (
+          <th className="p-3 text-left">
+            {renderSavedSortHeader('V', 'vega')}
+          </th>
+        )}
+        {visibleCols.includes("rho") && (
+          <th className="p-3 text-left">
+            {renderSavedSortHeader('ρ', 'rho')}
+          </th>
+        )}
+        {visibleCols.includes("playbook") && <th className="p-3 text-left">{renderSavedSortHeader('Playbook', 'playbook')}</th>}
         <th className="p-3 text-right w-12">
           <span className="sr-only">Save position</span>
         </th>
@@ -2186,7 +2311,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                {tableHead}
+                {savedTableHead}
                 <tbody>
                   {savedStructureGroups.open.map((p) => (
                     <PositionRow
