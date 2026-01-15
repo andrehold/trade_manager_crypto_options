@@ -12,6 +12,7 @@ export type DeribitGreeks = {
 
 export type DeribitTickerResult = {
   instrument_name: string;
+  index_price?: number;
   mark_price?: number;
   best_bid_price?: number;
   best_ask_price?: number;
