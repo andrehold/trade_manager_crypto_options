@@ -14,6 +14,7 @@ type ReviewOverlayProps = {
   duplicateTradeIds?: string[];
   duplicateOrderIds?: string[];
   importHistorical?: boolean;
+  allowAllocations?: boolean;
   onConfirm: (rows: TxnRow[], unprocessedRows: TxnRow[]) => void | Promise<void>;
   onCancel: () => void;
   availableStructures?: ReviewStructureOption[];
@@ -28,6 +29,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
     duplicateTradeIds,
     duplicateOrderIds,
     importHistorical,
+    allowAllocations,
   } = props
   const [activeTab, setActiveTab] = React.useState<'included'|'excluded'>('included');
   const [selected, setSelected] = React.useState<boolean[]>(() => rows.map(() => true));
@@ -189,7 +191,9 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
         {(duplicateTradeIds?.length || duplicateOrderIds?.length) ? (
           <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 text-sm p-3">
             <p className="font-medium">
-              {(duplicateTradeIds?.length ?? 0) + (duplicateOrderIds?.length ?? 0) === 1
+              {allowAllocations
+                ? 'Trade/order IDs already exist in saved fills or unprocessed trades. Allocation mode keeps these rows so you can split the execution across structures.'
+                : (duplicateTradeIds?.length ?? 0) + (duplicateOrderIds?.length ?? 0) === 1
                 ? '1 row was hidden because its trade or order ID already exists in saved fills or unprocessed trades.'
                 : `${(duplicateTradeIds?.length ?? 0) + (duplicateOrderIds?.length ?? 0)} rows were hidden because their trade or order IDs already exist in saved fills or unprocessed trades.`}
             </p>
