@@ -195,6 +195,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     duplicateTradeIds?: string[];
     duplicateOrderIds?: string[];
     importHistorical?: boolean;
+    allowAllocations?: boolean;
   } | null>(null);
   const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
   const [importedRows, setImportedRows] = React.useState<
@@ -436,7 +437,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   }, [parseExchangePositionRow, setExchangePositions]);
 
   const filterRowsWithExistingTradeIds = React.useCallback(
-    async (rows: TxnRow[]) => {
+    async (rows: TxnRow[], options: { allowAllocations?: boolean } = {}) => {
       if (!supabase) {
         return {
           filtered: rows,
@@ -566,6 +567,15 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
           duplicates: [] as TxnRow[],
           duplicateTradeIds: [] as string[],
           duplicateOrderIds: [] as string[],
+        };
+      }
+
+      if (options.allowAllocations) {
+        return {
+          filtered: rows,
+          duplicates: [] as TxnRow[],
+          duplicateTradeIds: Array.from(duplicateTradeIds),
+          duplicateOrderIds: Array.from(duplicateOrderIds),
         };
       }
 
@@ -752,6 +762,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   async function startImport(mapping: Record<string, string>) {
     const exchange = (mapping as any).__exchange || 'deribit';
     const importHistorical = Boolean((mapping as any).__importHistorical);
+    const allowAllocations = Boolean((mapping as any).__allowAllocations);
     setSelectedExchange(exchange as Exchange);
     await saveRawTransactionLogs(mapping, exchange as Exchange);
     const { rows, excludedRows } = mapRowsFromMapping(mapping, 'import');
@@ -761,11 +772,14 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         rows,
         excludedRows,
         importHistorical: true,
+        allowAllocations,
       });
       return;
     }
 
-    const { filtered, duplicateTradeIds, duplicateOrderIds } = await filterRowsWithExistingTradeIds(rows);
+    const { filtered, duplicateTradeIds, duplicateOrderIds } = await filterRowsWithExistingTradeIds(rows, {
+      allowAllocations,
+    });
 
     setShowMapper(null);
     setShowReview({
@@ -774,6 +788,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       duplicateTradeIds: duplicateTradeIds.length ? duplicateTradeIds : undefined,
       duplicateOrderIds: duplicateOrderIds.length ? duplicateOrderIds : undefined,
       importHistorical: false,
+      allowAllocations,
     });
   }
 
@@ -2485,6 +2500,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
           duplicateTradeIds={showReview.duplicateTradeIds}
           duplicateOrderIds={showReview.duplicateOrderIds}
           importHistorical={showReview.importHistorical}
+          allowAllocations={showReview.allowAllocations}
           onConfirm={finalizeImport}
           onCancel={() => setShowReview(null)}
           availableStructures={selectableStructureOptions}

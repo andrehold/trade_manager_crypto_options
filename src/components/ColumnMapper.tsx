@@ -10,6 +10,7 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
   const [mapping, setMapping] = React.useState<Record<string, string>>({});
   const [exchange, setExchange] = React.useState<'deribit' | 'coincall' | 'cme'>('deribit');
   const [importHistoricalRows, setImportHistoricalRows] = React.useState(false);
+  const [allowAllocations, setAllowAllocations] = React.useState(false);
 
   React.useEffect(() => {
     const lower = headers.map((h) => h.toLowerCase());
@@ -75,14 +76,24 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
           ))}
         </div>
         {mode === 'import' ? (
-          <label className="mt-4 inline-flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={importHistoricalRows}
-              onChange={(e) => setImportHistoricalRows(e.target.checked)}
-            />
-            <span>Import historical rows (skip duplicates)</span>
-          </label>
+          <div className="mt-4 space-y-2">
+            <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={importHistoricalRows}
+                onChange={(e) => setImportHistoricalRows(e.target.checked)}
+              />
+              <span>Import historical rows (skip duplicates)</span>
+            </label>
+            <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={allowAllocations}
+                onChange={(e) => setAllowAllocations(e.target.checked)}
+              />
+              <span>Allow trade allocations (reuse trade/order IDs across structures)</span>
+            </label>
+          </div>
         ) : null}
         <div className="mt-6 flex gap-3 justify-end">
           <button onClick={onCancel} className="px-4 py-2 rounded-xl border">Cancel</button>
@@ -91,6 +102,7 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
               ...mapping,
               __exchange: exchange,
               __importHistorical: importHistoricalRows,
+              __allowAllocations: allowAllocations,
             } as any)}
             className="px-4 py-2 rounded-xl bg-slate-900 text-white">
             {mode === 'backfill' ? 'Start Backfill' : 'Start Import'}
