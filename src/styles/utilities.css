@@ -1,5 +1,6 @@
 :root {
   --surface-0: #ffffff;
+  --slate-900-bg: var(--slate-900);
   --slate-50: #f8fafc;
   --slate-100: #f1f5f9;
   --slate-200: #e2e8f0;
@@ -27,14 +28,15 @@
     --surface-0: #1c212b;
     --slate-50: #0f131a;
     --slate-100: #151a23;
-    --slate-200: #1f2632;
-    --slate-300: #2b3442;
-    --slate-400: #475164;
+    --slate-200: #2b3546;
+    --slate-300: #39465b;
+    --slate-400: #5b667a;
     --slate-500: #6b7586;
     --slate-600: #98a1b2;
     --slate-700: #c2c9d4;
     --slate-800: #e2e7ef;
     --slate-900: #f8fafc;
+    --slate-900-bg: #0e131b;
     --emerald-50: #0d1f1a;
     --emerald-200: #1e4d40;
     --emerald-500: #22c58b;
@@ -221,7 +223,7 @@ select {
 .bg-slate-100 { background-color: var(--slate-100); }
 .bg-slate-200 { background-color: var(--slate-200); }
 .bg-slate-300 { background-color: var(--slate-300); }
-.bg-slate-900 { background-color: var(--slate-900); }
+.bg-slate-900 { background-color: var(--slate-900-bg); }
 .bg-black\/40 { background-color: rgba(0, 0, 0, 0.4); }
 .bg-emerald-50 { background-color: var(--emerald-50); }
 .bg-emerald-500 { background-color: var(--emerald-500); }
