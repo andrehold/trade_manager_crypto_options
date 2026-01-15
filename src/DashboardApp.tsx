@@ -19,7 +19,7 @@ import {
 import { PositionRow } from './components/PositionRow'
 import { PlaybookDrawer } from './components/PlaybookDrawer'
 import { ccGetBest } from './lib/venues/coincall'
-import { dbGetBest } from './lib/venues/deribit'
+import { dbGetBest, dbGetTicker } from './lib/venues/deribit'
 import {
   archiveStructure,
   fetchSavedStructures,
@@ -231,6 +231,8 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     "status","structure","dte","legs","strategy","pnl","pnlpct","delta","gamma","theta","vega","rho","playbook"
   ]);
   const [selectedExchange, setSelectedExchange] = React.useState<Exchange>('deribit');
+  const [btcSpot, setBtcSpot] = React.useState<number | null>(null);
+  const [btcSpotUpdatedAt, setBtcSpotUpdatedAt] = React.useState<Date | null>(null);
   // price per unique leg "exchange:symbol"
   const [legMarks, setLegMarks] = React.useState<Record<string, {price: number|null, multiplier: number|null; greeks?: {
     delta?: number; gamma?: number; theta?: number; vega?: number; rho?: number;
@@ -1587,6 +1589,24 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     return value.toLocaleString(undefined, { maximumFractionDigits: 6 });
   }, []);
 
+  const formatSpotPrice = React.useCallback((value: number | null) => {
+    if (value === null) return '—';
+    return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }, []);
+
+  const fetchBtcSpot = React.useCallback(async () => {
+    try {
+      const ticker = await dbGetTicker('BTC-PERPETUAL');
+      const nextPrice = ticker?.index_price ?? ticker?.mark_price ?? ticker?.last_price ?? null;
+      if (nextPrice !== null && Number.isFinite(nextPrice)) {
+        setBtcSpot(nextPrice);
+        setBtcSpotUpdatedAt(new Date());
+      }
+    } catch (error) {
+      console.error('[btc spot] fetch failed', error);
+    }
+  }, []);
+
   const savedStructureGroups = React.useMemo(
     () =>
       sortedSaved.reduce(
@@ -1859,6 +1879,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
 
   const fetchAllMarksForPositions = React.useCallback(async (ps: Position[]) => {
     setMarkFetch({ inProgress: true, total: 0, done: 0, errors: 0 });
+    await fetchBtcSpot();
 
     type FetchEntry = {
       key: string;
@@ -1925,7 +1946,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     }
 
     setMarkFetch(prev => ({ ...prev, inProgress: false }));
-  }, [setLegMarks, setMarkFetch]);
+  }, [fetchBtcSpot, setLegMarks, setMarkFetch]);
 
   function Spinner({ className = "h-4 w-4" }: { className?: string }) {
     return (
@@ -2025,6 +2046,15 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-slate-900 text-white font-bold">⚡️</span>
         <h1 className="text-xl font-semibold">Open Options Trades</h1>
         <span className="text-xs text-slate-500 border rounded-lg px-2 py-1 ml-2">Demo • Frontend Only</span>
+        <div
+          className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600"
+          title={btcSpotUpdatedAt ? `BTC spot as of ${btcSpotUpdatedAt.toLocaleTimeString()}` : 'BTC spot updates with Get Live Marks'}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">BTC Spot</span>
+          <span className="font-semibold text-slate-900">
+            {btcSpot === null ? '—' : `$${formatSpotPrice(btcSpot)}`}
+          </span>
+        </div>
         <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
           <div className="flex flex-col leading-tight">
             <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Client</span>
