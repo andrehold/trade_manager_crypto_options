@@ -126,14 +126,11 @@ export function buildStructureSummaryLines(
   const legSizeToken = deriveLegSizeToken(position.legs);
   const legsSummary = buildLegSummary(position.legs, position.expiryISO);
 
-  const hasMultipleExpiries = expiryTokens.length > 1;
   const baseHeaderParts = [underlyingText || null, expiryText || null].filter((part): part is string => Boolean(part));
   let header = baseHeaderParts.join(' ');
-  if (hasMultipleExpiries && structureCodeText) {
-    header = header ? `${header} -- ${structureCodeText} --` : `-- ${structureCodeText} --`;
-  } else {
-    const compactParts = [header || null, structureCodeText || null].filter((part): part is string => Boolean(part));
-    header = compactParts.join(' ');
+  if (structureCodeText) {
+    const strategyToken = `-- ${structureCodeText} --`;
+    header = header ? `${header} ${strategyToken}` : strategyToken;
   }
   if (legSizeToken) {
     header = header ? `${header} ${legSizeToken}` : legSizeToken;
