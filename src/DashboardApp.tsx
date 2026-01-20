@@ -14,7 +14,7 @@ import {
   parseActionSide, toNumber, parseInstrumentByExchange, normalizeSecond,
   daysTo, daysSince, fifoMatchAndRealize, classifyStatus, calculatePnlPct,
   Exchange, getLegMarkRef, fmtGreek, legGreekExposure, toDeribitInstrument,
-  positionGreeks, positionUnrealizedPnL, formatInstrumentLabel
+  positionGreeks, positionUnrealizedPnL, formatInstrumentLabel, legUnrealizedPnL, fmtPremium
 } from './utils'
 import { PositionRow } from './components/PositionRow'
 import { PlaybookDrawer } from './components/PlaybookDrawer'
@@ -70,6 +70,16 @@ type SavedSortKey =
   | 'vega'
   | 'rho'
   | 'playbook'
+
+type OpenInstrumentSortKey =
+  | 'instrument'
+  | 'qtyNet'
+  | 'absPnl'
+  | 'delta'
+  | 'gamma'
+  | 'theta'
+  | 'vega'
+  | 'rho'
 
 type ExchangePositionSnapshot = {
   id: string;
@@ -229,6 +239,13 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   const [savedSort, setSavedSort] = React.useState<{ key: SavedSortKey; direction: 'asc' | 'desc' }>({
     key: 'pnlpct',
     direction: 'desc',
+  });
+  const [openInstrumentSort, setOpenInstrumentSort] = React.useState<{
+    key: OpenInstrumentSortKey;
+    direction: 'asc' | 'desc';
+  }>({
+    key: 'instrument',
+    direction: 'asc',
   });
   const [visibleCols, setVisibleCols] = useLocalStorage<string[]>("visible_cols_v2", [
     "status","structure","dte","legs","strategy","pnl","pnlpct","delta","gamma","theta","vega","rho","playbook"
@@ -1555,6 +1572,73 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     [matchesClientSelection, matchesFilter, savedStructures],
   );
 
+  const openInstrumentRows = React.useMemo(() => {
+    const instrumentMap = new Map<
+      string,
+      { instrument: string; qtyNet: number; absPnl: number; greeks: Record<GreekKey, number> }
+    >();
+    for (const position of filteredSaved) {
+      for (const leg of position.legs ?? []) {
+        if (!isActiveLeg(leg)) continue;
+        const instrument = String(leg.trades?.[0]?.instrument ?? '').trim();
+        if (!instrument) continue;
+        const qtyNet = Number(leg.qtyNet);
+        if (!Number.isFinite(qtyNet) || qtyNet === 0) continue;
+        const current = instrumentMap.get(instrument) ?? {
+          instrument,
+          qtyNet: 0,
+          absPnl: 0,
+          greeks: { delta: 0, gamma: 0, theta: 0, vega: 0, rho: 0 },
+        };
+        current.qtyNet += qtyNet;
+
+        const ref = getLegMarkRef(position, leg);
+        if (ref) {
+          const mark = legMarks[ref.key];
+          const multiplier = ref.exchange === 'coincall' ? mark?.multiplier : ref.defaultMultiplier;
+          if (mark?.price != null) {
+            current.absPnl += Math.abs(legUnrealizedPnL(leg, mark.price, multiplier));
+          }
+          if (mark?.greeks) {
+            for (const field of GREEK_SUMMARY_FIELDS) {
+              current.greeks[field.key] += legGreekExposure(leg, mark.greeks[field.key], multiplier);
+            }
+          }
+        }
+
+        instrumentMap.set(instrument, current);
+      }
+    }
+    const rows = Array.from(instrumentMap.values());
+    const directionFactor = openInstrumentSort.direction === 'asc' ? 1 : -1;
+    const compareString = (left: string, right: string) =>
+      directionFactor * left.localeCompare(right, undefined, { sensitivity: 'base' });
+    const compareNumber = (left: number, right: number) => directionFactor * (left - right);
+    rows.sort((a, b) => {
+      switch (openInstrumentSort.key) {
+        case 'instrument':
+          return compareString(a.instrument, b.instrument);
+        case 'qtyNet':
+          return compareNumber(a.qtyNet, b.qtyNet);
+        case 'absPnl':
+          return compareNumber(a.absPnl, b.absPnl);
+        case 'delta':
+          return compareNumber(a.greeks.delta, b.greeks.delta);
+        case 'gamma':
+          return compareNumber(a.greeks.gamma, b.greeks.gamma);
+        case 'theta':
+          return compareNumber(a.greeks.theta, b.greeks.theta);
+        case 'vega':
+          return compareNumber(a.greeks.vega, b.greeks.vega);
+        case 'rho':
+          return compareNumber(a.greeks.rho, b.greeks.rho);
+        default:
+          return 0;
+      }
+    });
+    return rows;
+  }, [filteredSaved, isActiveLeg, legMarks, openInstrumentSort.direction, openInstrumentSort.key]);
+
   const sortedSaved = React.useMemo(() => {
     const numericValue = (value: number | null | undefined) =>
       typeof value === 'number' && Number.isFinite(value)
@@ -1871,6 +1955,34 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
             className={`text-[10px] leading-none ${isDesc ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
             aria-label={`Sort ${label} descending`}
             onClick={() => setSavedSort({ key, direction: 'desc' })}
+          >
+            ▼
+          </button>
+        </span>
+      </div>
+    );
+  };
+
+  const renderOpenInstrumentSortHeader = (label: string, key: OpenInstrumentSortKey, align: 'left' | 'right' = 'right') => {
+    const isAsc = openInstrumentSort.key === key && openInstrumentSort.direction === 'asc';
+    const isDesc = openInstrumentSort.key === key && openInstrumentSort.direction === 'desc';
+    return (
+      <div className={`inline-flex items-center gap-2 ${align === 'right' ? 'justify-end' : ''}`}>
+        <span>{label}</span>
+        <span className="inline-flex flex-col -space-y-1">
+          <button
+            type="button"
+            className={`text-[10px] leading-none ${isAsc ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+            aria-label={`Sort ${label} ascending`}
+            onClick={() => setOpenInstrumentSort({ key, direction: 'asc' })}
+          >
+            ▲
+          </button>
+          <button
+            type="button"
+            className={`text-[10px] leading-none ${isDesc ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+            aria-label={`Sort ${label} descending`}
+            onClick={() => setOpenInstrumentSort({ key, direction: 'desc' })}
           >
             ▼
           </button>
@@ -2418,6 +2530,61 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
                           );
                         })}
                       </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </details>
+      </div>
+
+      <div className="px-6 py-3">
+        <details className="bg-white rounded-2xl shadow border overflow-hidden">
+          <summary className="flex items-center justify-between px-4 py-3 text-sm font-medium text-slate-700 cursor-pointer select-none">
+            <span>Open Instruments</span>
+            <span className="text-xs font-normal text-slate-500">
+              {openInstrumentRows.length ? `${openInstrumentRows.length} instruments` : 'No open instruments'}
+            </span>
+          </summary>
+          <div className="border-t">
+            {openInstrumentRows.length === 0 ? (
+              <div className="px-4 py-3 text-sm text-slate-500">
+                No open instruments available yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="text-xs uppercase text-slate-500 border-t border-slate-100">
+                    <tr className="text-left">
+                      <th className="p-3">
+                        {renderOpenInstrumentSortHeader('Instrument', 'instrument', 'left')}
+                      </th>
+                      <th className="p-3 text-right">
+                        {renderOpenInstrumentSortHeader('Net Qty', 'qtyNet')}
+                      </th>
+                      <th className="p-3 text-right">
+                        {renderOpenInstrumentSortHeader('Abs PnL', 'absPnl')}
+                      </th>
+                      {GREEK_SUMMARY_FIELDS.map((field) => (
+                        <th key={field.key} className="p-3 text-right">
+                          {renderOpenInstrumentSortHeader(field.symbol, field.key)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {openInstrumentRows.map((row) => (
+                      <tr key={row.instrument} className="border-t border-slate-100">
+                        <td className="p-3 font-medium text-slate-800">{row.instrument}</td>
+                        <td className="p-3 text-right text-slate-700">{formatQuantity(row.qtyNet)}</td>
+                        <td className="p-3 text-right text-slate-700">{fmtPremium(row.absPnl)}</td>
+                        {GREEK_SUMMARY_FIELDS.map((field) => (
+                          <td key={field.key} className="p-3 text-right text-slate-700">
+                            {fmtGreek(row.greeks[field.key])}
+                          </td>
+                        ))}
+                      </tr>
                     ))}
                   </tbody>
                 </table>
