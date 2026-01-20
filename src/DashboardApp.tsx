@@ -28,6 +28,7 @@ import {
   saveTransactionLogs,
   saveUnprocessedTrades,
   buildStructureChipSummary,
+  buildStructureSummaryLines,
   fetchProgramPlaybooks,
   type ProgramPlaybook,
 } from './lib/positions'
@@ -1524,8 +1525,11 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       })();
       const pnlPct = calculatePnlPct(posTotalPnl, position.legs ?? [], premiumAbs);
       const greeks = positionGreeks(position, legMarks);
+      const strategySummary = buildStructureSummaryLines(position);
       const programLabel = position.source === 'supabase' ? (position.programName ?? '').trim() : '';
-      const strategyLabel = (programLabel || position.strategy || '').trim();
+      const strategyLabel = strategySummary
+        ? [strategySummary.header, strategySummary.legs ?? ''].join(' ').trim()
+        : (programLabel || position.strategy || '').trim();
       const playbookLabel = (position.playbook ?? position.programId ?? '').toString().trim();
       return { position, pnlPct, greeks, posTotalPnl, strategyLabel, playbookLabel, statusRank: statusRank[position.status] };
     });

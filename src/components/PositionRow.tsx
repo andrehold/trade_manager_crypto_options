@@ -13,7 +13,7 @@ import {
   calculatePnlPct,
   type LegMarkRef,
 } from '../utils'
-import { buildStructureChipSummary } from '../lib/positions/structureSummary'
+import { buildStructureChipSummary, buildStructureSummaryLines } from '../lib/positions/structureSummary'
 import { StructureEntryOverlay } from './StructureEntryOverlay'
 import { StructureDetailOverlay } from './StructureDetailOverlay'
 import { TradeJsonExportOverlay } from './TradeJsonExportOverlay'
@@ -168,6 +168,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   }, [onPlaybookOpen, p.playbook, p.programId])
 
   const structureChipSummary = React.useMemo(() => buildStructureChipSummary(p), [p])
+  const structureSummaryLines = React.useMemo(() => buildStructureSummaryLines(p), [p])
   const showStructureChip = Boolean(structureChipSummary)
 
   return (
@@ -210,7 +211,20 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
         {visibleCols.includes('legs') && <td className="p-3 align-top">{p.legsCount}</td>}
         {visibleCols.includes('strategy') && (
           <td className="p-3 align-top">
-            {programLabel || strategyLabel || showStructureChip ? (
+            {readOnly ? (
+              structureSummaryLines ? (
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-medium text-slate-800">{structureSummaryLines.header}</span>
+                  {structureSummaryLines.legs ? (
+                    <span className="text-xs text-slate-500">{structureSummaryLines.legs}</span>
+                  ) : null}
+                </div>
+              ) : (
+                <span className="inline-flex min-h-[2.25rem] items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-400">
+                  —
+                </span>
+              )
+            ) : programLabel || strategyLabel || showStructureChip ? (
               <div className="flex flex-col gap-1">
                 {programLabel && (
                   <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm">

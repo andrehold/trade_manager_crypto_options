@@ -24,7 +24,7 @@ export {
   type BackfillLegExpiriesParams,
   type BackfillLegExpiriesResult,
 } from "./backfillLegExpiries";
-export { buildStructureChipSummary } from "./structureSummary";
+export { buildStructureChipSummary, buildStructureSummaryLines } from "./structureSummary";
 export {
   syncLinkedStructures,
   type SyncLinkedStructuresParams,
