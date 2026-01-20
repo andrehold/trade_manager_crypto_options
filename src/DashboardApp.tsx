@@ -225,6 +225,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   const [activePlaybookPosition, setActivePlaybookPosition] = React.useState<Position | null>(null);
   const [alertsOnly, setAlertsOnly] = React.useState(false);
   const [query, setQuery] = React.useState("");
+  const [showInstrumentSuggestions, setShowInstrumentSuggestions] = React.useState(false);
   const [savedSort, setSavedSort] = React.useState<{ key: SavedSortKey; direction: 'asc' | 'desc' }>({
     key: 'pnlpct',
     direction: 'desc',
@@ -1459,6 +1460,50 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   }, [selectedClient]);
 
   const normalizedQuery = query.toLowerCase().trim();
+  const savedStructureInstruments = React.useMemo(() => {
+    const instruments = new Set<string>();
+    for (const position of savedStructures) {
+      for (const leg of position.legs ?? []) {
+        for (const trade of leg.trades ?? []) {
+          const instrument = String(trade.instrument ?? '').trim();
+          if (instrument) instruments.add(instrument);
+        }
+      }
+    }
+    return Array.from(instruments).sort((a, b) => a.localeCompare(b));
+  }, [savedStructures]);
+
+  const instrumentSuggestions = React.useMemo(() => {
+    if (!normalizedQuery) return [];
+    return savedStructureInstruments
+      .filter((instrument) => instrument.toLowerCase().includes(normalizedQuery))
+      .slice(0, 8);
+  }, [normalizedQuery, savedStructureInstruments]);
+
+  const handleInstrumentSelection = React.useCallback((instrument: string) => {
+    setQuery(instrument);
+    setShowInstrumentSuggestions(false);
+  }, []);
+
+  const handleSearchKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key !== 'Enter') return;
+      if (instrumentSuggestions.length === 0) return;
+      handleInstrumentSelection(instrumentSuggestions[0]);
+    },
+    [handleInstrumentSelection, instrumentSuggestions],
+  );
+
+  const getPositionInstruments = React.useCallback((p: Position) => {
+    const instruments: string[] = [];
+    for (const leg of p.legs ?? []) {
+      for (const trade of leg.trades ?? []) {
+        const instrument = String(trade.instrument ?? '').trim();
+        if (instrument) instruments.push(instrument);
+      }
+    }
+    return instruments;
+  }, []);
   const matchesFilter = React.useCallback(
     (p: Position) => {
       if (alertsOnly && p.status === "OPEN") return false;
@@ -1470,11 +1515,12 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         p.structureId ?? "",
         p.clientName ?? "",
         ...p.legs.map((l) => `${l.strike}${l.optionType}`),
+        ...getPositionInstruments(p),
       ];
 
       return haystacks.some((candidate) => candidate.toLowerCase().includes(normalizedQuery));
     },
-    [alertsOnly, normalizedQuery],
+    [alertsOnly, getPositionInstruments, normalizedQuery],
   );
 
   const matchesClientSelection = React.useCallback(
@@ -2148,8 +2194,30 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
             placeholder="Search symbol, strategy, strike…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setShowInstrumentSuggestions(true)}
+            onBlur={() => setShowInstrumentSuggestions(false)}
+            onKeyDown={handleSearchKeyDown}
           />
           <span className="absolute left-3 top-2.5 text-slate-400">🔎</span>
+          {showInstrumentSuggestions && instrumentSuggestions.length > 0 ? (
+            <div className="absolute left-0 right-0 z-20 mt-2 rounded-2xl border border-slate-200 bg-white shadow-lg">
+              <ul className="max-h-56 overflow-y-auto py-2 text-sm text-slate-700">
+                {instrumentSuggestions.map((instrument) => (
+                  <li key={instrument}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between px-4 py-2 text-left hover:bg-slate-100"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => handleInstrumentSelection(instrument)}
+                    >
+                      <span className="font-medium text-slate-800">{instrument}</span>
+                      <span className="text-xs text-slate-400">Instrument</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
         <div className="flex items-center gap-3 relative">
           <ColumnPicker />
