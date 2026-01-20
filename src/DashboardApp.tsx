@@ -1485,26 +1485,6 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     return Array.from(instruments).sort((a, b) => a.localeCompare(b));
   }, [savedStructures, isActiveLeg]);
 
-  const openInstrumentRows = React.useMemo(() => {
-    const instrumentMap = new Map<string, { instrument: string; qtyNet: number }>();
-    for (const position of filteredSaved) {
-      for (const leg of position.legs ?? []) {
-        if (!isActiveLeg(leg)) continue;
-        const instrument = String(leg.trades?.[0]?.instrument ?? '').trim();
-        if (!instrument) continue;
-        const qtyNet = Number(leg.qtyNet);
-        if (!Number.isFinite(qtyNet) || qtyNet === 0) continue;
-        const current = instrumentMap.get(instrument);
-        if (current) {
-          current.qtyNet += qtyNet;
-        } else {
-          instrumentMap.set(instrument, { instrument, qtyNet });
-        }
-      }
-    }
-    return Array.from(instrumentMap.values()).sort((a, b) => a.instrument.localeCompare(b.instrument));
-  }, [filteredSaved, isActiveLeg]);
-
   const instrumentSuggestions = React.useMemo(() => {
     if (!normalizedQuery) return [];
     return savedStructureInstruments
@@ -1574,6 +1554,26 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     () => savedStructures.filter(matchesClientSelection).filter(matchesFilter),
     [matchesClientSelection, matchesFilter, savedStructures],
   );
+
+  const openInstrumentRows = React.useMemo(() => {
+    const instrumentMap = new Map<string, { instrument: string; qtyNet: number }>();
+    for (const position of filteredSaved) {
+      for (const leg of position.legs ?? []) {
+        if (!isActiveLeg(leg)) continue;
+        const instrument = String(leg.trades?.[0]?.instrument ?? '').trim();
+        if (!instrument) continue;
+        const qtyNet = Number(leg.qtyNet);
+        if (!Number.isFinite(qtyNet) || qtyNet === 0) continue;
+        const current = instrumentMap.get(instrument);
+        if (current) {
+          current.qtyNet += qtyNet;
+        } else {
+          instrumentMap.set(instrument, { instrument, qtyNet });
+        }
+      }
+    }
+    return Array.from(instrumentMap.values()).sort((a, b) => a.instrument.localeCompare(b.instrument));
+  }, [filteredSaved, isActiveLeg]);
 
   const sortedSaved = React.useMemo(() => {
     const numericValue = (value: number | null | undefined) =>
