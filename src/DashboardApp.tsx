@@ -14,7 +14,7 @@ import {
   parseActionSide, toNumber, parseInstrumentByExchange, normalizeSecond,
   daysTo, daysSince, fifoMatchAndRealize, classifyStatus, calculatePnlPct,
   Exchange, getLegMarkRef, fmtGreek, legGreekExposure, toDeribitInstrument,
-  positionGreeks, positionUnrealizedPnL, formatInstrumentLabel
+  positionGreeks, positionUnrealizedPnL, formatInstrumentLabel, legUnrealizedPnL, fmtPremium
 } from './utils'
 import { PositionRow } from './components/PositionRow'
 import { PlaybookDrawer } from './components/PlaybookDrawer'
@@ -1556,7 +1556,10 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   );
 
   const openInstrumentRows = React.useMemo(() => {
-    const instrumentMap = new Map<string, { instrument: string; qtyNet: number }>();
+    const instrumentMap = new Map<
+      string,
+      { instrument: string; qtyNet: number; absPnl: number; greeks: Record<GreekKey, number> }
+    >();
     for (const position of filteredSaved) {
       for (const leg of position.legs ?? []) {
         if (!isActiveLeg(leg)) continue;
@@ -1564,16 +1567,33 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         if (!instrument) continue;
         const qtyNet = Number(leg.qtyNet);
         if (!Number.isFinite(qtyNet) || qtyNet === 0) continue;
-        const current = instrumentMap.get(instrument);
-        if (current) {
-          current.qtyNet += qtyNet;
-        } else {
-          instrumentMap.set(instrument, { instrument, qtyNet });
+        const current = instrumentMap.get(instrument) ?? {
+          instrument,
+          qtyNet: 0,
+          absPnl: 0,
+          greeks: { delta: 0, gamma: 0, theta: 0, vega: 0, rho: 0 },
+        };
+        current.qtyNet += qtyNet;
+
+        const ref = getLegMarkRef(position, leg);
+        if (ref) {
+          const mark = legMarks[ref.key];
+          const multiplier = ref.exchange === 'coincall' ? mark?.multiplier : ref.defaultMultiplier;
+          if (mark?.price != null) {
+            current.absPnl += Math.abs(legUnrealizedPnL(leg, mark.price, multiplier));
+          }
+          if (mark?.greeks) {
+            for (const field of GREEK_SUMMARY_FIELDS) {
+              current.greeks[field.key] += legGreekExposure(leg, mark.greeks[field.key], multiplier);
+            }
+          }
         }
+
+        instrumentMap.set(instrument, current);
       }
     }
     return Array.from(instrumentMap.values()).sort((a, b) => a.instrument.localeCompare(b.instrument));
-  }, [filteredSaved, isActiveLeg]);
+  }, [filteredSaved, isActiveLeg, legMarks]);
 
   const sortedSaved = React.useMemo(() => {
     const numericValue = (value: number | null | undefined) =>
@@ -2466,14 +2486,26 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
                   <thead className="text-xs uppercase text-slate-500 border-t border-slate-100">
                     <tr className="text-left">
                       <th className="p-3">Instrument</th>
-                      <th className="p-3">Net Qty</th>
+                      <th className="p-3 text-right">Net Qty</th>
+                      <th className="p-3 text-right">Abs PnL</th>
+                      {GREEK_SUMMARY_FIELDS.map((field) => (
+                        <th key={field.key} className="p-3 text-right">
+                          {field.symbol}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
                     {openInstrumentRows.map((row) => (
                       <tr key={row.instrument} className="border-t border-slate-100">
                         <td className="p-3 font-medium text-slate-800">{row.instrument}</td>
-                        <td className="p-3 text-slate-700">{formatQuantity(row.qtyNet)}</td>
+                        <td className="p-3 text-right text-slate-700">{formatQuantity(row.qtyNet)}</td>
+                        <td className="p-3 text-right text-slate-700">{fmtPremium(row.absPnl)}</td>
+                        {GREEK_SUMMARY_FIELDS.map((field) => (
+                          <td key={field.key} className="p-3 text-right text-slate-700">
+                            {fmtGreek(row.greeks[field.key])}
+                          </td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>
