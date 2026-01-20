@@ -1485,6 +1485,26 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     return Array.from(instruments).sort((a, b) => a.localeCompare(b));
   }, [savedStructures, isActiveLeg]);
 
+  const openInstrumentRows = React.useMemo(() => {
+    const instrumentMap = new Map<string, { instrument: string; qtyNet: number }>();
+    for (const position of filteredSaved) {
+      for (const leg of position.legs ?? []) {
+        if (!isActiveLeg(leg)) continue;
+        const instrument = String(leg.trades?.[0]?.instrument ?? '').trim();
+        if (!instrument) continue;
+        const qtyNet = Number(leg.qtyNet);
+        if (!Number.isFinite(qtyNet) || qtyNet === 0) continue;
+        const current = instrumentMap.get(instrument);
+        if (current) {
+          current.qtyNet += qtyNet;
+        } else {
+          instrumentMap.set(instrument, { instrument, qtyNet });
+        }
+      }
+    }
+    return Array.from(instrumentMap.values()).sort((a, b) => a.instrument.localeCompare(b.instrument));
+  }, [filteredSaved, isActiveLeg]);
+
   const instrumentSuggestions = React.useMemo(() => {
     if (!normalizedQuery) return [];
     return savedStructureInstruments
@@ -2418,6 +2438,43 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
                           );
                         })}
                       </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </details>
+      </div>
+
+      <div className="px-6 py-3">
+        <details className="bg-white rounded-2xl shadow border overflow-hidden">
+          <summary className="flex items-center justify-between px-4 py-3 text-sm font-medium text-slate-700 cursor-pointer select-none">
+            <span>Open Instruments</span>
+            <span className="text-xs font-normal text-slate-500">
+              {openInstrumentRows.length ? `${openInstrumentRows.length} instruments` : 'No open instruments'}
+            </span>
+          </summary>
+          <div className="border-t">
+            {openInstrumentRows.length === 0 ? (
+              <div className="px-4 py-3 text-sm text-slate-500">
+                No open instruments available yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="text-xs uppercase text-slate-500 border-t border-slate-100">
+                    <tr className="text-left">
+                      <th className="p-3">Instrument</th>
+                      <th className="p-3">Net Qty</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {openInstrumentRows.map((row) => (
+                      <tr key={row.instrument} className="border-t border-slate-100">
+                        <td className="p-3 font-medium text-slate-800">{row.instrument}</td>
+                        <td className="p-3 text-slate-700">{formatQuantity(row.qtyNet)}</td>
+                      </tr>
                     ))}
                   </tbody>
                 </table>
