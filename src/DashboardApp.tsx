@@ -71,6 +71,16 @@ type SavedSortKey =
   | 'rho'
   | 'playbook'
 
+type OpenInstrumentSortKey =
+  | 'instrument'
+  | 'qtyNet'
+  | 'absPnl'
+  | 'delta'
+  | 'gamma'
+  | 'theta'
+  | 'vega'
+  | 'rho'
+
 type ExchangePositionSnapshot = {
   id: string;
   exchange: Exchange | 'unknown';
@@ -229,6 +239,13 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   const [savedSort, setSavedSort] = React.useState<{ key: SavedSortKey; direction: 'asc' | 'desc' }>({
     key: 'pnlpct',
     direction: 'desc',
+  });
+  const [openInstrumentSort, setOpenInstrumentSort] = React.useState<{
+    key: OpenInstrumentSortKey;
+    direction: 'asc' | 'desc';
+  }>({
+    key: 'instrument',
+    direction: 'asc',
   });
   const [visibleCols, setVisibleCols] = useLocalStorage<string[]>("visible_cols_v2", [
     "status","structure","dte","legs","strategy","pnl","pnlpct","delta","gamma","theta","vega","rho","playbook"
@@ -1592,8 +1609,35 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         instrumentMap.set(instrument, current);
       }
     }
-    return Array.from(instrumentMap.values()).sort((a, b) => a.instrument.localeCompare(b.instrument));
-  }, [filteredSaved, isActiveLeg, legMarks]);
+    const rows = Array.from(instrumentMap.values());
+    const directionFactor = openInstrumentSort.direction === 'asc' ? 1 : -1;
+    const compareString = (left: string, right: string) =>
+      directionFactor * left.localeCompare(right, undefined, { sensitivity: 'base' });
+    const compareNumber = (left: number, right: number) => directionFactor * (left - right);
+    rows.sort((a, b) => {
+      switch (openInstrumentSort.key) {
+        case 'instrument':
+          return compareString(a.instrument, b.instrument);
+        case 'qtyNet':
+          return compareNumber(a.qtyNet, b.qtyNet);
+        case 'absPnl':
+          return compareNumber(a.absPnl, b.absPnl);
+        case 'delta':
+          return compareNumber(a.greeks.delta, b.greeks.delta);
+        case 'gamma':
+          return compareNumber(a.greeks.gamma, b.greeks.gamma);
+        case 'theta':
+          return compareNumber(a.greeks.theta, b.greeks.theta);
+        case 'vega':
+          return compareNumber(a.greeks.vega, b.greeks.vega);
+        case 'rho':
+          return compareNumber(a.greeks.rho, b.greeks.rho);
+        default:
+          return 0;
+      }
+    });
+    return rows;
+  }, [filteredSaved, isActiveLeg, legMarks, openInstrumentSort.direction, openInstrumentSort.key]);
 
   const sortedSaved = React.useMemo(() => {
     const numericValue = (value: number | null | undefined) =>
@@ -1911,6 +1955,34 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
             className={`text-[10px] leading-none ${isDesc ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
             aria-label={`Sort ${label} descending`}
             onClick={() => setSavedSort({ key, direction: 'desc' })}
+          >
+            ▼
+          </button>
+        </span>
+      </div>
+    );
+  };
+
+  const renderOpenInstrumentSortHeader = (label: string, key: OpenInstrumentSortKey, align: 'left' | 'right' = 'right') => {
+    const isAsc = openInstrumentSort.key === key && openInstrumentSort.direction === 'asc';
+    const isDesc = openInstrumentSort.key === key && openInstrumentSort.direction === 'desc';
+    return (
+      <div className={`inline-flex items-center gap-2 ${align === 'right' ? 'justify-end' : ''}`}>
+        <span>{label}</span>
+        <span className="inline-flex flex-col -space-y-1">
+          <button
+            type="button"
+            className={`text-[10px] leading-none ${isAsc ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+            aria-label={`Sort ${label} ascending`}
+            onClick={() => setOpenInstrumentSort({ key, direction: 'asc' })}
+          >
+            ▲
+          </button>
+          <button
+            type="button"
+            className={`text-[10px] leading-none ${isDesc ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+            aria-label={`Sort ${label} descending`}
+            onClick={() => setOpenInstrumentSort({ key, direction: 'desc' })}
           >
             ▼
           </button>
@@ -2485,12 +2557,18 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
                 <table className="min-w-full text-sm">
                   <thead className="text-xs uppercase text-slate-500 border-t border-slate-100">
                     <tr className="text-left">
-                      <th className="p-3">Instrument</th>
-                      <th className="p-3 text-right">Net Qty</th>
-                      <th className="p-3 text-right">Abs PnL</th>
+                      <th className="p-3">
+                        {renderOpenInstrumentSortHeader('Instrument', 'instrument', 'left')}
+                      </th>
+                      <th className="p-3 text-right">
+                        {renderOpenInstrumentSortHeader('Net Qty', 'qtyNet')}
+                      </th>
+                      <th className="p-3 text-right">
+                        {renderOpenInstrumentSortHeader('Abs PnL', 'absPnl')}
+                      </th>
                       {GREEK_SUMMARY_FIELDS.map((field) => (
                         <th key={field.key} className="p-3 text-right">
-                          {field.symbol}
+                          {renderOpenInstrumentSortHeader(field.symbol, field.key)}
                         </th>
                       ))}
                     </tr>
