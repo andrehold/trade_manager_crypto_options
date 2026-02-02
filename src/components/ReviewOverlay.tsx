@@ -219,14 +219,26 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
     }
   };
 
+  const formatReviewTimestamp = (value?: string) => {
+    if (!value) return '—';
+    const trimmed = value.trim();
+    const match = trimmed.match(/^(.+?)(\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?$/);
+    if (!match) return trimmed;
+    const base = match[1];
+    const fraction = match[2];
+    if (!fraction) return base;
+    const ms = fraction.slice(1).padEnd(3, '0').slice(0, 3);
+    return `${base}.${ms}`;
+  };
+
   const TableHead = () => (
     <thead className="bg-slate-50 text-slate-600 sticky top-0">
       <tr>
         <th className="p-2">Import</th>
-        <th className="p-2 text-left">Unprocessed</th>
+        <th className="p-2 text-left">Unproces.</th>
         <th className="p-2 text-left">Timestamp</th>
-        <th className="p-2 text-left">Structure (auto)</th>
-        <th className="p-2 text-left">Structure #</th>
+        <th className="p-2 text-left w-52">Structure (auto)</th>
+        <th className="p-2 text-left">#</th>
         <th className="p-2 text-left">Instrument</th>
         <th className="p-2 text-left">Side</th>
         <th className="p-2 text-left">Amount</th>
@@ -248,7 +260,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
         : 'bg-slate-50 text-slate-600 border-slate-200';
 
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col items-start gap-1">
         {action ? (
           <span
             className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${chipClasses}`}
@@ -387,11 +399,11 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                               }
                               disabled={!selected[i]}
                             />
-                            <span>Mark unprocessed</span>
+                            <span className="sr-only">Mark unprocessed</span>
                           </label>
                         </td>
-                        <td className="p-2">{r.timestamp || '—'}</td>
-                        <td className="p-2 align-top">
+                        <td className="p-2">{formatReviewTimestamp(r.timestamp)}</td>
+                        <td className="p-2 align-top w-52">
                           <div className="flex flex-col gap-1">
                             <select
                               className="border rounded-lg px-2 py-1 text-sm bg-white disabled:bg-slate-50"
@@ -600,8 +612,8 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                       <tr key={i} className="border-t opacity-70">
                         <td className="p-2"><input type="checkbox" disabled checked={false} readOnly /></td>
                         <td className="p-2 text-xs text-slate-500">—</td>
-                        <td className="p-2">{r.timestamp || '—'}</td>
-                        <td className="p-2">{structure}</td>
+                        <td className="p-2">{formatReviewTimestamp(r.timestamp)}</td>
+                        <td className="p-2 w-52">{structure}</td>
                         <td className="p-2">—</td>
                         <td className="p-2">{r.instrument}</td>
                         <td className="p-2"><SideCell action={r.action} side={r.side} /></td>
