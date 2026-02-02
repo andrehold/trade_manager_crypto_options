@@ -237,8 +237,8 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
         <th className="p-2">Import</th>
         <th className="p-2 text-left">Unproces.</th>
         <th className="p-2 text-left">Timestamp</th>
-        <th className="p-2 text-left w-52">Structure (auto)</th>
-        <th className="p-2 text-left">#</th>
+        <th className="p-2 text-left w-28">Structure (auto)</th>
+        <th className="p-2 text-left w-12">#</th>
         <th className="p-2 text-left">Instrument</th>
         <th className="p-2 text-left">Side</th>
         <th className="p-2 text-left">Amount</th>
@@ -403,7 +403,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                           </label>
                         </td>
                         <td className="p-2">{formatReviewTimestamp(r.timestamp)}</td>
-                        <td className="p-2 align-top w-52">
+                        <td className="p-2 align-top w-28">
                           <div className="flex flex-col gap-1">
                             <select
                               className="border rounded-lg px-2 py-1 text-sm bg-white disabled:bg-slate-50"
@@ -555,11 +555,11 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                             ) : null}
                           </div>
                         </td>
-                        <td className="p-2">
+                        <td className="p-2 w-12">
                           <input
                             type="number"
                             min={1}
-                            className={`border rounded-lg px-2 py-1 text-sm w-20 ${selectedStructureId || isUnprocessed ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : ''}`}
+                            className={`border rounded-lg px-2 py-1 text-sm w-12 ${selectedStructureId || isUnprocessed ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : ''}`}
                             value={structureNumbers[i] ?? 1}
                             onChange={(e) => setStructureNumbers((prev) => {
                               const cp = [...prev];
@@ -613,7 +613,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                         <td className="p-2"><input type="checkbox" disabled checked={false} readOnly /></td>
                         <td className="p-2 text-xs text-slate-500">—</td>
                         <td className="p-2">{formatReviewTimestamp(r.timestamp)}</td>
-                        <td className="p-2 w-52">{structure}</td>
+                        <td className="p-2 w-28">{structure}</td>
                         <td className="p-2">—</td>
                         <td className="p-2">{r.instrument}</td>
                         <td className="p-2"><SideCell action={r.action} side={r.side} /></td>
