@@ -3,6 +3,7 @@ import Papa from 'papaparse'
 import { Toggle } from './components/Toggle'
 import { UploadBox } from './components/UploadBox'
 import { ColumnMapper } from './components/ColumnMapper'
+import { StructureDnDOverlay } from './components/StructureDnDOverlay'
 import { ReviewOverlay, type ReviewStructureOption } from './components/ReviewOverlay'
 import { ImportedTransactionsOverlay } from './components/ImportedTransactionsOverlay'
 import { SupabaseLogin } from './features/auth/SupabaseLogin'
@@ -1055,7 +1056,8 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     void loadImportedTransactions();
   }, [loadImportedTransactions, showImportedOverlay]);
 
-  async function finalizeImport(selectedRows: TxnRow[], unprocessedRows: TxnRow[]) {
+  async function finalizeImport(selectedRows: TxnRow[], unprocessedRows?: TxnRow[]) {
+    const processedUnprocessedRows = unprocessedRows ?? []
     const rows: TxnRow[] = selectedRows.map((r, index) => {
       const normalized = normalizeSecond(r.timestamp);
       const fallbackStructure = normalized === 'NO_TS' ? `NO_TS_${index + 1}` : normalized;
@@ -1074,10 +1076,10 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     console.log('[Import] Prepared rows from review overlay', {
       selectedRows,
       preparedRows: rows,
-      unprocessedRows,
+      unprocessedRows: processedUnprocessedRows,
     });
 
-    if (unprocessedRows.length > 0) {
+    if (processedUnprocessedRows.length > 0) {
       if (!supabase) {
         alert('Supabase is not configured. Configure environment variables to save unprocessed trades.');
         return;
@@ -1089,13 +1091,13 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       }
 
       console.log('[Import] Saving unprocessed trades to Supabase', {
-        rows: unprocessedRows,
+        rows: processedUnprocessedRows,
         clientScope: { clientName: activeClientName, isAdmin },
         createdBy: user.id,
       });
 
       const saveResult = await saveUnprocessedTrades(supabase, {
-        rows: unprocessedRows,
+        rows: processedUnprocessedRows,
         clientScope: { clientName: activeClientName, isAdmin },
         createdBy: user.id,
       });
@@ -2759,16 +2761,12 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
       />
 
       {showReview && (
-        <ReviewOverlay
+        <StructureDnDOverlay
           rows={showReview.rows}
           excludedRows={showReview.excludedRows}
-          duplicateTradeIds={showReview.duplicateTradeIds}
-          duplicateOrderIds={showReview.duplicateOrderIds}
-          importHistorical={showReview.importHistorical}
-          allowAllocations={showReview.allowAllocations}
+          exchange={selectedExchange}
           onConfirm={finalizeImport}
           onCancel={() => setShowReview(null)}
-          availableStructures={selectableStructureOptions}
         />
       )}
 
