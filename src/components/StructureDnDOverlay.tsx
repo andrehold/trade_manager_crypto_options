@@ -1,52 +1,85 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   DndContext,
   DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
+  DragOverlay,
   closestCorners,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
-  DragStartEvent,
-  DragOverlay,
+  useDroppable,
 } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useSortable } from '@dnd-kit/sortable'
-import { TxnRow, Exchange, normalizeSecond } from '../utils'
+import { TxnRow, Exchange, normalizeSecond, Position } from '../utils'
 import {
   LegItem,
   BoardState,
   generateLegId,
   formatLegLabel,
   formatStructureLabel,
-  autoGroupByTime,
   suggestStructureType,
 } from './dndUtils'
+import { buildStructureChipSummary } from '../lib/positions'
 
-// Helper to normalize timestamp
-const getNormalizeSecond = () => normalizeSecond
+/* ─────────────────────── types ─────────────────────── */
+
+type SavedStructureInfo = {
+  id: string
+  label: string
+  position: Position
+}
 
 type StructureDnDOverlayProps = {
   rows: TxnRow[]
   excludedRows: TxnRow[]
   exchange: Exchange
+  savedStructures?: Position[]
   onConfirm: (rows: TxnRow[], unprocessedRows?: TxnRow[]) => void | Promise<void>
   onCancel: () => void
 }
 
-/**
- * Draggable leg item in a container
- */
-function DraggableLegItem({ legItem }: { legItem: LegItem }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
-    id: legItem.id,
-  })
+/* ─────────────── compact draggable chip ─────────────── */
 
-  const style = {
+function LegChip({
+  legItem,
+  exchange,
+  onRemove,
+}: {
+  legItem: LegItem
+  exchange: Exchange
+  onRemove?: () => void
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: legItem.id })
+
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
+    opacity: isDragging ? 0.4 : 1,
   }
+
+  const ts = legItem.row.timestamp ?? ''
+  // Show hh:mm:ss from the timestamp
+  const timePart = ts.includes('T')
+    ? ts.split('T')[1]?.slice(0, 8) ?? ''
+    : ts.includes(' ')
+    ? ts.split(' ')[1]?.slice(0, 8) ?? ''
+    : ''
+  const datePart = ts.slice(0, 10)
 
   return (
     <div
@@ -54,54 +87,211 @@ function DraggableLegItem({ legItem }: { legItem: LegItem }) {
       style={style}
       {...attributes}
       {...listeners}
-      className="bg-white border border-slate-200 rounded-lg p-3 cursor-move hover:bg-slate-50 touch-none"
+      className="inline-flex items-center gap-1.5 bg-white border border-slate-200 rounded-md px-2 py-1 text-xs cursor-grab active:cursor-grabbing hover:border-slate-400 hover:shadow-sm touch-none select-none transition-colors"
     >
-      <p className="text-sm font-medium text-slate-900">{formatLegLabel(legItem.row, 'deribit')}</p>
-      <p className="text-xs text-slate-500 mt-1">
-        {legItem.row.trade_id || legItem.row.order_id || legItem.row.instrument}
-      </p>
+      <span className="font-semibold text-slate-800 whitespace-nowrap">
+        {formatLegLabel(legItem.row, exchange)}
+      </span>
+      <span className="text-[10px] text-slate-400 whitespace-nowrap" title={ts}>
+        {datePart} {timePart}
+      </span>
+      {onRemove && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onRemove()
+          }}
+          className="ml-0.5 text-slate-400 hover:text-rose-500 text-[10px] leading-none"
+          title="Remove from structure"
+        >
+          ✕
+        </button>
+      )}
     </div>
   )
 }
 
-/**
- * Droppable container for structure
- */
-function StructureContainer({
-  structureId,
-  items,
-  meta,
-  onTypeChange,
-  onRemove,
+/* ─────────────── ghost chip while dragging ─────────────── */
+
+function GhostChip({ legItem, exchange }: { legItem: LegItem; exchange: Exchange }) {
+  return (
+    <div className="inline-flex items-center gap-1.5 bg-white border-2 border-blue-400 rounded-md px-2 py-1 text-xs shadow-lg">
+      <span className="font-semibold text-slate-800 whitespace-nowrap">
+        {formatLegLabel(legItem.row, exchange)}
+      </span>
+    </div>
+  )
+}
+
+/* ─────────────── droppable wrapper ─────────────── */
+
+function Droppable({
+  id,
+  children,
+  className,
 }: {
-  structureId: string
-  items: LegItem[]
-  meta: { type: string }
-  onTypeChange: (type: string) => void
-  onRemove: () => void
+  id: string
+  children: React.ReactNode
+  className?: string
 }) {
-  const { setNodeRef, isOver } = useSortable({
-    id: structureId,
-    data: { type: 'container', structureId },
-  })
+  const { setNodeRef, isOver } = useDroppable({ id })
+  return (
+    <div
+      ref={setNodeRef}
+      className={`${className ?? ''} ${isOver ? 'ring-2 ring-blue-400 ring-inset' : ''}`}
+    >
+      {children}
+    </div>
+  )
+}
+
+/* ─────────────── new-structure drop zone ─────────────── */
+
+function NewStructureDropZone({
+  items,
+  exchange,
+  onSave,
+  onRemoveItem,
+}: {
+  items: LegItem[]
+  exchange: Exchange
+  onSave: () => void
+  onRemoveItem: (id: string) => void
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: 'new-structure' })
 
   return (
     <div
       ref={setNodeRef}
-      className={`border-2 rounded-lg p-4 min-h-[200px] ${
-        isOver ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white'
+      className={`border-2 border-dashed rounded-lg p-3 transition-colors ${
+        isOver
+          ? 'border-blue-500 bg-blue-50'
+          : items.length > 0
+          ? 'border-emerald-300 bg-emerald-50/50'
+          : 'border-slate-300 bg-slate-50'
       }`}
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-slate-900">{formatStructureLabel(items, meta.type)}</p>
-          <p className="text-xs text-slate-500 mt-1">{structureId}</p>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+          New Structure
+        </p>
+        {items.length > 0 && (
+          <button
+            onClick={onSave}
+            className="px-2.5 py-0.5 text-xs font-medium rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+          >
+            Save
+          </button>
+        )}
+      </div>
+      <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+        <div className="flex flex-wrap gap-1.5 min-h-[32px]">
+          {items.length === 0 ? (
+            <p className="text-[11px] text-slate-400 italic py-1">
+              Drop legs here to create a new structure
+            </p>
+          ) : (
+            items.map((item) => (
+              <LegChip
+                key={item.id}
+                legItem={item}
+                exchange={exchange}
+                onRemove={() => onRemoveItem(item.id)}
+              />
+            ))
+          )}
         </div>
-        <div className="flex items-center gap-2">
+      </SortableContext>
+    </div>
+  )
+}
+
+/* ─────────────── saved structure card ─────────────── */
+
+function SavedStructureCard({
+  structureId,
+  label,
+  newLegs,
+  exchange,
+  onRemoveItem,
+}: {
+  structureId: string
+  label: string
+  newLegs: LegItem[]
+  exchange: Exchange
+  onRemoveItem: (id: string) => void
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: structureId })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`border rounded-lg p-3 transition-colors ${
+        isOver ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-white'
+      }`}
+    >
+      <p className="text-xs font-semibold text-slate-700 mb-1.5 truncate" title={label}>
+        {label}
+      </p>
+      <SortableContext items={newLegs.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+        <div className="flex flex-wrap gap-1.5 min-h-[28px]">
+          {newLegs.length === 0 ? (
+            <p className="text-[10px] text-slate-400 italic py-0.5">
+              Drop legs to add
+            </p>
+          ) : (
+            newLegs.map((item) => (
+              <LegChip
+                key={item.id}
+                legItem={item}
+                exchange={exchange}
+                onRemove={() => onRemoveItem(item.id)}
+              />
+            ))
+          )}
+        </div>
+      </SortableContext>
+    </div>
+  )
+}
+
+/* ─────────────── local (unsaved) structure card ─────────────── */
+
+function LocalStructureCard({
+  structureId,
+  items,
+  meta,
+  exchange,
+  onTypeChange,
+  onRemove,
+  onRemoveItem,
+}: {
+  structureId: string
+  items: LegItem[]
+  meta: { type: string }
+  exchange: Exchange
+  onTypeChange: (type: string) => void
+  onRemove: () => void
+  onRemoveItem: (id: string) => void
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: structureId })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`border rounded-lg p-3 transition-colors ${
+        isOver ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-white'
+      }`}
+    >
+      <div className="flex items-center justify-between mb-1.5">
+        <p className="text-xs font-semibold text-slate-700 truncate flex-1">
+          {formatStructureLabel(items, meta.type)}
+        </p>
+        <div className="flex items-center gap-1.5 ml-2 shrink-0">
           <select
             value={meta.type}
             onChange={(e) => onTypeChange(e.target.value)}
-            className="border rounded-lg px-2 py-1 text-xs bg-white"
+            className="border rounded px-1.5 py-0.5 text-[10px] bg-white"
           >
             <option value="IC">IC</option>
             <option value="DS">DS</option>
@@ -109,20 +299,26 @@ function StructureContainer({
           </select>
           <button
             onClick={onRemove}
-            className="text-xs text-rose-600 hover:text-rose-700 px-2 py-1"
-            title="Delete this structure"
+            className="text-[10px] text-rose-500 hover:text-rose-700"
+            title="Delete structure"
           >
             ✕
           </button>
         </div>
       </div>
-
       <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-        <div className="space-y-2">
+        <div className="flex flex-wrap gap-1.5 min-h-[28px]">
           {items.length === 0 ? (
-            <p className="text-xs text-slate-400 italic">Drop legs here</p>
+            <p className="text-[10px] text-slate-400 italic py-0.5">Drop legs here</p>
           ) : (
-            items.map((item) => <DraggableLegItem key={item.id} legItem={item} />)
+            items.map((item) => (
+              <LegChip
+                key={item.id}
+                legItem={item}
+                exchange={exchange}
+                onRemove={() => onRemoveItem(item.id)}
+              />
+            ))
           )}
         </div>
       </SortableContext>
@@ -130,98 +326,13 @@ function StructureContainer({
   )
 }
 
-/**
- * Create New Structure zone
- */
-function CreateStructureZone() {
-  const { setNodeRef, isOver } = useSortable({
-    id: 'create-structure',
-    data: { type: 'create-structure' },
-  })
+/* ═══════════════════════ MAIN OVERLAY ═══════════════════════ */
 
-  return (
-    <div
-      ref={setNodeRef}
-      className={`border-2 border-dashed rounded-lg p-8 text-center ${
-        isOver ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-50'
-      }`}
-    >
-      <p className="text-sm font-medium text-slate-600">Drop here to create a new structure</p>
-    </div>
-  )
-}
-
-/**
- * Container for unassigned legs
- */
-function UnassignedContainer({ items }: { items: LegItem[] }) {
-  const { setNodeRef, isOver } = useSortable({
-    id: 'unassigned',
-    data: { type: 'container' },
-  })
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`border-2 rounded-lg p-4 min-h-[150px] ${
-        isOver ? 'border-amber-500 bg-amber-50' : items.length > 0 ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white'
-      }`}
-    >
-      <p className="text-sm font-semibold text-slate-900 mb-3">
-        Unassigned {items.length > 0 ? `(${items.length})` : ''}
-      </p>
-      <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-        <div className="space-y-2">
-          {items.length === 0 ? (
-            <p className="text-xs text-slate-400 italic">All legs assigned</p>
-          ) : (
-            items.map((item) => <DraggableLegItem key={item.id} legItem={item} />)
-          )}
-        </div>
-      </SortableContext>
-    </div>
-  )
-}
-
-/**
- * Container for excluded legs
- */
-function ExcludedContainer({ items }: { items: LegItem[] }) {
-  const { setNodeRef, isOver } = useSortable({
-    id: 'excluded',
-    data: { type: 'container' },
-  })
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`border-2 rounded-lg p-4 min-h-[150px] ${
-        isOver ? 'border-rose-500 bg-rose-50' : items.length > 0 ? 'border-rose-200 bg-rose-50' : 'border-slate-200 bg-white'
-      }`}
-    >
-      <p className="text-sm font-semibold text-slate-900 mb-3">
-        Excluded {items.length > 0 ? `(${items.length})` : ''}
-      </p>
-      <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-        <div className="space-y-2">
-          {items.length === 0 ? (
-            <p className="text-xs text-slate-400 italic">No excluded legs</p>
-          ) : (
-            items.map((item) => <DraggableLegItem key={item.id} legItem={item} />)
-          )}
-        </div>
-      </SortableContext>
-    </div>
-  )
-}
-
-/**
- * Main overlay component with DnD board
- */
 export function StructureDnDOverlay({
   rows,
   excludedRows,
   exchange,
+  savedStructures = [],
   onConfirm,
   onCancel,
 }: StructureDnDOverlayProps) {
@@ -229,27 +340,42 @@ export function StructureDnDOverlay({
   const [importing, setImporting] = useState(false)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
 
-  // Initialize board state
+  /* ── build saved-structure info ── */
+  const savedStructureInfos = useMemo<SavedStructureInfo[]>(() => {
+    return savedStructures
+      .filter((s) => !s.archived && !s.archivedAt)
+      .map((s) => ({
+        id: s.id,
+        label: `[${s.structureId ?? s.id}] ${buildStructureChipSummary(s) ?? s.underlying ?? ''}`,
+        position: s,
+      }))
+  }, [savedStructures])
+
+  /* ── initialize board ── */
   const initialBoard = useMemo((): BoardState => {
     const itemsById: Record<string, LegItem> = {}
     const containers: Record<string, string[]> = {
-      unassigned: [],
-      excluded: [],
+      backlog: [],
+      'new-structure': [],
     }
 
-    // Add included rows
-    rows.forEach((row, idx) => {
-      const id = generateLegId(row, idx)
-      itemsById[id] = { id, row, included: true }
-      containers.unassigned.push(id)
+    // All included rows start in backlog, sorted oldest first (already sorted by time)
+    const sorted = [...rows].sort((a, b) => {
+      const ta = a.timestamp ?? ''
+      const tb = b.timestamp ?? ''
+      return ta < tb ? -1 : ta > tb ? 1 : 0
     })
 
-    // Add excluded rows
-    excludedRows.forEach((row, idx) => {
-      const id = generateLegId(row, rows.length + idx)
-      itemsById[id] = { id, row, included: false }
-      containers.excluded.push(id)
+    sorted.forEach((row, idx) => {
+      const id = generateLegId(row, idx)
+      itemsById[id] = { id, row, included: true }
+      containers.backlog.push(id)
     })
+
+    // Create empty container for each saved structure
+    for (const info of savedStructureInfos) {
+      containers[`saved:${info.id}`] = []
+    }
 
     return {
       itemsById,
@@ -257,163 +383,226 @@ export function StructureDnDOverlay({
       structureOrder: [],
       structureMeta: {},
     }
-  }, [rows, excludedRows])
+  }, [rows, savedStructureInfos])
 
   const [board, setBoard] = useState(initialBoard)
 
-  // Apply auto-grouping on mount
+  // Reset board when rows change
   useEffect(() => {
-    const autoGroupMap = autoGroupByTime(rows, normalizeSecond)
-    setBoard((prev) => {
-      const newBoard = { ...prev }
-      newBoard.containers = {
-        unassigned: [],
-        excluded: prev.containers.excluded,
-      }
+    setBoard(initialBoard)
+  }, [initialBoard])
 
-      // Group items by auto-group result
-      const groupMap = new Map<number, string[]>()
-      for (const [itemId, groupNum] of Object.entries(autoGroupMap)) {
-        if (!groupMap.has(groupNum)) {
-          groupMap.set(groupNum, [])
-        }
-        groupMap.get(groupNum)!.push(itemId)
-      }
-
-      // Create structures from groups
-      let structureNum = 1
-      for (const [_, itemIds] of groupMap) {
-        const structId = `structure:${structureNum++}`
-        newBoard.containers[structId] = itemIds
-        newBoard.structureOrder.push(structId)
-        newBoard.structureMeta[structId] = {
-          type: suggestStructureType(itemIds.map((id) => newBoard.itemsById[id])),
-        }
-      }
-
-      return newBoard
-    })
-  }, []) // Only on mount
-
-  // Sensors for drag
+  /* ── sensors ── */
   const sensors = useSensors(
-    useSensor(PointerSensor, { distance: 5 } as any),
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
     useSensor(KeyboardSensor),
   )
 
-  // Handle drag start
+  /* ── find which container owns an item ── */
+  const findContainer = useCallback(
+    (itemId: string, state: BoardState): string | null => {
+      for (const [cId, ids] of Object.entries(state.containers)) {
+        if (ids.includes(itemId)) return cId
+      }
+      return null
+    },
+    [],
+  )
+
+  /* ── drag handlers ── */
   const handleDragStart = (event: DragStartEvent) => {
     setActiveDragId(event.active.id as string)
   }
 
-  // Handle drag end
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     setActiveDragId(null)
-
     if (!over) return
 
     const activeId = active.id as string
     const overId = over.id as string
 
     setBoard((prev) => {
-      const newBoard = { ...prev }
-
-      // Find source container
-      let sourceContainerId: string | null = null
-      for (const [containerId, itemIds] of Object.entries(newBoard.containers)) {
-        if (itemIds.includes(activeId)) {
-          sourceContainerId = containerId
-          break
-        }
+      const next = {
+        ...prev,
+        containers: { ...prev.containers },
+        structureOrder: [...prev.structureOrder],
+        structureMeta: { ...prev.structureMeta },
       }
 
-      if (!sourceContainerId) return prev
+      // deep-copy touched arrays
+      for (const k of Object.keys(next.containers)) {
+        next.containers[k] = [...next.containers[k]]
+      }
 
-      // Remove from source
-      newBoard.containers[sourceContainerId] = newBoard.containers[sourceContainerId].filter(
-        (id) => id !== activeId,
-      )
+      const srcId = findContainer(activeId, next)
+      if (!srcId) return prev
 
-      // Handle different drop targets
-      if (overId === 'create-structure') {
-        // Create new structure
-        const newStructureId = `structure:${Date.now()}`
-        newBoard.containers[newStructureId] = [activeId]
-        newBoard.structureOrder.push(newStructureId)
-        newBoard.structureMeta[newStructureId] = { type: 'Custom' }
-      } else if (newBoard.containers[overId as string]) {
-        // Drop into existing container
-        const targetItems = newBoard.containers[overId as string]
-        // Find position of over item if it exists
-        const overIndex = targetItems.findIndex((id) => id === overId)
-        if (overIndex >= 0) {
-          targetItems.splice(overIndex, 0, activeId)
-        } else {
-          targetItems.push(activeId)
-        }
+      // determine target container
+      let targetId: string | null = null
+
+      // If dropped on a known container id directly
+      if (next.containers[overId] !== undefined) {
+        targetId = overId
       } else {
-        // overId might be an item ID, find its container
-        let targetContainerId: string | null = null
-        for (const [containerId, itemIds] of Object.entries(newBoard.containers)) {
-          if (itemIds.includes(overId)) {
-            targetContainerId = containerId
-            break
-          }
-        }
-
-        if (targetContainerId) {
-          const targetItems = newBoard.containers[targetContainerId]
-          const overIndex = targetItems.findIndex((id) => id === overId)
-          if (overIndex >= 0) {
-            targetItems.splice(overIndex, 0, activeId)
-          } else {
-            targetItems.push(activeId)
-          }
-        }
+        // dropped on another item — find its container
+        targetId = findContainer(overId, next)
       }
 
-      return newBoard
+      if (!targetId) return prev
+      if (srcId === targetId) return prev // same container, ignore reorder for simplicity
+
+      // move item
+      next.containers[srcId] = next.containers[srcId].filter((id) => id !== activeId)
+      next.containers[targetId].push(activeId)
+
+      return next
     })
   }
 
-  // Get items for each container
-  const unassignedItems = board.containers.unassigned.map((id) => board.itemsById[id])
-  const excludedItems = board.containers.excluded.map((id) => board.itemsById[id])
-  const structureIds = board.structureOrder.filter((id) => board.containers[id])
+  /* ── derived data ── */
+  const backlogItems = (board.containers.backlog ?? []).map((id) => board.itemsById[id])
+  const newStructureItems = (board.containers['new-structure'] ?? []).map(
+    (id) => board.itemsById[id],
+  )
+  const localStructureIds = board.structureOrder.filter((id) => board.containers[id])
 
-  // Validation
-  const unassignedCount = unassignedItems.length
-  const canImport = unassignedCount === 0
+  /* ── backlog count (validation) ── */
+  const backlogCount = backlogItems.length
+  const newStructureCount = newStructureItems.length
+  const canImport = backlogCount === 0 && newStructureCount === 0
 
-  // Handle import
+  /* ── save "new structure" → local structure ── */
+  const handleSaveNewStructure = () => {
+    if (newStructureItems.length === 0) return
+    setBoard((prev) => {
+      const next = {
+        ...prev,
+        containers: { ...prev.containers },
+        structureOrder: [...prev.structureOrder],
+        structureMeta: { ...prev.structureMeta },
+      }
+      for (const k of Object.keys(next.containers)) {
+        next.containers[k] = [...next.containers[k]]
+      }
+
+      const structId = `structure:${Date.now()}`
+      const itemIds = next.containers['new-structure']
+      next.containers[structId] = itemIds
+      next.containers['new-structure'] = []
+      next.structureOrder.push(structId)
+      next.structureMeta[structId] = {
+        type: suggestStructureType(itemIds.map((id) => next.itemsById[id])),
+      }
+      return next
+    })
+  }
+
+  /* ── remove item from any structure → back to backlog ── */
+  const handleRemoveItem = useCallback((itemId: string) => {
+    setBoard((prev) => {
+      const next = {
+        ...prev,
+        containers: { ...prev.containers },
+      }
+      for (const k of Object.keys(next.containers)) {
+        next.containers[k] = [...next.containers[k]]
+      }
+
+      const srcId = findContainer(itemId, next)
+      if (!srcId || srcId === 'backlog') return prev
+
+      next.containers[srcId] = next.containers[srcId].filter((id) => id !== itemId)
+      next.containers.backlog = [...next.containers.backlog, itemId]
+
+      // re-sort backlog by timestamp
+      next.containers.backlog.sort((a, b) => {
+        const ta = next.itemsById[a]?.row.timestamp ?? ''
+        const tb = next.itemsById[b]?.row.timestamp ?? ''
+        return ta < tb ? -1 : ta > tb ? 1 : 0
+      })
+
+      return next
+    })
+  }, [findContainer])
+
+  /* ── delete local structure → legs back to backlog ── */
+  const handleRemoveStructure = (structureId: string) => {
+    setBoard((prev) => {
+      const next = {
+        ...prev,
+        containers: { ...prev.containers },
+        structureOrder: [...prev.structureOrder],
+        structureMeta: { ...prev.structureMeta },
+      }
+      for (const k of Object.keys(next.containers)) {
+        next.containers[k] = [...next.containers[k]]
+      }
+
+      const itemIds = next.containers[structureId] ?? []
+      next.containers.backlog = [...next.containers.backlog, ...itemIds]
+      next.containers.backlog.sort((a, b) => {
+        const ta = next.itemsById[a]?.row.timestamp ?? ''
+        const tb = next.itemsById[b]?.row.timestamp ?? ''
+        return ta < tb ? -1 : ta > tb ? 1 : 0
+      })
+      delete next.containers[structureId]
+      next.structureOrder = next.structureOrder.filter((id) => id !== structureId)
+      delete next.structureMeta[structureId]
+      return next
+    })
+  }
+
+  const handleStructureTypeChange = (structureId: string, type: string) => {
+    setBoard((prev) => ({
+      ...prev,
+      structureMeta: {
+        ...prev.structureMeta,
+        [structureId]: { ...prev.structureMeta[structureId], type },
+      },
+    }))
+  }
+
+  /* ── import ── */
   const handleImport = async () => {
     if (!canImport || importing) return
 
     const payload: TxnRow[] = []
 
-    // Collect all non-excluded items with their structure IDs
+    // Local structures
     for (const structureId of board.structureOrder) {
       const itemIds = board.containers[structureId] || []
       for (const itemId of itemIds) {
         const item = board.itemsById[itemId]
-        if (item && item.included) {
+        if (item?.included) {
+          payload.push({ ...item.row, structureId })
+        }
+      }
+    }
+
+    // Saved structures — legs dragged into them get linkedStructureId
+    for (const info of savedStructureInfos) {
+      const containerId = `saved:${info.id}`
+      const itemIds = board.containers[containerId] || []
+      for (const itemId of itemIds) {
+        const item = board.itemsById[itemId]
+        if (item?.included) {
           payload.push({
             ...item.row,
-            structureId,
+            structureId: info.id,
+            linkedStructureId: info.id,
           })
         }
       }
     }
 
-    // Unprocessed = excluded rows
-    const unprocessedRows = excludedItems.map((item) => item.row)
-
-    if (payload.length === 0 && unprocessedRows.length === 0) return
+    if (payload.length === 0) return
 
     try {
       setImporting(true)
-      await onConfirm(payload, unprocessedRows)
+      await onConfirm(payload)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to import trades.'
       alert(message)
@@ -422,112 +611,29 @@ export function StructureDnDOverlay({
     }
   }
 
-  // Toolbar actions
-  const handleAutoByTime = () => {
-    const autoGroupMap = autoGroupByTime(rows, normalizeSecond)
-    setBoard((prev) => {
-      const newBoard = { ...prev }
-      newBoard.containers = {
-        unassigned: [],
-        excluded: prev.containers.excluded,
-      }
-      newBoard.structureOrder = []
-      newBoard.structureMeta = {}
+  /* ── all sortable IDs for DndContext ── */
+  const allItemIds = Object.keys(board.itemsById)
 
-      const groupMap = new Map<number, string[]>()
-      for (const [itemId, groupNum] of Object.entries(autoGroupMap)) {
-        if (!groupMap.has(groupNum)) {
-          groupMap.set(groupNum, [])
-        }
-        groupMap.get(groupNum)!.push(itemId)
-      }
+  /* ── validation message ── */
+  const validationMsg = (() => {
+    const parts: string[] = []
+    if (backlogCount > 0) parts.push(`${backlogCount} unassigned leg${backlogCount !== 1 ? 's' : ''}`)
+    if (newStructureCount > 0)
+      parts.push(`${newStructureCount} leg${newStructureCount !== 1 ? 's' : ''} in unsaved new structure`)
+    return parts.length > 0 ? parts.join(', ') : null
+  })()
 
-      let structureNum = 1
-      for (const [_, itemIds] of groupMap) {
-        const structId = `structure:${structureNum++}`
-        newBoard.containers[structId] = itemIds
-        newBoard.structureOrder.push(structId)
-        newBoard.structureMeta[structId] = {
-          type: suggestStructureType(itemIds.map((id) => newBoard.itemsById[id])),
-        }
-      }
-
-      return newBoard
-    })
-  }
-
-  const handleAllToUnassigned = () => {
-    setBoard((prev) => {
-      const newBoard = { ...prev }
-      const allItemIds: string[] = []
-
-      for (const containerId of Object.keys(newBoard.containers)) {
-        if (containerId !== 'excluded') {
-          allItemIds.push(...newBoard.containers[containerId])
-        }
-      }
-
-      newBoard.containers = {
-        unassigned: allItemIds,
-        excluded: newBoard.containers.excluded,
-      }
-      newBoard.structureOrder = []
-      newBoard.structureMeta = {}
-
-      return newBoard
-    })
-  }
-
-  const handleNewStructure = () => {
-    setBoard((prev) => {
-      const newStructureId = `structure:${Date.now()}`
-      const newBoard = { ...prev }
-      newBoard.containers[newStructureId] = []
-      newBoard.structureOrder.push(newStructureId)
-      newBoard.structureMeta[newStructureId] = { type: 'Custom' }
-      return newBoard
-    })
-  }
-
-  const handleRemoveStructure = (structureId: string) => {
-    setBoard((prev) => {
-      const newBoard = { ...prev }
-      const itemIds = newBoard.containers[structureId] || []
-      newBoard.containers.unassigned.push(...itemIds)
-      delete newBoard.containers[structureId]
-      newBoard.structureOrder = newBoard.structureOrder.filter((id) => id !== structureId)
-      delete newBoard.structureMeta[structureId]
-      return newBoard
-    })
-  }
-
-  const handleStructureTypeChange = (structureId: string, type: string) => {
-    setBoard((prev) => {
-      const newBoard = { ...prev }
-      if (newBoard.structureMeta[structureId]) {
-        newBoard.structureMeta[structureId].type = type
-      }
-      return newBoard
-    })
-  }
-
-  // All droppable IDs
-  const droppableIds = [
-    'unassigned',
-    'excluded',
-    'create-structure',
-    ...board.structureOrder,
-  ]
+  /* ═════════════════════ RENDER ═════════════════════ */
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col p-6">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-3">
-          <h3 className="text-lg font-semibold">Review & Assign Structures</h3>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+        {/* ── header ── */}
+        <div className="flex items-center gap-3 px-6 pt-5 pb-3 border-b">
+          <h3 className="text-lg font-semibold">Assign Legs to Structures</h3>
           <div className="ml-auto flex gap-2 text-sm">
             <button
-              className={`px-3 py-1 rounded-lg border ${
+              className={`px-3 py-1 rounded-lg border text-xs ${
                 activeTab === 'included' ? 'bg-slate-900 text-white' : ''
               }`}
               onClick={() => setActiveTab('included')}
@@ -535,7 +641,7 @@ export function StructureDnDOverlay({
               Included ({rows.length})
             </button>
             <button
-              className={`px-3 py-1 rounded-lg border ${
+              className={`px-3 py-1 rounded-lg border text-xs ${
                 activeTab === 'excluded' ? 'bg-slate-900 text-white' : ''
               }`}
               onClick={() => setActiveTab('excluded')}
@@ -545,8 +651,8 @@ export function StructureDnDOverlay({
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-auto">
+        {/* ── body ── */}
+        <div className="flex-1 overflow-auto px-6 py-4">
           {activeTab === 'included' ? (
             <DndContext
               sensors={sensors}
@@ -554,120 +660,169 @@ export function StructureDnDOverlay({
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <div className="space-y-4">
-                {/* Toolbar */}
-                <div className="flex gap-2 items-center flex-wrap">
-                  <button
-                    onClick={handleAutoByTime}
-                    className="px-3 py-1 border rounded-lg hover:bg-slate-50"
-                    title="Auto-group by timestamp"
+              <div className="grid grid-cols-[minmax(240px,1fr)_2fr] gap-6 h-full">
+                {/* ──── LEFT: Backlog ──── */}
+                <div className="flex flex-col min-h-0">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                    New Legs ({backlogCount})
+                  </p>
+                  <Droppable
+                    id="backlog"
+                    className="flex-1 overflow-y-auto border rounded-lg p-2 bg-slate-50 min-h-[200px]"
                   >
-                    Auto by time
-                  </button>
-                  <button
-                    onClick={handleAllToUnassigned}
-                    className="px-3 py-1 border rounded-lg hover:bg-slate-50"
-                    title="Clear all groupings"
-                  >
-                    All → Unassigned
-                  </button>
-                  <button
-                    onClick={handleNewStructure}
-                    className="px-3 py-1 border rounded-lg hover:bg-slate-50"
-                    title="Create empty structure"
-                  >
-                    + New structure
-                  </button>
-
-                  {unassignedCount > 0 && (
-                    <div className="ml-auto text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1">
-                      Assign or exclude {unassignedCount} leg{unassignedCount !== 1 ? 's' : ''}
-                    </div>
-                  )}
+                    <SortableContext
+                      items={backlogItems.map((i) => i.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="flex flex-col gap-1">
+                        {backlogItems.length === 0 ? (
+                          <p className="text-[11px] text-slate-400 italic text-center py-4">
+                            All legs assigned
+                          </p>
+                        ) : (
+                          backlogItems.map((item) => (
+                            <LegChip key={item.id} legItem={item} exchange={exchange} />
+                          ))
+                        )}
+                      </div>
+                    </SortableContext>
+                  </Droppable>
                 </div>
 
-                {/* Board layout: left column + right grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                  {/* Left column: Unassigned + Excluded */}
-                  <div className="space-y-4">
-                    <UnassignedContainer items={unassignedItems} />
-                    <ExcludedContainer items={excludedItems} />
-                  </div>
+                {/* ──── RIGHT: Structures ──── */}
+                <div className="flex flex-col gap-4 min-h-0 overflow-y-auto">
+                  {/* New structure drop zone */}
+                  <NewStructureDropZone
+                    items={newStructureItems}
+                    exchange={exchange}
+                    onSave={handleSaveNewStructure}
+                    onRemoveItem={handleRemoveItem}
+                  />
 
-                  {/* Right area: Structures + Create zone */}
-                  <div className="lg:col-span-3">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {structureIds.map((structureId) => (
-                        <StructureContainer
-                          key={structureId}
-                          structureId={structureId}
-                          items={board.containers[structureId].map((id) => board.itemsById[id])}
-                          meta={board.structureMeta[structureId]}
-                          onTypeChange={(type) => handleStructureTypeChange(structureId, type)}
-                          onRemove={() => handleRemoveStructure(structureId)}
-                        />
-                      ))}
-                      <CreateStructureZone />
+                  {/* Local (unsaved) structures created via Save */}
+                  {localStructureIds.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                        New Structures (overlay only)
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {localStructureIds.map((sId) => (
+                          <LocalStructureCard
+                            key={sId}
+                            structureId={sId}
+                            items={(board.containers[sId] ?? []).map(
+                              (id) => board.itemsById[id],
+                            )}
+                            meta={board.structureMeta[sId] ?? { type: 'Custom' }}
+                            exchange={exchange}
+                            onTypeChange={(t) => handleStructureTypeChange(sId, t)}
+                            onRemove={() => handleRemoveStructure(sId)}
+                            onRemoveItem={handleRemoveItem}
+                          />
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* Saved structures from DB */}
+                  {savedStructureInfos.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                        Saved Structures
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {savedStructureInfos.map((info) => {
+                          const containerId = `saved:${info.id}`
+                          const newLegs = (board.containers[containerId] ?? []).map(
+                            (id) => board.itemsById[id],
+                          )
+                          return (
+                            <SavedStructureCard
+                              key={info.id}
+                              structureId={containerId}
+                              label={info.label}
+                              newLegs={newLegs}
+                              exchange={exchange}
+                              onRemoveItem={handleRemoveItem}
+                            />
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {savedStructureInfos.length === 0 && localStructureIds.length === 0 && (
+                    <p className="text-xs text-slate-400 italic text-center py-6">
+                      No saved structures. Drop legs above to create one.
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Drag overlay */}
+              {/* Drag ghost */}
               <DragOverlay>
-                {activeDragId ? (
-                  <div className="bg-white border border-blue-500 rounded-lg p-3 shadow-lg opacity-90">
-                    <p className="text-sm font-medium text-slate-900">
-                      {formatLegLabel(board.itemsById[activeDragId].row, exchange)}
-                    </p>
-                  </div>
+                {activeDragId && board.itemsById[activeDragId] ? (
+                  <GhostChip legItem={board.itemsById[activeDragId]} exchange={exchange} />
                 ) : null}
               </DragOverlay>
             </DndContext>
           ) : (
-            // Excluded tab
+            /* ──── Excluded tab ──── */
             <div className="space-y-3">
               <p className="text-sm text-slate-600">
-                These rows were auto-excluded. They cannot be imported but are shown for reference.
+                These rows were auto-excluded (non-option instruments). Review only.
               </p>
-              <table className="min-w-full text-sm border rounded-lg overflow-hidden">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="p-2 text-left">Instrument</th>
-                    <th className="p-2 text-left">Side</th>
-                    <th className="p-2 text-left">Amount</th>
-                    <th className="p-2 text-left">Price</th>
-                    <th className="p-2 text-left">Trade ID</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {excludedRows.map((r, i) => (
-                    <tr key={i} className="border-t opacity-70">
-                      <td className="p-2">{r.instrument}</td>
-                      <td className="p-2 capitalize">{r.side}</td>
-                      <td className="p-2">{r.amount}</td>
-                      <td className="p-2">{r.price}</td>
-                      <td className="p-2">{r.trade_id || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {excludedRows.length === 0 ? (
+                <p className="text-xs text-slate-400 italic">No excluded rows.</p>
+              ) : (
+                <div className="overflow-auto border rounded-lg">
+                  <table className="min-w-full text-xs">
+                    <thead className="bg-slate-50 text-slate-600">
+                      <tr>
+                        <th className="p-2 text-left">Instrument</th>
+                        <th className="p-2 text-left">Side</th>
+                        <th className="p-2 text-left">Amount</th>
+                        <th className="p-2 text-left">Price</th>
+                        <th className="p-2 text-left">Trade ID</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {excludedRows.map((r, i) => (
+                        <tr key={i} className="border-t opacity-70">
+                          <td className="p-2">{r.instrument}</td>
+                          <td className="p-2 capitalize">{r.side}</td>
+                          <td className="p-2">{r.amount}</td>
+                          <td className="p-2">{r.price}</td>
+                          <td className="p-2">{r.trade_id || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="mt-4 flex gap-3 justify-end border-t pt-4">
-          <button onClick={onCancel} className="px-4 py-2 rounded-xl border">
-            Back
-          </button>
-          <button
-            onClick={handleImport}
-            disabled={!canImport || importing}
-            className="px-4 py-2 rounded-xl bg-slate-900 text-white disabled:opacity-50"
-          >
-            {importing ? 'Importing…' : 'Import'}
-          </button>
+        {/* ── footer ── */}
+        <div className="px-6 py-3 border-t flex items-center gap-3">
+          {validationMsg && (
+            <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1">
+              {validationMsg}
+            </span>
+          )}
+          <div className="ml-auto flex gap-3">
+            <button onClick={onCancel} className="px-4 py-2 rounded-xl border text-sm">
+              Back
+            </button>
+            <button
+              onClick={handleImport}
+              disabled={!canImport || importing}
+              className="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm disabled:opacity-50"
+            >
+              {importing ? 'Importing…' : 'Import'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

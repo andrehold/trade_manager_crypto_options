@@ -2765,6 +2765,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
           rows={showReview.rows}
           excludedRows={showReview.excludedRows}
           exchange={selectedExchange}
+          savedStructures={savedStructures}
           onConfirm={finalizeImport}
           onCancel={() => setShowReview(null)}
         />
