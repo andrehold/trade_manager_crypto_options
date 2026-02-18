@@ -1,16 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   DndContext,
   DragEndEvent,
   DragOverEvent,
   DragStartEvent,
   DragOverlay,
-  closestCorners,
+  rectIntersection,
+  pointerWithin,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   useDroppable,
+  type CollisionDetection,
 } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -243,40 +245,45 @@ function SavedStructureCard({
   return (
     <div
       ref={setNodeRef}
-      className={`border rounded-lg p-3 transition-colors ${
+      className={`border rounded-lg px-3 py-2 transition-colors ${
         isOver ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-white'
       }`}
     >
-      <p className="text-xs font-semibold text-slate-700 mb-1.5 truncate" title={label}>
-        {label}
-      </p>
-      {/* existing legs (read-only) */}
-      {existingLegs.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-1.5">
-          {existingLegs.map((leg, i) => (
-            <ExistingLegChip key={`existing-${i}`} leg={leg} />
-          ))}
-        </div>
-      )}
-      {/* new legs (draggable, removable) */}
-      <SortableContext items={newLegs.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-wrap gap-1.5 min-h-[28px]">
-          {newLegs.length === 0 ? (
-            <p className="text-[10px] text-slate-400 italic py-0.5">
-              Drop legs to add
-            </p>
-          ) : (
-            newLegs.map((item) => (
-              <LegChip
-                key={item.id}
-                legItem={item}
-                exchange={exchange}
-                onRemove={() => onRemoveItem(item.id)}
-              />
-            ))
+      {/* single row: label + existing chips | drop zone */}
+      <div className="flex items-start gap-3">
+        {/* left: label + existing legs */}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-slate-700 truncate" title={label}>
+            {label}
+          </p>
+          {existingLegs.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {existingLegs.map((leg, i) => (
+                <ExistingLegChip key={`existing-${i}`} leg={leg} />
+              ))}
+            </div>
           )}
         </div>
-      </SortableContext>
+        {/* right: new legs drop area */}
+        <SortableContext items={newLegs.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+          <div className="flex flex-wrap gap-1.5 items-center min-w-[140px] min-h-[24px]">
+            {newLegs.length === 0 ? (
+              <p className="text-[10px] text-slate-400 italic whitespace-nowrap">
+                Drop legs to add
+              </p>
+            ) : (
+              newLegs.map((item) => (
+                <LegChip
+                  key={item.id}
+                  legItem={item}
+                  exchange={exchange}
+                  onRemove={() => onRemoveItem(item.id)}
+                />
+              ))
+            )}
+          </div>
+        </SortableContext>
+      </div>
     </div>
   )
 }
@@ -426,9 +433,16 @@ export function StructureDnDOverlay({
     useSensor(KeyboardSensor),
   )
 
+  /* ── container IDs set (kept in sync) ── */
+  const containerIds = useMemo(() => {
+    return new Set(Object.keys(board.containers))
+  }, [board.containers])
+
   /* ── find which container owns an item ── */
   const findContainer = useCallback(
     (itemId: string, state: BoardState): string | null => {
+      // if it IS a container, return itself
+      if (state.containers[itemId] !== undefined) return itemId
       for (const [cId, ids] of Object.entries(state.containers)) {
         if (ids.includes(itemId)) return cId
       }
@@ -437,9 +451,79 @@ export function StructureDnDOverlay({
     [],
   )
 
+  /* ── custom collision: prefer container droppables over item droppables ── */
+  const collisionDetection: CollisionDetection = useCallback(
+    (args) => {
+      // First try pointerWithin — finds all droppables the pointer is inside
+      const pointerCollisions = pointerWithin(args)
+
+      if (pointerCollisions.length > 0) {
+        // Prefer a container droppable over an item droppable
+        const containerHit = pointerCollisions.find((c) => containerIds.has(c.id as string))
+        if (containerHit) return [containerHit]
+        return [pointerCollisions[0]]
+      }
+
+      // Fallback to rect intersection
+      const rectCollisions = rectIntersection(args)
+      if (rectCollisions.length > 0) {
+        const containerHit = rectCollisions.find((c) => containerIds.has(c.id as string))
+        if (containerHit) return [containerHit]
+        return [rectCollisions[0]]
+      }
+
+      return []
+    },
+    [containerIds],
+  )
+
   /* ── drag handlers ── */
   const handleDragStart = (event: DragStartEvent) => {
     setActiveDragId(event.active.id as string)
+  }
+
+  const moveItem = useCallback(
+    (activeId: string, targetContainerId: string) => {
+      setBoard((prev) => {
+        const srcId = findContainer(activeId, prev)
+        if (!srcId || srcId === targetContainerId) return prev
+
+        const next = {
+          ...prev,
+          containers: { ...prev.containers },
+          structureOrder: [...prev.structureOrder],
+          structureMeta: { ...prev.structureMeta },
+        }
+        for (const k of Object.keys(next.containers)) {
+          next.containers[k] = [...next.containers[k]]
+        }
+
+        next.containers[srcId] = next.containers[srcId].filter((id) => id !== activeId)
+        next.containers[targetContainerId].push(activeId)
+        return next
+      })
+    },
+    [findContainer],
+  )
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event
+    if (!over) return
+
+    const activeId = active.id as string
+    const overId = over.id as string
+
+    // Resolve target container
+    const targetContainerId = containerIds.has(overId)
+      ? overId
+      : findContainer(overId, board)
+
+    if (!targetContainerId) return
+
+    const srcContainerId = findContainer(activeId, board)
+    if (!srcContainerId || srcContainerId === targetContainerId) return
+
+    moveItem(activeId, targetContainerId)
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -450,42 +534,14 @@ export function StructureDnDOverlay({
     const activeId = active.id as string
     const overId = over.id as string
 
-    setBoard((prev) => {
-      const next = {
-        ...prev,
-        containers: { ...prev.containers },
-        structureOrder: [...prev.structureOrder],
-        structureMeta: { ...prev.structureMeta },
-      }
+    // Resolve target container
+    const targetContainerId = containerIds.has(overId)
+      ? overId
+      : findContainer(overId, board)
 
-      // deep-copy touched arrays
-      for (const k of Object.keys(next.containers)) {
-        next.containers[k] = [...next.containers[k]]
-      }
+    if (!targetContainerId) return
 
-      const srcId = findContainer(activeId, next)
-      if (!srcId) return prev
-
-      // determine target container
-      let targetId: string | null = null
-
-      // If dropped on a known container id directly
-      if (next.containers[overId] !== undefined) {
-        targetId = overId
-      } else {
-        // dropped on another item — find its container
-        targetId = findContainer(overId, next)
-      }
-
-      if (!targetId) return prev
-      if (srcId === targetId) return prev // same container, ignore reorder for simplicity
-
-      // move item
-      next.containers[srcId] = next.containers[srcId].filter((id) => id !== activeId)
-      next.containers[targetId].push(activeId)
-
-      return next
-    })
+    moveItem(activeId, targetContainerId)
   }
 
   /* ── derived data ── */
@@ -652,8 +708,12 @@ export function StructureDnDOverlay({
   /* ═════════════════════ RENDER ═════════════════════ */
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onWheel={(e) => e.stopPropagation()}
+      style={{ overscrollBehavior: 'contain' }}
+    >
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* ── header ── */}
         <div className="flex items-center gap-3 px-6 pt-5 pb-3 border-b">
           <h3 className="text-lg font-semibold">Assign Legs to Structures</h3>
@@ -682,19 +742,20 @@ export function StructureDnDOverlay({
           {activeTab === 'included' ? (
             <DndContext
               sensors={sensors}
-              collisionDetection={closestCorners}
+              collisionDetection={collisionDetection}
               onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
             >
               <div className="flex gap-6 h-full">
                 {/* ──── LEFT COLUMN: Backlog ──── */}
-                <div className="w-72 shrink-0 flex flex-col min-h-0">
+                <div className="w-1/3 shrink-0 flex flex-col min-h-0">
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
                     New Legs ({backlogCount})
                   </p>
                   <Droppable
                     id="backlog"
-                    className="flex-1 overflow-y-auto border rounded-lg p-2 bg-slate-50"
+                    className="flex-1 overflow-y-auto border rounded-lg p-2 bg-slate-50 overscroll-contain"
                   >
                     <SortableContext
                       items={backlogItems.map((i) => i.id)}
@@ -716,7 +777,7 @@ export function StructureDnDOverlay({
                 </div>
 
                 {/* ──── RIGHT COLUMN: Structures ──── */}
-                <div className="flex-1 min-w-0 overflow-y-auto flex flex-col gap-4">
+                <div className="flex-1 min-w-0 overflow-y-auto overscroll-contain flex flex-col gap-4">
                   {/* New structure drop zone */}
                   <NewStructureDropZone
                     items={newStructureItems}
