@@ -380,6 +380,15 @@ export function StructureDnDOverlay({
   const [importing, setImporting] = useState(false)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
 
+  /* ── lock body scroll while overlay is open ── */
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [])
+
   /* ── build saved-structure info ── */
   const savedStructureInfos = useMemo<SavedStructureInfo[]>(() => {
     return savedStructures
@@ -715,11 +724,7 @@ export function StructureDnDOverlay({
   /* ═════════════════════ RENDER ═════════════════════ */
 
   return (
-    <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
-      onWheel={(e) => e.stopPropagation()}
-      style={{ overscrollBehavior: 'contain' }}
-    >
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* ── header ── */}
         <div className="flex items-center gap-3 px-6 pt-5 pb-3 border-b">
@@ -756,7 +761,7 @@ export function StructureDnDOverlay({
             >
               <div className="flex gap-8 h-full">
                 {/* ──── LEFT COLUMN: Backlog ──── */}
-                <div className="w-1/2 shrink-0 flex flex-col min-h-0">
+                <div className="flex-1 min-w-0 flex flex-col min-h-0">
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
                     New Legs ({backlogCount})
                   </p>
@@ -784,7 +789,7 @@ export function StructureDnDOverlay({
                 </div>
 
                 {/* ──── RIGHT COLUMN: Structures ──── */}
-                <div className="w-1/2 min-w-0 overflow-y-auto overscroll-contain flex flex-col gap-4">
+                <div className="flex-1 min-w-0 overflow-y-auto overscroll-contain flex flex-col gap-4">
                   {/* New structure drop zone */}
                   <NewStructureDropZone
                     items={newStructureItems}
