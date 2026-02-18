@@ -27,7 +27,7 @@ import {
   generateLegId,
   formatLegLabel,
   formatStructureLabel,
-  suggestStructureType,
+  STRUCTURE_TYPES,
 } from './dndUtils'
 import { buildStructureChipSummary } from '../lib/positions'
 
@@ -152,11 +152,15 @@ function Droppable({
 function NewStructureDropZone({
   items,
   exchange,
+  structureType,
+  onStructureTypeChange,
   onSave,
   onRemoveItem,
 }: {
   items: LegItem[]
   exchange: Exchange
+  structureType: string
+  onStructureTypeChange: (type: string) => void
   onSave: () => void
   onRemoveItem: (id: string) => void
 }) {
@@ -174,9 +178,22 @@ function NewStructureDropZone({
       }`}
     >
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
-          New Structure
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+            New Structure
+          </p>
+          <select
+            value={structureType}
+            onChange={(e) => onStructureTypeChange(e.target.value)}
+            className="border border-slate-300 rounded px-1.5 py-0.5 text-[11px] bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          >
+            {STRUCTURE_TYPES.map((st) => (
+              <option key={st.code} value={st.code}>
+                {st.code} – {st.label}
+              </option>
+            ))}
+          </select>
+        </div>
         {items.length > 0 && (
           <button
             onClick={onSave}
@@ -331,11 +348,13 @@ function LocalStructureCard({
           <select
             value={meta.type}
             onChange={(e) => onTypeChange(e.target.value)}
-            className="border rounded px-1.5 py-0.5 text-[10px] bg-white"
+            className="border border-slate-300 rounded px-1.5 py-0.5 text-[11px] bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400"
           >
-            <option value="IC">IC</option>
-            <option value="DS">DS</option>
-            <option value="Custom">Custom</option>
+            {STRUCTURE_TYPES.map((st) => (
+              <option key={st.code} value={st.code}>
+                {st.code} – {st.label}
+              </option>
+            ))}
           </select>
           <button
             onClick={onRemove}
@@ -379,6 +398,7 @@ export function StructureDnDOverlay({
   const [activeTab, setActiveTab] = useState<'included' | 'excluded'>('included')
   const [importing, setImporting] = useState(false)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const [newStructureType, setNewStructureType] = useState<string>('IC')
 
   /* ── lock body scroll while overlay is open ── */
   useEffect(() => {
@@ -575,6 +595,7 @@ export function StructureDnDOverlay({
   /* ── save "new structure" → local structure ── */
   const handleSaveNewStructure = () => {
     if (newStructureItems.length === 0) return
+    const typeToSave = newStructureType
     setBoard((prev) => {
       const next = {
         ...prev,
@@ -591,11 +612,11 @@ export function StructureDnDOverlay({
       next.containers[structId] = itemIds
       next.containers['new-structure'] = []
       next.structureOrder.push(structId)
-      next.structureMeta[structId] = {
-        type: suggestStructureType(itemIds.map((id) => next.itemsById[id])),
-      }
+      next.structureMeta[structId] = { type: typeToSave }
       return next
     })
+    // Reset type dropdown for next structure
+    setNewStructureType('IC')
   }
 
   /* ── remove item from any structure → back to backlog ── */
@@ -750,7 +771,7 @@ export function StructureDnDOverlay({
         </div>
 
         {/* ── body ── */}
-        <div className="flex-1 min-h-0 px-6 py-4">
+        <div className="flex-1 min-h-0 flex flex-col px-6 py-4 overflow-hidden">
           {activeTab === 'included' ? (
             <DndContext
               sensors={sensors}
@@ -759,15 +780,15 @@ export function StructureDnDOverlay({
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
             >
-              <div className="flex gap-8 h-full">
+              <div className="flex gap-8 flex-1 min-h-0">
                 {/* ──── LEFT COLUMN: Backlog ──── */}
                 <div className="flex-1 min-w-0 flex flex-col min-h-0">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 shrink-0">
                     New Legs ({backlogCount})
                   </p>
                   <Droppable
                     id="backlog"
-                    className="flex-1 overflow-y-auto border rounded-lg p-2 bg-slate-50 overscroll-contain"
+                    className="flex-1 min-h-0 overflow-y-auto border rounded-lg p-2 bg-slate-50 overscroll-contain"
                   >
                     <SortableContext
                       items={backlogItems.map((i) => i.id)}
@@ -789,11 +810,13 @@ export function StructureDnDOverlay({
                 </div>
 
                 {/* ──── RIGHT COLUMN: Structures ──── */}
-                <div className="flex-1 min-w-0 overflow-y-auto overscroll-contain flex flex-col gap-4">
+                <div className="flex-1 min-w-0 min-h-0 overflow-y-auto overscroll-contain flex flex-col gap-4">
                   {/* New structure drop zone */}
                   <NewStructureDropZone
                     items={newStructureItems}
                     exchange={exchange}
+                    structureType={newStructureType}
+                    onStructureTypeChange={setNewStructureType}
                     onSave={handleSaveNewStructure}
                     onRemoveItem={handleRemoveItem}
                   />
@@ -868,7 +891,7 @@ export function StructureDnDOverlay({
             </DndContext>
           ) : (
             /* ──── Excluded tab ──── */
-            <div className="space-y-3 overflow-auto h-full">
+            <div className="space-y-3 overflow-auto flex-1 min-h-0">
               <p className="text-sm text-slate-600">
                 These rows were auto-excluded (non-option instruments). Review only.
               </p>

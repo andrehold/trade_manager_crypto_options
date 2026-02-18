@@ -16,6 +16,24 @@ export type BoardState = {
   structureMeta: Record<string, { type: string }>
 }
 
+/** Common option structure types with short codes and full names */
+export const STRUCTURE_TYPES = [
+  { code: 'IC', label: 'Iron Condor' },
+  { code: 'IB', label: 'Iron Butterfly' },
+  { code: 'VS', label: 'Vertical Spread' },
+  { code: 'CS', label: 'Calendar Spread' },
+  { code: 'DS', label: 'Diagonal Spread' },
+  { code: 'ST', label: 'Straddle' },
+  { code: 'SG', label: 'Strangle' },
+  { code: 'BF', label: 'Butterfly' },
+  { code: 'RS', label: 'Ratio Spread' },
+  { code: 'CC', label: 'Covered Call' },
+  { code: 'PP', label: 'Protective Put' },
+  { code: 'CU', label: 'Custom' },
+] as const
+
+export type StructureTypeCode = (typeof STRUCTURE_TYPES)[number]['code']
+
 /**
  * Generate stable unique ID for a leg item
  * Prefer trade_id > order_id > fallback: instrument|timestamp|index
