@@ -206,17 +206,34 @@ function NewStructureDropZone({
   )
 }
 
+/* ──────── read-only chip for existing legs in saved structures ──────── */
+
+function ExistingLegChip({ leg }: { leg: import('../utils').Leg }) {
+  const sign = leg.qtyNet >= 0 ? '+' : '-'
+  const qty = Math.abs(leg.qtyNet)
+  const qtyStr = qty % 1 === 0 ? String(qty) : qty.toFixed(2)
+  const strike = leg.strike
+  const ot = leg.optionType
+  return (
+    <span className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 rounded-md px-1.5 py-0.5 text-[10px] text-slate-500 select-none">
+      {sign}{qtyStr} / {ot}{strike}
+    </span>
+  )
+}
+
 /* ─────────────── saved structure card ─────────────── */
 
 function SavedStructureCard({
   structureId,
   label,
+  existingLegs,
   newLegs,
   exchange,
   onRemoveItem,
 }: {
   structureId: string
   label: string
+  existingLegs: import('../utils').Leg[]
   newLegs: LegItem[]
   exchange: Exchange
   onRemoveItem: (id: string) => void
@@ -233,6 +250,15 @@ function SavedStructureCard({
       <p className="text-xs font-semibold text-slate-700 mb-1.5 truncate" title={label}>
         {label}
       </p>
+      {/* existing legs (read-only) */}
+      {existingLegs.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-1.5">
+          {existingLegs.map((leg, i) => (
+            <ExistingLegChip key={`existing-${i}`} leg={leg} />
+          ))}
+        </div>
+      )}
+      {/* new legs (draggable, removable) */}
       <SortableContext items={newLegs.map((i) => i.id)} strategy={verticalListSortingStrategy}>
         <div className="flex flex-wrap gap-1.5 min-h-[28px]">
           {newLegs.length === 0 ? (
@@ -652,7 +678,7 @@ export function StructureDnDOverlay({
         </div>
 
         {/* ── body ── */}
-        <div className="flex-1 overflow-auto px-6 py-4">
+        <div className="flex-1 min-h-0 px-6 py-4">
           {activeTab === 'included' ? (
             <DndContext
               sensors={sensors}
@@ -660,15 +686,15 @@ export function StructureDnDOverlay({
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <div className="grid grid-cols-[minmax(240px,1fr)_2fr] gap-6 h-full">
-                {/* ──── LEFT: Backlog ──── */}
-                <div className="flex flex-col min-h-0">
+              <div className="flex gap-6 h-full">
+                {/* ──── LEFT COLUMN: Backlog ──── */}
+                <div className="w-72 shrink-0 flex flex-col min-h-0">
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
                     New Legs ({backlogCount})
                   </p>
                   <Droppable
                     id="backlog"
-                    className="flex-1 overflow-y-auto border rounded-lg p-2 bg-slate-50 min-h-[200px]"
+                    className="flex-1 overflow-y-auto border rounded-lg p-2 bg-slate-50"
                   >
                     <SortableContext
                       items={backlogItems.map((i) => i.id)}
@@ -689,8 +715,8 @@ export function StructureDnDOverlay({
                   </Droppable>
                 </div>
 
-                {/* ──── RIGHT: Structures ──── */}
-                <div className="flex flex-col gap-4 min-h-0 overflow-y-auto">
+                {/* ──── RIGHT COLUMN: Structures ──── */}
+                <div className="flex-1 min-w-0 overflow-y-auto flex flex-col gap-4">
                   {/* New structure drop zone */}
                   <NewStructureDropZone
                     items={newStructureItems}
@@ -705,7 +731,7 @@ export function StructureDnDOverlay({
                       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
                         New Structures (overlay only)
                       </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-3">
                         {localStructureIds.map((sId) => (
                           <LocalStructureCard
                             key={sId}
@@ -730,7 +756,7 @@ export function StructureDnDOverlay({
                       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
                         Saved Structures
                       </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-3">
                         {savedStructureInfos.map((info) => {
                           const containerId = `saved:${info.id}`
                           const newLegs = (board.containers[containerId] ?? []).map(
@@ -741,6 +767,7 @@ export function StructureDnDOverlay({
                               key={info.id}
                               structureId={containerId}
                               label={info.label}
+                              existingLegs={info.position.legs}
                               newLegs={newLegs}
                               exchange={exchange}
                               onRemoveItem={handleRemoveItem}
@@ -768,7 +795,7 @@ export function StructureDnDOverlay({
             </DndContext>
           ) : (
             /* ──── Excluded tab ──── */
-            <div className="space-y-3">
+            <div className="space-y-3 overflow-auto h-full">
               <p className="text-sm text-slate-600">
                 These rows were auto-excluded (non-option instruments). Review only.
               </p>
