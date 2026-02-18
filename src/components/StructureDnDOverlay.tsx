@@ -217,8 +217,8 @@ function ExistingLegChip({ leg }: { leg: import('../utils').Leg }) {
   const strike = leg.strike
   const ot = leg.optionType
   return (
-    <span className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 rounded-md px-1.5 py-0.5 text-[10px] text-slate-500 select-none">
-      {sign}{qtyStr} / {ot}{strike}
+    <span className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 rounded-md px-2 py-1 text-xs text-slate-800 select-none">
+      <span className="font-semibold">{sign}{qtyStr} / {ot}{strike}</span>
     </span>
   )
 }
@@ -245,41 +245,48 @@ function SavedStructureCard({
   return (
     <div
       ref={setNodeRef}
-      className={`border rounded-lg px-3 py-2 transition-colors ${
-        isOver ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-white'
+      className={`border rounded-lg px-3 py-2.5 transition-colors ${
+        isOver ? 'border-blue-400 bg-blue-50/60' : 'border-slate-200 bg-slate-50/40'
       }`}
     >
-      {/* single row: label + existing chips | drop zone */}
-      <div className="flex items-start gap-3">
-        {/* left: label + existing legs */}
+      {/* header */}
+      <p className="text-xs font-semibold text-slate-700 mb-2 truncate" title={label}>
+        {label}
+      </p>
+      {/* two-column: existing legs | drop zone */}
+      <div className="flex gap-3">
+        {/* left: existing legs stacked vertically */}
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-slate-700 truncate" title={label}>
-            {label}
-          </p>
-          {existingLegs.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
+          {existingLegs.length > 0 ? (
+            <div className="flex flex-col gap-1">
               {existingLegs.map((leg, i) => (
                 <ExistingLegChip key={`existing-${i}`} leg={leg} />
               ))}
             </div>
+          ) : (
+            <p className="text-[10px] text-slate-400 italic">No legs</p>
           )}
         </div>
-        {/* right: new legs drop area */}
+        {/* right: drop area for new legs */}
         <SortableContext items={newLegs.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-          <div className="flex flex-wrap gap-1.5 items-center min-w-[140px] min-h-[24px]">
+          <div className={`flex-1 min-w-0 border-2 border-dashed rounded-lg p-2 min-h-[32px] transition-colors ${
+            isOver ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-100/80'
+          }`}>
             {newLegs.length === 0 ? (
-              <p className="text-[10px] text-slate-400 italic whitespace-nowrap">
+              <p className="text-[10px] text-slate-400 italic text-center py-0.5">
                 Drop legs to add
               </p>
             ) : (
-              newLegs.map((item) => (
-                <LegChip
-                  key={item.id}
-                  legItem={item}
-                  exchange={exchange}
-                  onRemove={() => onRemoveItem(item.id)}
-                />
-              ))
+              <div className="flex flex-col gap-1">
+                {newLegs.map((item) => (
+                  <LegChip
+                    key={item.id}
+                    legItem={item}
+                    exchange={exchange}
+                    onRemove={() => onRemoveItem(item.id)}
+                  />
+                ))}
+              </div>
             )}
           </div>
         </SortableContext>
@@ -379,7 +386,7 @@ export function StructureDnDOverlay({
       .filter((s) => !s.archived && !s.archivedAt)
       .map((s) => ({
         id: s.id,
-        label: `[${s.structureId ?? s.id}] ${buildStructureChipSummary(s) ?? s.underlying ?? ''}`,
+        label: buildStructureChipSummary(s) ?? s.underlying ?? 'Structure',
         position: s,
       }))
   }, [savedStructures])
@@ -747,9 +754,9 @@ export function StructureDnDOverlay({
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
             >
-              <div className="flex gap-6 h-full">
+              <div className="flex gap-8 h-full">
                 {/* ──── LEFT COLUMN: Backlog ──── */}
-                <div className="w-1/3 shrink-0 flex flex-col min-h-0">
+                <div className="w-1/2 shrink-0 flex flex-col min-h-0">
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
                     New Legs ({backlogCount})
                   </p>
@@ -777,7 +784,7 @@ export function StructureDnDOverlay({
                 </div>
 
                 {/* ──── RIGHT COLUMN: Structures ──── */}
-                <div className="flex-1 min-w-0 overflow-y-auto overscroll-contain flex flex-col gap-4">
+                <div className="w-1/2 min-w-0 overflow-y-auto overscroll-contain flex flex-col gap-4">
                   {/* New structure drop zone */}
                   <NewStructureDropZone
                     items={newStructureItems}
