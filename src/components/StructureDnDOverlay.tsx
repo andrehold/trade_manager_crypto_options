@@ -810,6 +810,7 @@ export function StructureDnDOverlay({
         {/* ── body ── */}
         <div className="flex-1 min-h-0 flex flex-col px-6 py-4">
           {activeTab === 'included' ? (
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             <DndContext
               sensors={sensors}
               collisionDetection={collisionDetection}
@@ -927,6 +928,7 @@ export function StructureDnDOverlay({
                 ) : null}
               </DragOverlay>
             </DndContext>
+            </div>
           ) : (
             /* ──── Excluded tab ──── */
             <div className="space-y-3 overflow-auto flex-1 min-h-0">
