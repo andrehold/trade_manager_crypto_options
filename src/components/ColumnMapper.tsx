@@ -1,9 +1,15 @@
 import React from 'react'
 import { EXPECTED_FIELDS } from '../utils'
 
+export type ColumnMapping = Record<string, string> & {
+  __exchange: 'deribit' | 'coincall' | 'cme';
+  __importHistorical: boolean;
+  __allowAllocations: boolean;
+};
+
 export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: {
   headers: string[];
-  onConfirm: (map: Record<string, string>) => void;
+  onConfirm: (map: ColumnMapping) => void;
   onCancel: () => void;
   mode?: 'import' | 'backfill';
 }) {

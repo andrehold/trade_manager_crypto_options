@@ -808,7 +808,7 @@ export function StructureDnDOverlay({
         </div>
 
         {/* ── body ── */}
-        <div className="flex-1 min-h-0 flex flex-col px-6 py-4 overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col px-6 py-4">
           {activeTab === 'included' ? (
             <DndContext
               sensors={sensors}
@@ -817,7 +817,7 @@ export function StructureDnDOverlay({
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
             >
-              <div className="flex gap-8 flex-1 min-h-0">
+              <div className="flex gap-8 flex-1 min-h-0 overflow-hidden">
                 {/* ──── LEFT COLUMN: Backlog ──── */}
                 <div className="flex-1 min-w-0 flex flex-col min-h-0">
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 shrink-0">
