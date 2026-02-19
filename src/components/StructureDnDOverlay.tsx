@@ -20,7 +20,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { TxnRow, Exchange, normalizeSecond, Position } from '../utils'
+import { TxnRow, Exchange, normalizeSecond, Position, parseInstrumentByExchange } from '../utils'
 import {
   LegItem,
   BoardState,
@@ -155,6 +155,7 @@ function NewStructureDropZone({
   structureType,
   onStructureTypeChange,
   onSave,
+  onSort,
   onRemoveItem,
 }: {
   items: LegItem[]
@@ -162,6 +163,7 @@ function NewStructureDropZone({
   structureType: string
   onStructureTypeChange: (type: string) => void
   onSave: () => void
+  onSort: () => void
   onRemoveItem: (id: string) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: 'new-structure' })
@@ -195,12 +197,20 @@ function NewStructureDropZone({
           </select>
         </div>
         {items.length > 0 && (
-          <button
-            onClick={onSave}
-            className="px-2.5 py-0.5 text-xs font-medium rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
-          >
-            Save
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={onSort}
+              className="px-2.5 py-0.5 text-xs font-medium rounded bg-slate-500 text-white hover:bg-slate-600 transition-colors"
+            >
+              Sort
+            </button>
+            <button
+              onClick={onSave}
+              className="px-2.5 py-0.5 text-xs font-medium rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+            >
+              Save
+            </button>
+          </div>
         )}
       </div>
       <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
@@ -592,6 +602,33 @@ export function StructureDnDOverlay({
   const newStructureCount = newStructureItems.length
   const canImport = backlogCount === 0 && newStructureCount === 0
 
+  /* ── sort "new structure" items: by expiry asc, then strike asc ── */
+  const handleSortNewStructure = useCallback(() => {
+    setBoard((prev) => {
+      const ids = [...(prev.containers['new-structure'] ?? [])]
+      ids.sort((a, b) => {
+        const rowA = prev.itemsById[a]?.row
+        const rowB = prev.itemsById[b]?.row
+        if (!rowA || !rowB) return 0
+
+        const parsedA = parseInstrumentByExchange(exchange, rowA.instrument)
+        const parsedB = parseInstrumentByExchange(exchange, rowB.instrument)
+        const expiryA = parsedA?.expiryISO ?? ''
+        const expiryB = parsedB?.expiryISO ?? ''
+
+        if (expiryA !== expiryB) return expiryA < expiryB ? -1 : 1
+
+        const strikeA = parsedA?.strike ?? 0
+        const strikeB = parsedB?.strike ?? 0
+        return strikeA - strikeB
+      })
+      return {
+        ...prev,
+        containers: { ...prev.containers, 'new-structure': ids },
+      }
+    })
+  }, [exchange])
+
   /* ── save "new structure" → local structure ── */
   const handleSaveNewStructure = () => {
     if (newStructureItems.length === 0) return
@@ -818,6 +855,7 @@ export function StructureDnDOverlay({
                     structureType={newStructureType}
                     onStructureTypeChange={setNewStructureType}
                     onSave={handleSaveNewStructure}
+                    onSort={handleSortNewStructure}
                     onRemoveItem={handleRemoveItem}
                   />
 
