@@ -12,6 +12,7 @@ export function NumberCell({ value, onChange }: { value: number | null | undefin
         if (v.trim() === '' || Number.isFinite(num)) onChange(v.trim() === '' ? null : num);
       }}
       placeholder="—"
+      maxLength={20}
       className="border rounded-lg px-2 py-1 text-sm w-20"
     />
   );

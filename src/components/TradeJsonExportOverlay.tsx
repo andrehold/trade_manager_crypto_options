@@ -9,7 +9,8 @@ import {
   type Position,
 } from '../utils'
 
-type MarkInfo = { price: number | null; multiplier: number | null; greeks?: any }
+type GreeksData = { delta?: number | null; gamma?: number | null; theta?: number | null; vega?: number | null; rho?: number | null }
+type MarkInfo = { price: number | null; multiplier: number | null; greeks?: GreeksData }
 type MarkMap = Record<string, MarkInfo>
 
 type TradeJsonExportOverlayProps = {

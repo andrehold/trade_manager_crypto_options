@@ -1,4 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
+const CONTAINER_BACKLOG = 'backlog'
+const CONTAINER_NEW_STRUCTURE = 'new-structure'
 import {
   DndContext,
   DragEndEvent,
@@ -166,7 +169,7 @@ function NewStructureDropZone({
   onSort: () => void
   onRemoveItem: (id: string) => void
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: 'new-structure' })
+  const { setNodeRef, isOver } = useDroppable({ id: CONTAINER_NEW_STRUCTURE })
 
   return (
     <div
@@ -434,8 +437,8 @@ export function StructureDnDOverlay({
   const initialBoard = useMemo((): BoardState => {
     const itemsById: Record<string, LegItem> = {}
     const containers: Record<string, string[]> = {
-      backlog: [],
-      'new-structure': [],
+      [CONTAINER_BACKLOG]: [],
+      [CONTAINER_NEW_STRUCTURE]: [],
     }
 
     // All included rows start in backlog, sorted oldest first (already sorted by time)
@@ -592,7 +595,7 @@ export function StructureDnDOverlay({
 
   /* ── derived data ── */
   const backlogItems = (board.containers.backlog ?? []).map((id) => board.itemsById[id])
-  const newStructureItems = (board.containers['new-structure'] ?? []).map(
+  const newStructureItems = (board.containers[CONTAINER_NEW_STRUCTURE] ?? []).map(
     (id) => board.itemsById[id],
   )
   const localStructureIds = board.structureOrder.filter((id) => board.containers[id])
@@ -605,7 +608,7 @@ export function StructureDnDOverlay({
   /* ── sort "new structure" items: by expiry asc, then strike asc ── */
   const handleSortNewStructure = useCallback(() => {
     setBoard((prev) => {
-      const ids = [...(prev.containers['new-structure'] ?? [])]
+      const ids = [...(prev.containers[CONTAINER_NEW_STRUCTURE] ?? [])]
       ids.sort((a, b) => {
         const rowA = prev.itemsById[a]?.row
         const rowB = prev.itemsById[b]?.row
@@ -624,7 +627,7 @@ export function StructureDnDOverlay({
       })
       return {
         ...prev,
-        containers: { ...prev.containers, 'new-structure': ids },
+        containers: { ...prev.containers, [CONTAINER_NEW_STRUCTURE]: ids },
       }
     })
   }, [exchange])
@@ -645,9 +648,9 @@ export function StructureDnDOverlay({
       }
 
       const structId = `structure:${Date.now()}`
-      const itemIds = next.containers['new-structure']
+      const itemIds = next.containers[CONTAINER_NEW_STRUCTURE]
       next.containers[structId] = itemIds
-      next.containers['new-structure'] = []
+      next.containers[CONTAINER_NEW_STRUCTURE] = []
       next.structureOrder.push(structId)
       next.structureMeta[structId] = { type: typeToSave }
       return next
@@ -668,7 +671,7 @@ export function StructureDnDOverlay({
       }
 
       const srcId = findContainer(itemId, next)
-      if (!srcId || srcId === 'backlog') return prev
+      if (!srcId || srcId === CONTAINER_BACKLOG) return prev
 
       next.containers[srcId] = next.containers[srcId].filter((id) => id !== itemId)
       next.containers.backlog = [...next.containers.backlog, itemId]
@@ -825,7 +828,7 @@ export function StructureDnDOverlay({
                     New Legs ({backlogCount})
                   </p>
                   <Droppable
-                    id="backlog"
+                    id={CONTAINER_BACKLOG}
                     className="flex-1 min-h-0 overflow-y-auto border rounded-lg p-2 bg-slate-50 overscroll-contain"
                   >
                     <SortableContext

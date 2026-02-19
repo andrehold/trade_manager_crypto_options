@@ -1,7 +1,8 @@
 import React from 'react'
 import { EXPECTED_FIELDS } from '../utils'
 
-export type ColumnMapping = Record<string, string> & {
+export type ColumnMapping = {
+  [key: string]: string | boolean | 'deribit' | 'coincall' | 'cme';
   __exchange: 'deribit' | 'coincall' | 'cme';
   __importHistorical: boolean;
   __allowAllocations: boolean;
@@ -109,7 +110,7 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
               __exchange: exchange,
               __importHistorical: importHistoricalRows,
               __allowAllocations: allowAllocations,
-            } as any)}
+            })}
             className="px-4 py-2 rounded-xl bg-slate-900 text-white">
             {mode === 'backfill' ? 'Start Backfill' : 'Start Import'}
           </button>

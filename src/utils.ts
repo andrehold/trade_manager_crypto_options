@@ -496,9 +496,11 @@ export function legGreekExposure(
 }
 
 /** Sum greek across all legs in a position using the marks cache (by exchange). */
+type GreeksData = { delta?: number | null; gamma?: number | null; theta?: number | null; vega?: number | null; rho?: number | null };
+
 export function positionGreeks(
   p: Position,
-  marks: Record<string, { price: number | null; multiplier: number | null; greeks?: any }>
+  marks: Record<string, { price: number | null; multiplier: number | null; greeks?: GreeksData }>
 ): { delta: number; gamma: number; theta: number; vega: number; rho: number } {
   let delta = 0, gamma = 0, theta = 0, vega = 0, rho = 0;
   for (const l of p.legs) {
@@ -509,11 +511,11 @@ export function positionGreeks(
     const g = info?.greeks || {};
     const multiplier = ref.exchange === 'coincall' ? info?.multiplier : ref.defaultMultiplier;
 
-    delta += legGreekExposure(l, g.delta, multiplier);
-    gamma += legGreekExposure(l, g.gamma, multiplier);
-    theta += legGreekExposure(l, g.theta, multiplier);
-    vega  += legGreekExposure(l, g.vega,  multiplier);
-    rho   += legGreekExposure(l, g.rho,   multiplier);
+    delta += legGreekExposure(l, g.delta ?? undefined, multiplier);
+    gamma += legGreekExposure(l, g.gamma ?? undefined, multiplier);
+    theta += legGreekExposure(l, g.theta ?? undefined, multiplier);
+    vega  += legGreekExposure(l, g.vega  ?? undefined, multiplier);
+    rho   += legGreekExposure(l, g.rho   ?? undefined, multiplier);
   }
   return { delta, gamma, theta, vega, rho };
 }

@@ -2296,7 +2296,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 text-sm text-slate-700">
             <span>Alerts only</span>
-            <Toggle checked={alertsOnly} onChange={setAlertsOnly} />
+            <Toggle checked={alertsOnly} onChange={setAlertsOnly} label="Alerts only" />
           </div>
           <button className="rounded-xl bg-slate-900 text-white px-3 py-2 text-sm shadow">Add Trade</button>
         </div>

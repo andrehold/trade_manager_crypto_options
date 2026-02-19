@@ -124,6 +124,17 @@ export function ImportedTransactionsOverlay({
               </tr>
             </thead>
             <tbody>
+              {loading && rows.length === 0 ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={`skeleton-${i}`} className="border-t animate-pulse">
+                    {Array.from({ length: 10 }).map((__, j) => (
+                      <td key={j} className="p-2">
+                        <div className="h-4 rounded bg-slate-100" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : null}
               {rows.length === 0 && !loading ? (
                 <tr>
                   <td colSpan={10} className="p-4 text-center text-sm text-slate-500">

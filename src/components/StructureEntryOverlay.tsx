@@ -18,6 +18,9 @@ import {
   LIQUIDITY_ROLES,
   OPTION_TYPES,
   STRUCTURE_LIFECYCLES,
+  SIDES,
+  type StructureLifecycle,
+  type Side,
 } from '../lib/import/types';
 
 type PartialPayload = {
@@ -282,18 +285,19 @@ function getValue(obj: unknown, path: PathSegment[]): any {
  * path. Any missing intermediate structures are created using sensible
  * defaults (arrays for numeric keys, objects otherwise).
  */
-function setValue<T>(obj: T, path: PathSegment[], value: any): T {
-  if (!path.length) return value;
+function setValue<T>(obj: T, path: PathSegment[], value: unknown): T {
+  if (!path.length) return value as T;
   const [head, ...tail] = path;
-  const clone: any = Array.isArray(obj) ? [...(obj as any[])] : { ...(obj as any) };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const clone: Record<string | number, unknown> = Array.isArray(obj) ? [...(obj as unknown[])] as any : { ...(obj as object) };
   if (tail.length === 0) {
-    clone[head as any] = value;
-    return clone;
+    clone[head] = value;
+    return clone as T;
   }
-  const current = clone[head as any];
+  const current = clone[head];
   const nextDefault = typeof tail[0] === 'number' ? [] : {};
-  clone[head as any] = setValue(current ?? nextDefault, tail, value);
-  return clone;
+  clone[head] = setValue(current ?? nextDefault, tail, value);
+  return clone as T;
 }
 
 /**
@@ -502,8 +506,12 @@ function buildInitialFills(
         qty: Math.abs(trade.amount ?? 0) || undefined,
         price: trade.price ?? undefined,
         leg_seq: idx + 1,
-        open_close: trade.action as any,
-        side: trade.side as any,
+        open_close: (STRUCTURE_LIFECYCLES as readonly string[]).includes(trade.action ?? '')
+          ? trade.action as StructureLifecycle
+          : undefined,
+        side: (SIDES as readonly string[]).includes(trade.side ?? '')
+          ? trade.side as Side
+          : undefined,
         execution_mode: undefined,
         provider: trade.exchange,
         venue_id: undefined,
@@ -787,9 +795,13 @@ export function StructureEntryOverlay({
   const [programOptions, setProgramOptions] = React.useState<
     Array<{ program_id: string; program_name: string }>
   >([]);
+  const [programLoadError, setProgramLoadError] = React.useState<string | null>(null);
+  const [programLoading, setProgramLoading] = React.useState(false);
   const [strategyOptions, setStrategyOptions] = React.useState<
     Array<{ strategy_code: string; strategy_name: string }>
   >([]);
+  const [strategyLoadError, setStrategyLoadError] = React.useState<string | null>(null);
+  const [strategyLoading, setStrategyLoading] = React.useState(false);
   const [strategyLookup, setStrategyLookup] = React.useState<Record<string, string>>({});
   const strategyRequests = React.useRef<Set<string>>(new Set());
   const [saving, setSaving] = React.useState(false);
@@ -814,8 +826,11 @@ export function StructureEntryOverlay({
   React.useEffect(() => {
     if (!supabase || !user) return;
     let active = true;
+    const abortController = new AbortController();
 
     const loadPrograms = async () => {
+      setProgramLoadError(null);
+      setProgramLoading(true);
       try {
         const {
           data: { session },
@@ -823,11 +838,13 @@ export function StructureEntryOverlay({
         } = await supabase.auth.getSession();
         if (sessionError) {
           console.error('Failed to retrieve Supabase session for program lookup', sessionError);
+          if (active) setProgramLoadError('Could not load programs: session error.');
           return;
         }
         const accessToken = session?.access_token;
         if (!accessToken) {
           console.error('Missing Supabase access token while loading program options');
+          if (active) setProgramLoadError('Could not load programs: not authenticated.');
           return;
         }
 
@@ -836,12 +853,14 @@ export function StructureEntryOverlay({
           ((import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? null);
         if (!supabaseUrl) {
           console.error('Supabase URL is not configured. Unable to load program options');
+          if (active) setProgramLoadError('Could not load programs: configuration error.');
           return;
         }
 
         const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
         if (!supabaseKey) {
           console.error('Supabase publishable key is not configured. Unable to load program options');
+          if (active) setProgramLoadError('Could not load programs: configuration error.');
           return;
         }
 
@@ -850,6 +869,7 @@ export function StructureEntryOverlay({
         const requestUrl = `${restBase}?${query.toString()}`;
 
         const response = await fetch(requestUrl, {
+          signal: abortController.signal,
           headers: {
             Accept: 'application/json',
             apikey: supabaseKey,
@@ -865,6 +885,7 @@ export function StructureEntryOverlay({
             statusText: response.statusText,
             body,
           });
+          if (active) setProgramLoadError(`Could not load programs (${response.status}).`);
           return;
         }
 
@@ -873,6 +894,7 @@ export function StructureEntryOverlay({
 
         if (!Array.isArray(payload)) {
           console.error('Unexpected response shape when loading program resources', payload);
+          setProgramLoadError('Could not load programs: unexpected response.');
           return;
         }
 
@@ -905,7 +927,13 @@ export function StructureEntryOverlay({
 
         setProgramOptions(rows);
       } catch (err) {
-        if (active) console.error('Failed to load program resources', err);
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        if (active) {
+          console.error('Failed to load program resources', err);
+          setProgramLoadError('Could not load programs. Please try again.');
+        }
+      } finally {
+        if (active) setProgramLoading(false);
       }
     };
 
@@ -913,6 +941,7 @@ export function StructureEntryOverlay({
 
     return () => {
       active = false;
+      abortController.abort();
     };
   }, [supabase, user]);
 
@@ -921,6 +950,8 @@ export function StructureEntryOverlay({
     let active = true;
 
     const loadStrategies = async () => {
+      setStrategyLoadError(null);
+      setStrategyLoading(true);
       try {
         const { data, error } = await supabase
           .from('strategies')
@@ -929,6 +960,7 @@ export function StructureEntryOverlay({
         if (!active) return;
         if (error) {
           console.error('Failed to load strategy resources', error);
+          setStrategyLoadError('Could not load strategies. Please try again.');
           return;
         }
         const rows = (data ?? []).filter(
@@ -946,7 +978,12 @@ export function StructureEntryOverlay({
           });
         }
       } catch (err) {
-        if (active) console.error('Failed to load strategy resources', err);
+        if (active) {
+          console.error('Failed to load strategy resources', err);
+          setStrategyLoadError('Could not load strategies. Please try again.');
+        }
+      } finally {
+        if (active) setStrategyLoading(false);
       }
     };
 
@@ -1676,6 +1713,20 @@ export function StructureEntryOverlay({
               )}
 
               <Section title="Program" description="Program metadata required before importing trades.">
+                {programLoading && (
+                  <div className="mb-3 flex items-center gap-2 text-xs text-slate-500">
+                    <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                    Loading programs…
+                  </div>
+                )}
+                {programLoadError && (
+                  <div className="mb-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+                    {programLoadError}
+                  </div>
+                )}
                 <div className="grid gap-4 md:grid-cols-2">
                   {programFields.map((field) => (
                   <Field
@@ -1694,6 +1745,20 @@ export function StructureEntryOverlay({
             </Section>
 
             <Section title="Position" description="Core structure-level details for the trade grouping.">
+                {strategyLoading && (
+                  <div className="mb-3 flex items-center gap-2 text-xs text-slate-500">
+                    <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                    Loading strategies…
+                  </div>
+                )}
+                {strategyLoadError && (
+                  <div className="mb-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+                    {strategyLoadError}
+                  </div>
+                )}
               <div className="grid gap-4 md:grid-cols-2">
                 {positionFields.map((field) => (
                   <Field

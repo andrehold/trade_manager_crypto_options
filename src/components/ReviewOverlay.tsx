@@ -3,6 +3,28 @@ import { Exchange, TxnRow, formatInstrumentLabel, normalizeSecond, parseInstrume
 
 export type ReviewStructureOption = { value: string; label: string; legInstrumentKeys?: string[] }
 
+function SideCell({ action, side }: { action?: TxnRow['action']; side: TxnRow['side'] }) {
+  const chipClasses =
+    action === 'open'
+      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      : action === 'close'
+      ? 'bg-rose-50 text-rose-700 border-rose-200'
+      : 'bg-slate-50 text-slate-600 border-slate-200';
+
+  return (
+    <div className="flex items-center gap-2">
+      {action ? (
+        <span
+          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${chipClasses}`}
+        >
+          {action}
+        </span>
+      ) : null}
+      <span className="capitalize">{side}</span>
+    </div>
+  );
+}
+
 const autoStructureKey = (row: TxnRow, index: number) => {
   const normalized = normalizeSecond(row.timestamp)
   return normalized === 'NO_TS' ? `NO_TS_${index}` : normalized
@@ -31,6 +53,191 @@ type ReviewOverlayProps = {
   onCancel: () => void;
   availableStructures?: ReviewStructureOption[];
 }
+
+type ReviewRowProps = {
+  i: number;
+  r: TxnRow;
+  structure: string;
+  isSelected: boolean;
+  isUnprocessed: boolean;
+  structureNumber: number;
+  selectedStructureId: string | null;
+  selectedStructureLabel: string | null;
+  rowAvailableStructures: ReviewStructureOption[];
+  hasSavedStructures: boolean;
+  isCloseAction: boolean;
+  rowInstrumentKey: string | null;
+  rowAllocations: AllocationEntry[];
+  allowAllocations?: boolean;
+  onToggleSelected: (i: number, checked: boolean) => void;
+  onToggleNotProcessed: (i: number, checked: boolean) => void;
+  onChangeStructureNumber: (i: number, v: number) => void;
+  onChangeLinkedStructure: (i: number, value: string) => void;
+  onAddAllocation: (i: number) => void;
+  onChangeAllocationStructure: (i: number, allocIndex: number, value: string) => void;
+  onChangeAllocationQty: (i: number, allocIndex: number, qty: number) => void;
+  onRemoveAllocation: (i: number, allocIndex: number) => void;
+};
+
+const ReviewRow = React.memo(function ReviewRow({
+  i, r, structure, isSelected, isUnprocessed, structureNumber,
+  selectedStructureId, selectedStructureLabel, rowAvailableStructures,
+  hasSavedStructures, isCloseAction, rowInstrumentKey, rowAllocations, allowAllocations,
+  onToggleSelected, onToggleNotProcessed, onChangeStructureNumber,
+  onChangeLinkedStructure, onAddAllocation, onChangeAllocationStructure,
+  onChangeAllocationQty, onRemoveAllocation,
+}: ReviewRowProps) {
+  const hasAllocations = allowAllocations && rowAllocations.length > 0;
+  const rowQty = Math.abs(r.amount ?? 0);
+  const totalAllocated = rowAllocations.reduce((sum, entry) => sum + (Number(entry.qty) || 0), 0);
+
+  return (
+    <tr key={i} className="border-t">
+      <td className="p-2 align-top">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={(e) => onToggleSelected(i, e.target.checked)}
+        />
+      </td>
+      <td className="p-2 align-top">
+        <label className="inline-flex items-center gap-2 text-xs text-slate-700">
+          <input
+            type="checkbox"
+            checked={isUnprocessed}
+            onChange={(e) => onToggleNotProcessed(i, e.target.checked)}
+            disabled={!isSelected}
+          />
+          <span>Mark unprocessed</span>
+        </label>
+      </td>
+      <td className="p-2">{r.timestamp || '—'}</td>
+      <td className="p-2 align-top">
+        <div className="flex flex-col gap-1">
+          <select
+            className="border rounded-lg px-2 py-1 text-sm bg-white disabled:bg-slate-50"
+            value={hasAllocations ? '' : selectedStructureId ?? ''}
+            onChange={(e) => onChangeLinkedStructure(i, e.target.value)}
+            disabled={!hasSavedStructures || isUnprocessed || hasAllocations}
+          >
+            <option value="">{`Auto • ${structure}`}</option>
+            {rowAvailableStructures.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <span className={`text-xs ${selectedStructureId ? 'text-emerald-600' : 'text-slate-500'}`}>
+            {isUnprocessed
+              ? 'Will be saved as unprocessed and excluded from future imports.'
+              : hasAllocations
+              ? 'Allocation mode active. Structure # input disabled.'
+              : selectedStructureId
+              ? `Linked to ${selectedStructureLabel}. Structure # input disabled.`
+              : hasSavedStructures
+              ? isCloseAction && rowInstrumentKey
+                ? 'Showing saved structures that match this closing leg.'
+                : 'Auto grouping until you choose a saved structure.'
+              : isCloseAction && rowInstrumentKey
+              ? 'No saved structures match this closing leg.'
+              : 'No saved structures available for this client.'}
+          </span>
+          {allowAllocations && !isUnprocessed ? (
+            <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
+              <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
+                <span>Allocations (split qty across structures)</span>
+                <button
+                  type="button"
+                  className="text-xs text-slate-700 hover:text-slate-900"
+                  onClick={() => onAddAllocation(i)}
+                  disabled={!hasSavedStructures}
+                >
+                  + Add allocation
+                </button>
+              </div>
+              {hasSavedStructures ? (
+                rowAllocations.length ? (
+                  <div className="space-y-2">
+                    {rowAllocations.map((entry, allocIndex) => (
+                      <div key={`${i}-alloc-${allocIndex}`} className="flex items-center gap-2">
+                        <select
+                          className="border rounded-lg px-2 py-1 text-xs bg-white flex-1"
+                          value={entry.structureId ?? ''}
+                          onChange={(e) => onChangeAllocationStructure(i, allocIndex, e.target.value)}
+                        >
+                          <option value="">Select structure</option>
+                          {rowAvailableStructures.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          className="border rounded-lg px-2 py-1 text-xs w-24"
+                          value={entry.qty}
+                          onChange={(e) => onChangeAllocationQty(i, allocIndex, Number(e.target.value))}
+                        />
+                        <button
+                          type="button"
+                          className="text-xs text-rose-600 hover:text-rose-700"
+                          onClick={() => onRemoveAllocation(i, allocIndex)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-500">No allocations added yet.</div>
+                )
+              ) : (
+                <div className="text-xs text-slate-500">
+                  No saved structures available for allocation.
+                </div>
+              )}
+              {rowAllocations.length ? (
+                <div
+                  className={`mt-2 text-xs ${
+                    Math.abs(totalAllocated - rowQty) <= Number.EPSILON
+                      ? 'text-emerald-600'
+                      : 'text-amber-600'
+                  }`}
+                >
+                  Allocated {totalAllocated} / {rowQty}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </td>
+      <td className="p-2">
+        <input
+          type="number"
+          min={1}
+          className={`border rounded-lg px-2 py-1 text-sm w-20 ${selectedStructureId || isUnprocessed ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : ''}`}
+          value={structureNumber ?? 1}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            onChangeStructureNumber(i, Number.isFinite(v) && v > 0 ? Math.floor(v) : 1);
+          }}
+          disabled={Boolean(selectedStructureId) || isUnprocessed}
+          title={selectedStructureId ? 'Structure number comes from the linked saved structure.' : undefined}
+        />
+      </td>
+      <td className="p-2">{r.instrument}</td>
+      <td className="p-2"><SideCell action={r.action} side={r.side} /></td>
+      <td className="p-2">{r.amount}</td>
+      <td className="p-2">{r.price}</td>
+      <td className="p-2">{r.fee ?? 0}</td>
+      <td className="p-2">{r.trade_id || '—'}</td>
+      <td className="p-2">{r.order_id || '—'}</td>
+      <td className="p-2">{r.info || '—'}</td>
+    </tr>
+  );
+});
 
 export function ReviewOverlay(props: ReviewOverlayProps) {
   const {
@@ -69,15 +276,6 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
     setNotProcessed(rows.map(() => false));
     setAllocations(rows.map(() => []));
   }, [autoStructureDefaults, rows]);
-
-  React.useEffect(() => {
-    console.log('[ReviewOverlay] Opened with rows', {
-      rows,
-      excludedRows,
-      duplicateTradeIds,
-      duplicateOrderIds,
-    });
-  }, [rows, excludedRows, duplicateTradeIds, duplicateOrderIds]);
 
   const availableStructures = React.useMemo(
     () => props.availableStructures ?? [],
@@ -206,10 +404,6 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
 
     try {
       setImporting(true);
-      console.log('[ReviewOverlay] Submitting import selection', {
-        payload,
-        unprocessedRows,
-      });
       await onConfirm(payload, unprocessedRows);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to import trades.';
@@ -218,6 +412,51 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
       setImporting(false);
     }
   };
+
+  const onToggleSelected = React.useCallback((i: number, checked: boolean) => {
+    setSelected((prev) => { const cp = [...prev]; cp[i] = checked; return cp; });
+    if (!checked) setNotProcessed((prev) => { const cp = [...prev]; cp[i] = false; return cp; });
+  }, []);
+
+  const onToggleNotProcessed = React.useCallback((i: number, checked: boolean) => {
+    setNotProcessed((prev) => { const cp = [...prev]; cp[i] = checked; return cp; });
+  }, []);
+
+  const onChangeStructureNumber = React.useCallback((i: number, v: number) => {
+    setStructureNumbers((prev) => { const cp = [...prev]; cp[i] = v; return cp; });
+  }, []);
+
+  const onChangeLinkedStructure = React.useCallback((i: number, value: string) => {
+    setLinkedStructures((prev) => { const cp = [...prev]; cp[i] = value.length ? value : null; return cp; });
+  }, []);
+
+  const onAddAllocation = React.useCallback((i: number) => {
+    setAllocations((prev) => { const cp = [...prev]; cp[i] = [...(cp[i] ?? []), { structureId: null, qty: 0 }]; return cp; });
+    setLinkedStructures((prev) => { const cp = [...prev]; cp[i] = null; return cp; });
+  }, []);
+
+  const onChangeAllocationStructure = React.useCallback((i: number, allocIndex: number, value: string) => {
+    setAllocations((prev) => {
+      const cp = [...prev]; const next = [...(cp[i] ?? [])];
+      next[allocIndex] = { ...next[allocIndex], structureId: value || null };
+      cp[i] = next; return cp;
+    });
+  }, []);
+
+  const onChangeAllocationQty = React.useCallback((i: number, allocIndex: number, qty: number) => {
+    setAllocations((prev) => {
+      const cp = [...prev]; const next = [...(cp[i] ?? [])];
+      next[allocIndex] = { ...next[allocIndex], qty: Number.isFinite(qty) ? qty : 0 };
+      cp[i] = next; return cp;
+    });
+  }, []);
+
+  const onRemoveAllocation = React.useCallback((i: number, allocIndex: number) => {
+    setAllocations((prev) => {
+      const cp = [...prev]; const next = [...(cp[i] ?? [])]; next.splice(allocIndex, 1);
+      cp[i] = next; return cp;
+    });
+  }, []);
 
   const TableHead = () => (
     <thead className="bg-slate-50 text-slate-600 sticky top-0">
@@ -238,28 +477,6 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
       </tr>
     </thead>
   );
-
-  const SideCell = ({ action, side }: { action?: TxnRow['action']; side: TxnRow['side'] }) => {
-    const chipClasses =
-      action === 'open'
-        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-        : action === 'close'
-        ? 'bg-rose-50 text-rose-700 border-rose-200'
-        : 'bg-slate-50 text-slate-600 border-slate-200';
-
-    return (
-      <div className="flex items-center gap-2">
-        {action ? (
-          <span
-            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${chipClasses}`}
-          >
-            {action}
-          </span>
-        ) : null}
-        <span className="capitalize">{side}</span>
-      </div>
-    );
-  };
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -345,229 +562,32 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                             option.legInstrumentKeys?.includes(rowInstrumentKey),
                           )
                         : availableStructures;
-                    const hasSavedStructures = rowAvailableStructures.length > 0;
-                    const isUnprocessed = notProcessed[i];
-                    const rowAllocations = allocations[i] ?? [];
-                    const hasAllocations = allowAllocations && rowAllocations.length > 0;
-                    const rowQty = Math.abs(r.amount ?? 0);
-                    const totalAllocated = rowAllocations.reduce((sum, entry) => sum + (Number(entry.qty) || 0), 0);
                     return (
-                      <tr key={i} className="border-t">
-                        <td className="p-2 align-top">
-                          <input
-                            type="checkbox"
-                            checked={selected[i]}
-                            onChange={(e) =>
-                              setSelected((prev) => {
-                                const cp = [...prev];
-                                cp[i] = e.target.checked;
-                                if (!e.target.checked) {
-                                  setNotProcessed((prevFlag) => {
-                                    const next = [...prevFlag];
-                                    next[i] = false;
-                                    return next;
-                                  });
-                                }
-                                return cp;
-                              })
-                            }
-                          />
-                        </td>
-                        <td className="p-2 align-top">
-                          <label className="inline-flex items-center gap-2 text-xs text-slate-700">
-                            <input
-                              type="checkbox"
-                              checked={isUnprocessed}
-                              onChange={(e) =>
-                                setNotProcessed((prev) => {
-                                  const cp = [...prev];
-                                  cp[i] = e.target.checked;
-                                  return cp;
-                                })
-                              }
-                              disabled={!selected[i]}
-                            />
-                            <span>Mark unprocessed</span>
-                          </label>
-                        </td>
-                        <td className="p-2">{r.timestamp || '—'}</td>
-                        <td className="p-2 align-top">
-                          <div className="flex flex-col gap-1">
-                            <select
-                              className="border rounded-lg px-2 py-1 text-sm bg-white disabled:bg-slate-50"
-                              value={hasAllocations ? '' : selectedStructureId ?? ''}
-                              onChange={(e) =>
-                                setLinkedStructures((prev) => {
-                                  const cp = [...prev];
-                                  const nextValue = e.target.value;
-                                  cp[i] = nextValue.length ? nextValue : null;
-                                  return cp;
-                                })
-                              }
-                              disabled={!hasSavedStructures || isUnprocessed || hasAllocations}
-                            >
-                              <option value="">{`Auto • ${structure}`}</option>
-                              {rowAvailableStructures.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                            <span className={`text-xs ${selectedStructureId ? 'text-emerald-600' : 'text-slate-500'}`}>
-                              {isUnprocessed
-                                ? 'Will be saved as unprocessed and excluded from future imports.'
-                                : hasAllocations
-                                ? 'Allocation mode active. Structure # input disabled.'
-                                : selectedStructureId
-                                ? `Linked to ${selectedStructureLabel}. Structure # input disabled.`
-                                : hasSavedStructures
-                                ? isCloseAction && rowInstrumentKey
-                                  ? 'Showing saved structures that match this closing leg.'
-                                  : 'Auto grouping until you choose a saved structure.'
-                                : isCloseAction && rowInstrumentKey
-                                ? 'No saved structures match this closing leg.'
-                                : 'No saved structures available for this client.'}
-                            </span>
-                            {allowAllocations && !isUnprocessed ? (
-                              <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
-                                <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
-                                  <span>Allocations (split qty across structures)</span>
-                                  <button
-                                    type="button"
-                                    className="text-xs text-slate-700 hover:text-slate-900"
-                                    onClick={() => {
-                                      setAllocations((prev) => {
-                                        const cp = [...prev];
-                                        const next = [...(cp[i] ?? [])];
-                                        next.push({ structureId: null, qty: 0 });
-                                        cp[i] = next;
-                                        return cp;
-                                      });
-                                      setLinkedStructures((prev) => {
-                                        const cp = [...prev];
-                                        cp[i] = null;
-                                        return cp;
-                                      });
-                                    }}
-                                    disabled={!hasSavedStructures}
-                                  >
-                                    + Add allocation
-                                  </button>
-                                </div>
-                                {hasSavedStructures ? (
-                                  rowAllocations.length ? (
-                                    <div className="space-y-2">
-                                      {rowAllocations.map((entry, allocIndex) => (
-                                        <div key={`${i}-alloc-${allocIndex}`} className="flex items-center gap-2">
-                                          <select
-                                            className="border rounded-lg px-2 py-1 text-xs bg-white flex-1"
-                                            value={entry.structureId ?? ''}
-                                            onChange={(e) =>
-                                              setAllocations((prev) => {
-                                                const cp = [...prev];
-                                                const next = [...(cp[i] ?? [])];
-                                                next[allocIndex] = {
-                                                  ...next[allocIndex],
-                                                  structureId: e.target.value || null,
-                                                };
-                                                cp[i] = next;
-                                                return cp;
-                                              })
-                                            }
-                                          >
-                                            <option value="">Select structure</option>
-                                            {rowAvailableStructures.map((option) => (
-                                              <option key={option.value} value={option.value}>
-                                                {option.label}
-                                              </option>
-                                            ))}
-                                          </select>
-                                          <input
-                                            type="number"
-                                            min={0}
-                                            step="0.01"
-                                            className="border rounded-lg px-2 py-1 text-xs w-24"
-                                            value={entry.qty}
-                                            onChange={(e) =>
-                                              setAllocations((prev) => {
-                                                const cp = [...prev];
-                                                const next = [...(cp[i] ?? [])];
-                                                const nextQty = Number(e.target.value);
-                                                next[allocIndex] = {
-                                                  ...next[allocIndex],
-                                                  qty: Number.isFinite(nextQty) ? nextQty : 0,
-                                                };
-                                                cp[i] = next;
-                                                return cp;
-                                              })
-                                            }
-                                          />
-                                          <button
-                                            type="button"
-                                            className="text-xs text-rose-600 hover:text-rose-700"
-                                            onClick={() =>
-                                              setAllocations((prev) => {
-                                                const cp = [...prev];
-                                                const next = [...(cp[i] ?? [])];
-                                                next.splice(allocIndex, 1);
-                                                cp[i] = next;
-                                                return cp;
-                                              })
-                                            }
-                                          >
-                                            Remove
-                                          </button>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <div className="text-xs text-slate-500">No allocations added yet.</div>
-                                  )
-                                ) : (
-                                  <div className="text-xs text-slate-500">
-                                    No saved structures available for allocation.
-                                  </div>
-                                )}
-                                {rowAllocations.length ? (
-                                  <div
-                                    className={`mt-2 text-xs ${
-                                      Math.abs(totalAllocated - rowQty) <= Number.EPSILON
-                                        ? 'text-emerald-600'
-                                        : 'text-amber-600'
-                                    }`}
-                                  >
-                                    Allocated {totalAllocated} / {rowQty}
-                                  </div>
-                                ) : null}
-                              </div>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="p-2">
-                          <input
-                            type="number"
-                            min={1}
-                            className={`border rounded-lg px-2 py-1 text-sm w-20 ${selectedStructureId || isUnprocessed ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : ''}`}
-                            value={structureNumbers[i] ?? 1}
-                            onChange={(e) => setStructureNumbers((prev) => {
-                              const cp = [...prev];
-                              const v = Number(e.target.value);
-                              cp[i] = Number.isFinite(v) && v > 0 ? Math.floor(v) : 1;
-                              return cp;
-                            })}
-                            disabled={Boolean(selectedStructureId) || isUnprocessed}
-                            title={selectedStructureId ? 'Structure number comes from the linked saved structure.' : undefined}
-                          />
-                        </td>
-                        <td className="p-2">{r.instrument}</td>
-                        <td className="p-2"><SideCell action={r.action} side={r.side} /></td>
-                        <td className="p-2">{r.amount}</td>
-                        <td className="p-2">{r.price}</td>
-                        <td className="p-2">{r.fee ?? 0}</td>
-                        <td className="p-2">{r.trade_id || '—'}</td>
-                        <td className="p-2">{r.order_id || '—'}</td>
-                        <td className="p-2">{r.info || '—'}</td>
-                      </tr>
+                      <ReviewRow
+                        key={i}
+                        i={i}
+                        r={r}
+                        structure={structure}
+                        isSelected={selected[i]}
+                        isUnprocessed={notProcessed[i]}
+                        structureNumber={structureNumbers[i] ?? 1}
+                        selectedStructureId={selectedStructureId ?? null}
+                        selectedStructureLabel={selectedStructureLabel}
+                        rowAvailableStructures={rowAvailableStructures}
+                        hasSavedStructures={rowAvailableStructures.length > 0}
+                        isCloseAction={isCloseAction}
+                        rowInstrumentKey={rowInstrumentKey}
+                        rowAllocations={allocations[i] ?? []}
+                        allowAllocations={allowAllocations}
+                        onToggleSelected={onToggleSelected}
+                        onToggleNotProcessed={onToggleNotProcessed}
+                        onChangeStructureNumber={onChangeStructureNumber}
+                        onChangeLinkedStructure={onChangeLinkedStructure}
+                        onAddAllocation={onAddAllocation}
+                        onChangeAllocationStructure={onChangeAllocationStructure}
+                        onChangeAllocationQty={onChangeAllocationQty}
+                        onRemoveAllocation={onRemoveAllocation}
+                      />
                     );
                   })}
                 </tbody>

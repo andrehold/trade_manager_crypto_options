@@ -21,19 +21,50 @@ function InlineSpinner() {
   )
 }
 
+const FOCUSABLE_SELECTORS =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
 function PlaybookDrawerComponent({ open, onClose, position, playbook, loading, error }: PlaybookDrawerProps) {
   const hasPlaybook = Boolean(playbook)
   const links = playbook?.links ?? []
   const signals = playbook?.signals ?? []
   const hasLinks = links.length > 0
   const hasSignals = signals.length > 0
+  const drawerRef = React.useRef<HTMLElement>(null)
 
   React.useEffect(() => {
     if (!open) return
     const handler = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (event.key !== 'Tab') return
+      const drawer = drawerRef.current
+      if (!drawer) return
+      const focusable = Array.from(drawer.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS))
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey) {
+        if (document.activeElement === first) {
+          event.preventDefault()
+          last.focus()
+        }
+      } else {
+        if (document.activeElement === last) {
+          event.preventDefault()
+          first.focus()
+        }
+      }
     }
     window.addEventListener('keydown', handler)
+
+    // Move focus into the drawer on open
+    const drawer = drawerRef.current
+    const firstFocusable = drawer?.querySelector<HTMLElement>(FOCUSABLE_SELECTORS)
+    firstFocusable?.focus()
+
     return () => window.removeEventListener('keydown', handler)
   }, [open, onClose])
 
@@ -50,7 +81,7 @@ function PlaybookDrawerComponent({ open, onClose, position, playbook, loading, e
         className="absolute inset-0 transition-opacity"
         onClick={onClose}
       />
-      <aside className="relative h-full w-full max-w-xl overflow-y-auto border-l border-slate-200 bg-white">
+      <aside ref={drawerRef} className="relative h-full w-full max-w-xl overflow-y-auto border-l border-slate-200 bg-white">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Program Playbook</div>
