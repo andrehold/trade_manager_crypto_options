@@ -3,7 +3,7 @@ import Papa from 'papaparse'
 import { Toggle } from './components/Toggle'
 import { UploadBox } from './components/UploadBox'
 import { ColumnMapper } from './components/ColumnMapper'
-import { StructureDnDOverlay } from './components/StructureDnDOverlay'
+import { setAssignLegsContext } from './features/assignLegs/assignLegsStore'
 import { ReviewOverlay, type ReviewStructureOption } from './components/ReviewOverlay'
 import { ImportedTransactionsOverlay } from './components/ImportedTransactionsOverlay'
 import { SupabaseLogin } from './features/auth/SupabaseLogin'
@@ -96,9 +96,10 @@ type ExchangePositionSnapshot = {
 
 type DashboardAppProps = {
   onOpenPlaybookIndex?: () => void
+  onOpenAssignLegs?: () => void
 }
 
-export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps = {}) {
+export default function DashboardApp({ onOpenPlaybookIndex, onOpenAssignLegs }: DashboardAppProps = {}) {
   React.useEffect(() => { devQuickTests(); }, []);
 
   const { user, loading: authLoading, supabaseConfigured } = useAuth();
@@ -201,15 +202,7 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
   const [programPlaybooksError, setProgramPlaybooksError] = React.useState<string | null>(null);
   const [archiving, setArchiving] = React.useState<Record<string, boolean>>({});
   const [showMapper, setShowMapper] = React.useState<{ headers: string[]; mode: 'import' | 'backfill' } | null>(null);
-  const [showReview, setShowReview] = React.useState<{
-    rows: TxnRow[];
-    excludedRows: TxnRow[];
-    duplicateTradeIds?: string[];
-    duplicateOrderIds?: string[];
-    importHistorical?: boolean;
-    allowAllocations?: boolean;
-  } | null>(null);
-  const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
+const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
   const [importedRows, setImportedRows] = React.useState<
     Array<{
       id: string;
@@ -788,12 +781,15 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     const { rows, excludedRows } = mapRowsFromMapping(mapping, 'import');
     if (importHistorical) {
       setShowMapper(null);
-      setShowReview({
+      setAssignLegsContext({
         rows,
         excludedRows,
-        importHistorical: true,
-        allowAllocations,
+        exchange: exchange as Exchange,
+        savedStructures,
+        onConfirm: finalizeImport,
+        onCancel: () => {},
       });
+      onOpenAssignLegs?.();
       return;
     }
 
@@ -802,14 +798,15 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     });
 
     setShowMapper(null);
-    setShowReview({
+    setAssignLegsContext({
       rows: filtered,
       excludedRows,
-      duplicateTradeIds: duplicateTradeIds.length ? duplicateTradeIds : undefined,
-      duplicateOrderIds: duplicateOrderIds.length ? duplicateOrderIds : undefined,
-      importHistorical: false,
-      allowAllocations,
+      exchange: exchange as Exchange,
+      savedStructures,
+      onConfirm: finalizeImport,
+      onCancel: () => {},
     });
+    onOpenAssignLegs?.();
   }
 
   const loadImportedTransactions = React.useCallback(async () => {
@@ -1112,7 +1109,6 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
     const localRows = rows.filter((row) => !row.linkedStructureId);
 
     if (!linkedRows.length && !localRows.length) {
-      setShowReview(null);
       return;
     }
 
@@ -1168,7 +1164,6 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
 
     const grouped = buildPositionsFromTransactions(localRows);
     setPositions(grouped);
-    setShowReview(null);
   }
 
   const refreshSavedStructures = React.useCallback(() => {
@@ -2759,17 +2754,6 @@ export default function DashboardApp({ onOpenPlaybookIndex }: DashboardAppProps 
         className="hidden"
         onChange={(e) => e.target.files && handleBackfillFiles(e.target.files)}
       />
-
-      {showReview && (
-        <StructureDnDOverlay
-          rows={showReview.rows}
-          excludedRows={showReview.excludedRows}
-          exchange={selectedExchange}
-          savedStructures={savedStructures}
-          onConfirm={finalizeImport}
-          onCancel={() => setShowReview(null)}
-        />
-      )}
 
       {showMapper && (
         <ColumnMapper
