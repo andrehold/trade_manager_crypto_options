@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { ArrowLeft } from 'lucide-react'
 import {
   DndContext,
   DragEndEvent,
@@ -724,6 +725,13 @@ function AssignLegsPageInner({
     <div className="h-screen flex flex-col bg-white">
       {/* ── header ── */}
       <div className="shrink-0 flex items-center gap-3 px-6 pt-5 pb-3 border-b">
+        <button
+          onClick={handleCancel}
+          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors"
+          title="Back to dashboard"
+        >
+          <ArrowLeft size={18} />
+        </button>
         <h3 className="text-lg font-semibold">Assign Legs to Structures</h3>
         <div className="ml-auto flex gap-2 text-sm">
           <button
@@ -755,15 +763,15 @@ function AssignLegsPageInner({
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
-            <div className="flex gap-8 h-full overflow-hidden">
+            <div className="flex gap-8 h-full overflow-hidden items-start">
               {/* ──── LEFT COLUMN: Backlog ──── */}
-              <div className="flex-1 min-w-0 flex flex-col">
+              <div className="flex-1 min-w-0 h-full flex flex-col">
                 <p className="shrink-0 text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
                   New Legs ({backlogCount})
                 </p>
                 <Droppable
                   id={CONTAINER_BACKLOG}
-                  className="flex-1 min-h-0 overflow-y-auto border rounded-lg p-2 bg-slate-50 overscroll-contain"
+                  className="flex-1 min-h-0 overflow-y-auto border border-slate-700 rounded-lg p-2 bg-slate-800 overscroll-contain"
                 >
                   <SortableContext
                     items={backlogItems.map((i) => i.id)}
@@ -771,7 +779,7 @@ function AssignLegsPageInner({
                   >
                     <div className="flex flex-col gap-1">
                       {backlogItems.length === 0 ? (
-                        <p className="text-[11px] text-slate-400 italic text-center py-4">
+                        <p className="text-[11px] text-slate-500 italic text-center py-4">
                           All legs assigned
                         </p>
                       ) : (
@@ -785,7 +793,7 @@ function AssignLegsPageInner({
               </div>
 
               {/* ──── RIGHT COLUMN: Structures ──── */}
-              <div className="flex-1 min-w-0 flex flex-col gap-3">
+              <div className="flex-1 min-w-0 h-full flex flex-col gap-3">
                 {/* Pinned: New structure drop zone */}
                 <div className="shrink-0">
                   <NewStructureDropZone
@@ -800,11 +808,11 @@ function AssignLegsPageInner({
                 </div>
 
                 {/* Scrollable: structure cards */}
-                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col gap-4">
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col gap-4 bg-slate-800 border border-slate-700 rounded-lg p-3">
                   {/* Local (unsaved) structures */}
                   {localStructureIds.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                      <p className="text-xs font-semibold text-slate-300 uppercase tracking-wide mb-2">
                         New Structures (overlay only)
                       </p>
                       <div className="space-y-3">
@@ -827,7 +835,7 @@ function AssignLegsPageInner({
                   {/* Saved structures from DB */}
                   {savedStructureInfos.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                      <p className="text-xs font-semibold text-slate-300 uppercase tracking-wide mb-2">
                         Saved Structures
                       </p>
                       <div className="space-y-3">
@@ -853,7 +861,7 @@ function AssignLegsPageInner({
                   )}
 
                   {savedStructureInfos.length === 0 && localStructureIds.length === 0 && (
-                    <p className="text-xs text-slate-400 italic text-center py-6">
+                    <p className="text-xs text-slate-500 italic text-center py-6">
                       No saved structures. Drop legs above to create one.
                     </p>
                   )}
