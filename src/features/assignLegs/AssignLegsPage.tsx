@@ -754,7 +754,7 @@ function AssignLegsPageInner({
       </div>
 
       {/* ── body ── */}
-      <div className="flex-1 min-h-0 flex flex-col px-6 py-4 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden px-6 py-4">
         {activeTab === 'included' ? (
           <DndContext
             sensors={sensors}
@@ -763,9 +763,9 @@ function AssignLegsPageInner({
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
-            <div className="flex gap-8 h-full overflow-hidden items-start">
+            <div className="flex gap-8 h-full overflow-hidden">
               {/* ──── LEFT COLUMN: Backlog ──── */}
-              <div className="flex-1 min-w-0 h-full flex flex-col">
+              <div className="flex-1 min-w-0 flex flex-col">
                 <p className="shrink-0 text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
                   New Legs ({backlogCount})
                 </p>
@@ -793,7 +793,7 @@ function AssignLegsPageInner({
               </div>
 
               {/* ──── RIGHT COLUMN: Structures ──── */}
-              <div className="flex-1 min-w-0 h-full flex flex-col gap-3">
+              <div className="flex-1 min-w-0 flex flex-col gap-3">
                 {/* Pinned: New structure drop zone */}
                 <div className="shrink-0">
                   <NewStructureDropZone
@@ -877,7 +877,7 @@ function AssignLegsPageInner({
           </DndContext>
         ) : (
           /* ──── Excluded tab ──── */
-          <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
+          <div className="h-full flex flex-col gap-3 overflow-hidden">
             <p className="shrink-0 text-sm text-slate-600">
               These rows were auto-excluded (non-option instruments). Review only.
             </p>
