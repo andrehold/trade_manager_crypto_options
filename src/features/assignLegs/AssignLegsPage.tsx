@@ -49,7 +49,14 @@ function calcLegPremium(row: TxnRow): number {
 
 function formatPremium(value: number): string {
   const abs = Math.abs(value)
-  return abs % 1 === 0 ? String(Math.round(abs)) : abs.toFixed(2)
+  if (abs === 0) return '0'
+  if (abs % 1 === 0) return String(Math.round(abs))
+  // Use enough decimal places so at least 2 significant digits are visible
+  // e.g. 0.00216 → "0.0022", 0.0129 → "0.0129", 1.23 → "1.23"
+  if (abs >= 1) return abs.toFixed(2)
+  const magnitude = Math.floor(Math.log10(abs))   // e.g. -3 for 0.00216
+  const decimals = Math.max(2, -magnitude + 1)     // show 2 sig figs past leading zeros
+  return abs.toFixed(decimals)
 }
 
 function PremiumBadge({ value }: { value: number }) {
