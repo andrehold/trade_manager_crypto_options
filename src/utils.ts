@@ -241,10 +241,25 @@ export function daysSince(dateInput: string | Date | null | undefined): number |
 export function toNumber(v: any): number {
   if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
   let s = ('' + v).trim();
-  if (s.indexOf(',') >= 0 && s.indexOf('.') < 0) {
-    s = s.split('.').join('');
-    s = s.split(',').join('.');
+  const commaIdx = s.lastIndexOf(',');
+  const dotIdx   = s.lastIndexOf('.');
+  if (commaIdx > dotIdx) {
+    // Comma is to the right of any dot → decimal separator is comma.
+    // EU format examples: "1.234,56"  "1.234,5"  "0,56"
+    // Distinguish "1,234" (US thousands, no decimal dot) from "0,56" (EU decimal):
+    //   EU-decimal: digits after last comma ≠ exactly 3, OR a dot also present
+    const digitsAfterComma = s.length - commaIdx - 1;
+    const hasThousandsDot  = dotIdx !== -1;
+    if (hasThousandsDot || digitsAfterComma !== 3) {
+      // Unambiguously EU format → treat comma as decimal
+      s = s.split('.').join('');   // strip thousands dots
+      s = s.split(',').join('.');  // replace decimal comma with dot
+    } else {
+      // Ambiguous "1,234" — treat as US thousands separator (more common in trade data)
+      s = s.split(',').join('');
+    }
   } else {
+    // US / plain format: comma is thousands separator  e.g. "1,234.56" or "0.0245"
     s = s.split(',').join('');
   }
   const n = Number(s);
