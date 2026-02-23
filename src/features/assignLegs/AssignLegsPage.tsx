@@ -61,7 +61,8 @@ function formatPremium(value: number): string {
 
 function PremiumBadge({ value }: { value: number }) {
   if (value === 0) return null
-  const isCredit = value > 0
+  // negative = received (credit) = green; positive = paid (debit) = red
+  const isCredit = value < 0
   const color = isCredit
     ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
     : 'bg-rose-100 text-rose-700 border-rose-200'
@@ -117,12 +118,14 @@ function LegChip({
       style={style}
       {...attributes}
       {...listeners}
-      className="inline-flex items-center gap-1.5 bg-white border border-slate-200 rounded-md px-2 py-1 text-xs cursor-grab active:cursor-grabbing hover:border-slate-400 hover:shadow-sm touch-none select-none transition-colors"
+      className="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-md px-2 py-1 text-xs cursor-grab active:cursor-grabbing hover:border-slate-400 hover:shadow-sm touch-none select-none transition-colors"
     >
       <span className="font-semibold text-slate-800 whitespace-nowrap">
         {formatLegLabel(legItem.row, exchange)}
       </span>
+      <span className="text-slate-300 select-none">·</span>
       <PremiumBadge value={premium} />
+      <span className="text-slate-300 select-none">·</span>
       <span className="text-[10px] text-slate-400 whitespace-nowrap" title={ts}>
         {datePart} {timePart}
       </span>
