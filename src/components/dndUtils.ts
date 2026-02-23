@@ -180,25 +180,101 @@ export function autoGroupByTime(rows: TxnRow[], normalizeSecond: (ts?: string) =
 }
 
 /**
- * Heuristic to suggest structure type
+ * Heuristic to suggest structure type from a set of legs.
+ *
+ * Detection rules (evaluated in priority order):
+ *
+ * Multi-expiry (2 unique expiries, same type):
+ *   DS  – 2 legs, same option type, different strikes AND different expiries
+ *   CS  – 2 legs, same option type, same strike, different expiries
+ *
+ * Single-expiry, mixed C+P:
+ *   ST  – 2 legs (1C + 1P), same strike
+ *   SG  – 2 legs (1C + 1P), different strikes
+ *   IB  – 4 legs, two middle strikes shared by C and P (short straddle + long strangle)
+ *   IC  – 4 legs, 4 distinct strikes: sell put/call inner, buy put/call outer
+ *
+ * Single-expiry, same option type:
+ *   VS  – 2 legs, 1 buy + 1 sell
+ *   BF  – 4 legs, 3 equidistant strikes, 1-2-1 qty ratio
+ *   RS  – unequal buy/sell quantities
+ *
+ * Fallback: CU (Custom)
  */
 export function suggestStructureType(items: LegItem[]): string {
-  if (items.length === 0) return 'Custom'
+  if (items.length === 0) return 'CU'
 
   const { legMap } = aggregateStructureLegs(items)
-  const callCount = Array.from(legMap.values()).filter((e) => e.key.optionType === 'C').length
-  const putCount = Array.from(legMap.values()).filter((e) => e.key.optionType === 'P').length
-  const expiries = new Set(Array.from(legMap.values()).map((e) => e.key.expiry))
+  const legs = Array.from(legMap.values())
 
-  // 4 legs, both calls and puts, single expiry -> Iron Condor
-  if (items.length === 4 && callCount > 0 && putCount > 0 && expiries.size === 1) {
-    return 'IC'
+  const expiries = Array.from(new Set(legs.map((e) => e.key.expiry))).sort()
+  const calls = legs.filter((e) => e.key.optionType === 'C')
+  const puts  = legs.filter((e) => e.key.optionType === 'P')
+  const allSameType = calls.length === 0 || puts.length === 0
+  const mixedTypes  = calls.length > 0 && puts.length > 0
+
+  // ── Multi-expiry (2 expiries only, same option type) ──────────────────────
+  if (expiries.length === 2 && allSameType && legs.length === 2) {
+    const [a, b] = legs
+    if (a.key.strike === b.key.strike) return 'CS'   // same strike → Calendar
+    return 'DS'                                        // different strike → Diagonal
   }
 
-  // Multiple expiries -> likely diagonal/calendar spread
-  if (expiries.size > 1) {
-    return 'DS'
+  // Any other multi-expiry → Diagonal fallback
+  if (expiries.length > 1) return 'DS'
+
+  // ── Single expiry ─────────────────────────────────────────────────────────
+  const legCount = legs.length
+
+  // --- Mixed C + P ---
+  if (mixedTypes) {
+    // Straddle / Strangle (2 legs: 1C + 1P)
+    if (legCount === 2 && calls.length === 1 && puts.length === 1) {
+      return calls[0].key.strike === puts[0].key.strike ? 'ST' : 'SG'
+    }
+
+    // Iron Butterfly / Iron Condor (4 legs: 2C + 2P)
+    if (legCount === 4 && calls.length === 2 && puts.length === 2) {
+      const callStrikes = calls.map((c) => c.key.strike).sort((a, b) => a - b)
+      const putStrikes  = puts.map((p) => p.key.strike).sort((a, b) => a - b)
+      // IB: the inner call strike equals the inner put strike (shared ATM body)
+      const innerCall = callStrikes[0]  // lower call = short call body
+      const innerPut  = putStrikes[1]   // higher put = short put body
+      if (innerCall === innerPut) return 'IB'
+      return 'IC'
+    }
   }
 
-  return 'Custom'
+  // --- Same option type ---
+  if (allSameType) {
+    // Vertical Spread: 2 legs, 1 buy + 1 sell
+    if (legCount === 2) {
+      const [a, b] = legs
+      // netQty signs differ → one is long, one is short
+      if ((a.netQty > 0 && b.netQty < 0) || (a.netQty < 0 && b.netQty > 0)) return 'VS'
+    }
+
+    // Butterfly: 4 aggregated legs map to 3 strikes with 1-2-1 net qty pattern
+    if (legCount === 3) {
+      const sorted = [...legs].sort((a, b) => a.key.strike - b.key.strike)
+      const [lo, mid, hi] = sorted
+      const loAbs  = Math.abs(lo.netQty)
+      const midAbs = Math.abs(mid.netQty)
+      const hiAbs  = Math.abs(hi.netQty)
+      const spaceLo = mid.key.strike - lo.key.strike
+      const spaceHi = hi.key.strike - mid.key.strike
+      const equidistant = Math.abs(spaceLo - spaceHi) < 0.01
+      const ratioOk = midAbs === loAbs * 2 && midAbs === hiAbs * 2
+      // Outer legs same sign (long wings), middle opposite (short body) or vice-versa
+      const wingsMatch = Math.sign(lo.netQty) === Math.sign(hi.netQty) && Math.sign(lo.netQty) !== Math.sign(mid.netQty)
+      if (equidistant && ratioOk && wingsMatch) return 'BF'
+    }
+
+    // Ratio Spread: legs with unequal absolute quantities
+    const qtys = legs.map((e) => Math.abs(e.netQty))
+    const uniqueQtys = new Set(qtys)
+    if (uniqueQtys.size > 1) return 'RS'
+  }
+
+  return 'CU'
 }

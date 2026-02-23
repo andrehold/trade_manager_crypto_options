@@ -28,6 +28,8 @@ import {
   generateLegId,
   formatLegLabel,
   formatStructureLabel,
+  aggregateStructureLegs,
+  suggestStructureType,
   STRUCTURE_TYPES,
 } from '../../components/dndUtils'
 import { buildStructureChipSummary } from '../../lib/positions'
@@ -35,6 +37,36 @@ import { getAssignLegsContext, clearAssignLegsContext } from './assignLegsStore'
 
 const CONTAINER_BACKLOG = 'backlog'
 const CONTAINER_NEW_STRUCTURE = 'new-structure'
+
+/* ── premium helpers ── */
+
+function calcLegPremium(row: TxnRow): number {
+  const qty = Math.abs(row.amount ?? 0)
+  const price = row.price ?? 0
+  // sell = premium received (positive), buy = premium paid (negative)
+  return price * qty * (row.side === 'sell' ? 1 : -1)
+}
+
+function formatPremium(value: number): string {
+  const abs = Math.abs(value)
+  return abs % 1 === 0 ? String(Math.round(abs)) : abs.toFixed(2)
+}
+
+function PremiumBadge({ value }: { value: number }) {
+  const isCredit = value > 0
+  const isDebit = value < 0
+  const color = isCredit
+    ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+    : isDebit
+    ? 'bg-rose-100 text-rose-700 border-rose-200'
+    : 'bg-slate-100 text-slate-500 border-slate-200'
+  const sign = isCredit ? '+' : isDebit ? '-' : ''
+  return (
+    <span className={`inline-flex items-center border rounded px-1 py-0 text-[10px] font-mono leading-tight ${color}`}>
+      {sign}{formatPremium(value)}
+    </span>
+  )
+}
 
 /* ─────────────────────── types ─────────────────────── */
 
@@ -72,6 +104,7 @@ function LegChip({
     ? ts.split(' ')[1]?.slice(0, 8) ?? ''
     : ''
   const datePart = ts.slice(0, 10)
+  const premium = calcLegPremium(legItem.row)
 
   return (
     <div
@@ -84,6 +117,7 @@ function LegChip({
       <span className="font-semibold text-slate-800 whitespace-nowrap">
         {formatLegLabel(legItem.row, exchange)}
       </span>
+      <PremiumBadge value={premium} />
       <span className="text-[10px] text-slate-400 whitespace-nowrap" title={ts}>
         {datePart} {timePart}
       </span>
@@ -157,6 +191,13 @@ function NewStructureDropZone({
   onRemoveItem: (id: string) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: CONTAINER_NEW_STRUCTURE })
+  const netPremium = items.length > 0 ? aggregateStructureLegs(items).totalNetPremium : null
+
+  const handleAutoDetect = () => {
+    if (items.length === 0) return
+    const suggested = suggestStructureType(items)
+    onStructureTypeChange(suggested)
+  }
 
   return (
     <div
@@ -185,6 +226,16 @@ function NewStructureDropZone({
               </option>
             ))}
           </select>
+          {items.length > 0 && (
+            <button
+              onClick={handleAutoDetect}
+              className="px-2 py-0.5 text-[11px] font-medium rounded border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-400 transition-colors"
+              title="Auto-detect structure type from legs"
+            >
+              Auto
+            </button>
+          )}
+          {netPremium !== null && <PremiumBadge value={netPremium} />}
         </div>
         {items.length > 0 && (
           <div className="flex items-center gap-1.5">
@@ -260,6 +311,7 @@ function SavedStructureCard({
   onRemoveItem: (id: string) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: structureId })
+  const newLegsNetPremium = newLegs.length > 0 ? aggregateStructureLegs(newLegs).totalNetPremium : null
 
   return (
     <div
@@ -268,9 +320,12 @@ function SavedStructureCard({
         isOver ? 'border-blue-400 bg-blue-50/60' : 'border-slate-200 bg-slate-50/40'
       }`}
     >
-      <p className="text-xs font-semibold text-slate-700 mb-2 truncate" title={label}>
-        {label}
-      </p>
+      <div className="flex items-center gap-2 mb-2">
+        <p className="text-xs font-semibold text-slate-700 truncate flex-1" title={label}>
+          {label}
+        </p>
+        {newLegsNetPremium !== null && <PremiumBadge value={newLegsNetPremium} />}
+      </div>
       <div className="flex gap-3">
         <div className="flex-1 min-w-0">
           {existingLegs.length > 0 ? (
@@ -330,6 +385,7 @@ function LocalStructureCard({
   onRemoveItem: (id: string) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: structureId })
+  const netPremium = items.length > 0 ? aggregateStructureLegs(items).totalNetPremium : null
 
   return (
     <div
@@ -343,6 +399,7 @@ function LocalStructureCard({
           {formatStructureLabel(items, meta.type)}
         </p>
         <div className="flex items-center gap-1.5 ml-2 shrink-0">
+          {netPremium !== null && <PremiumBadge value={netPremium} />}
           <select
             value={meta.type}
             onChange={(e) => onTypeChange(e.target.value)}
