@@ -111,6 +111,7 @@ function LegChip({
     : ''
   const datePart = ts.slice(0, 10)
   const premium = calcLegPremium(legItem.row)
+  const action = legItem.row.action
 
   return (
     <div
@@ -126,6 +127,20 @@ function LegChip({
       <span className="text-slate-300 select-none">·</span>
       <PremiumBadge value={premium} />
       <span className="text-slate-300 select-none">·</span>
+      {action && (
+        <>
+          <span
+            className={`text-[10px] font-medium px-1 py-0 rounded border leading-tight ${
+              action === 'open'
+                ? 'bg-blue-50 text-blue-600 border-blue-200'
+                : 'bg-slate-100 text-slate-500 border-slate-200'
+            }`}
+          >
+            {action}
+          </span>
+          <span className="text-slate-300 select-none">·</span>
+        </>
+      )}
       <span className="text-[10px] text-slate-400 whitespace-nowrap" title={ts}>
         {datePart} {timePart}
       </span>
