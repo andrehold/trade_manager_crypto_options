@@ -686,7 +686,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
 
           const hasSide = baseRow.side === 'buy' || baseRow.side === 'sell';
           const hasAmount = Number.isFinite(baseRow.amount) && Math.abs(baseRow.amount) > 0;
-          const hasPrice = Number.isFinite(baseRow.price);
+          const hasPrice = Number.isFinite(baseRow.price) && baseRow.price > 0;
           if (!hasSide || !hasAmount || !hasPrice) {
             return null;
           }

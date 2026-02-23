@@ -53,14 +53,12 @@ function formatPremium(value: number): string {
 }
 
 function PremiumBadge({ value }: { value: number }) {
+  if (value === 0) return null
   const isCredit = value > 0
-  const isDebit = value < 0
   const color = isCredit
     ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-    : isDebit
-    ? 'bg-rose-100 text-rose-700 border-rose-200'
-    : 'bg-slate-100 text-slate-500 border-slate-200'
-  const sign = isCredit ? '+' : isDebit ? '-' : ''
+    : 'bg-rose-100 text-rose-700 border-rose-200'
+  const sign = isCredit ? '+' : '-'
   return (
     <span className={`inline-flex items-center border rounded px-1 py-0 text-[10px] font-mono leading-tight ${color}`}>
       {sign}{formatPremium(value)}
