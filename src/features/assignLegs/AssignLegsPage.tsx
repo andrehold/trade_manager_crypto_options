@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Blocks } from 'lucide-react'
 import {
   DndContext,
   DragEndEvent,
@@ -101,17 +101,35 @@ function LegChip({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
+    ...(isDragging
+      ? {
+          transform: CSS.Transform.toString(transform) + ' scale(1.025)',
+          boxShadow: 'inset 0px 0px 1px rgba(0,0,0,0.5), -1px 0 15px 0 rgba(34,33,81,0.01), 0px 15px 15px 0 rgba(34,33,81,0.25)',
+        }
+      : {}),
   }
 
-  const ts = legItem.row.timestamp ?? ''
+  const row = legItem.row
+  const ts = row.timestamp ?? ''
   const timePart = ts.includes('T')
     ? ts.split('T')[1]?.slice(0, 8) ?? ''
     : ts.includes(' ')
     ? ts.split(' ')[1]?.slice(0, 8) ?? ''
     : ''
   const datePart = ts.slice(0, 10)
-  const premium = calcLegPremium(legItem.row)
-  const action = legItem.row.action
+  const premium = calcLegPremium(row)
+  const action = row.action
+
+  // Parse instrument parts for display
+  const parsed = parseInstrumentByExchange(exchange, row.instrument)
+  const qty = Math.abs(row.amount ?? 0)
+  const qtyStr = qty % 1 === 0 ? String(qty) : qty.toFixed(2)
+  const sign = row.side === 'sell' ? '-' : '+'
+  const qtyPart = `${sign}${qtyStr}`
+  const strikePart = parsed ? `${parsed.optionType}${parsed.strike}` : row.instrument
+  const expiryPart = parsed?.expiryISO
+    ? parsed.expiryISO.split('-').slice(1, 3).reverse().join('-')
+    : ''
 
   return (
     <div
@@ -119,38 +137,52 @@ function LegChip({
       style={style}
       {...attributes}
       {...listeners}
-      className="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-md px-2 py-1 text-xs cursor-grab active:cursor-grabbing hover:border-slate-400 hover:shadow-sm touch-none select-none transition-colors"
+      className="flex items-center gap-3 bg-black text-white rounded-[10px] px-[18px] py-[14px] cursor-grab active:cursor-grabbing touch-none select-none transition-transform"
     >
-      <span className="font-semibold text-slate-800 whitespace-nowrap">
-        {formatLegLabel(legItem.row, exchange)}
-      </span>
-      <span className="text-slate-300 select-none">·</span>
-      <PremiumBadge value={premium} />
-      <span className="text-slate-300 select-none">·</span>
-      {action && (
-        <>
-          <span
-            className={`text-[10px] font-medium px-1 py-0 rounded border leading-tight ${
-              action === 'open'
-                ? 'bg-blue-50 text-blue-600 border-blue-200'
-                : 'bg-slate-100 text-slate-500 border-slate-200'
-            }`}
-          >
-            {action}
+      <Blocks size={22} className="shrink-0 text-white/80" />
+      <div className="flex flex-col gap-0.5 min-w-0">
+        {/* Primary row — larger text */}
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="text-base font-black whitespace-nowrap leading-tight">
+            {qtyPart}
           </span>
-          <span className="text-slate-300 select-none">·</span>
-        </>
-      )}
-      <span className="text-[10px] text-slate-400 whitespace-nowrap" title={ts}>
-        {datePart} {timePart}
-      </span>
+          <span className="text-base font-black whitespace-nowrap leading-tight">
+            {strikePart}
+          </span>
+          {expiryPart && (
+            <span className="text-base font-black whitespace-nowrap leading-tight">
+              {expiryPart}
+            </span>
+          )}
+        </div>
+        {/* Secondary row — smaller text */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <PremiumBadge value={premium} />
+          {action && (
+            <span
+              className={`text-[10px] font-medium px-1 py-0 rounded border leading-tight ${
+                action === 'open'
+                  ? 'bg-blue-50/10 text-blue-300 border-blue-400/40'
+                  : 'bg-white/10 text-white/50 border-white/20'
+              }`}
+            >
+              {action}
+            </span>
+          )}
+          {(datePart || timePart) && (
+            <span className="text-[10px] text-white/40 whitespace-nowrap" title={ts}>
+              {datePart} {timePart}
+            </span>
+          )}
+        </div>
+      </div>
       {onRemove && (
         <button
           onClick={(e) => {
             e.stopPropagation()
             onRemove()
           }}
-          className="ml-0.5 text-slate-400 hover:text-rose-500 text-[10px] leading-none"
+          className="ml-auto shrink-0 text-white/30 hover:text-rose-400 text-[11px] leading-none"
           title="Remove from structure"
         >
           ✕
@@ -164,8 +196,12 @@ function LegChip({
 
 function GhostChip({ legItem, exchange }: { legItem: LegItem; exchange: Exchange }) {
   return (
-    <div className="inline-flex items-center gap-1.5 bg-white border-2 border-blue-400 rounded-md px-2 py-1 text-xs shadow-lg">
-      <span className="font-semibold text-slate-800 whitespace-nowrap">
+    <div
+      className="flex items-center gap-3 bg-black text-white rounded-[10px] px-[18px] py-[14px] shadow-xl opacity-90 touch-none select-none"
+      style={{ boxShadow: '-1px 0 15px 0 rgba(34,33,81,0.01), 0px 15px 15px 0 rgba(34,33,81,0.25)' }}
+    >
+      <Blocks size={22} className="shrink-0 text-white/80" />
+      <span className="text-base font-black whitespace-nowrap leading-tight">
         {formatLegLabel(legItem.row, exchange)}
       </span>
     </div>

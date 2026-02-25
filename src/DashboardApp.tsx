@@ -2,8 +2,8 @@ import React from 'react'
 import Papa from 'papaparse'
 import { Toggle } from './components/Toggle'
 import { UploadBox } from './components/UploadBox'
-import { ColumnMapper } from './components/ColumnMapper'
 import { setAssignLegsContext } from './features/assignLegs/assignLegsStore'
+import { setColumnMapperContext } from './features/mapCSV/columnMapperStore'
 import { ReviewOverlay, type ReviewStructureOption } from './components/ReviewOverlay'
 import { ImportedTransactionsOverlay } from './components/ImportedTransactionsOverlay'
 import { SupabaseLogin } from './features/auth/SupabaseLogin'
@@ -97,9 +97,10 @@ type ExchangePositionSnapshot = {
 type DashboardAppProps = {
   onOpenPlaybookIndex?: () => void
   onOpenAssignLegs?: () => void
+  onOpenMapCSV?: () => void
 }
 
-export default function DashboardApp({ onOpenPlaybookIndex, onOpenAssignLegs }: DashboardAppProps = {}) {
+export default function DashboardApp({ onOpenPlaybookIndex, onOpenAssignLegs, onOpenMapCSV }: DashboardAppProps = {}) {
   React.useEffect(() => { devQuickTests(); }, []);
 
   const { user, loading: authLoading, supabaseConfigured } = useAuth();
@@ -201,7 +202,6 @@ export default function DashboardApp({ onOpenPlaybookIndex, onOpenAssignLegs }: 
   const [programPlaybooksLoading, setProgramPlaybooksLoading] = React.useState(false);
   const [programPlaybooksError, setProgramPlaybooksError] = React.useState<string | null>(null);
   const [archiving, setArchiving] = React.useState<Record<string, boolean>>({});
-  const [showMapper, setShowMapper] = React.useState<{ headers: string[]; mode: 'import' | 'backfill' } | null>(null);
 const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
   const [importedRows, setImportedRows] = React.useState<
     Array<{
@@ -342,7 +342,19 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
       }
       setRawRows(rows);
       const headers = Object.keys(rows[0] || {});
-      setShowMapper({ headers, mode });
+      setColumnMapperContext({
+        headers,
+        mode,
+        onConfirm: (mapping) => {
+          if (mode === 'backfill') {
+            startBackfill(mapping as unknown as Record<string, string>);
+          } else {
+            startImport(mapping as unknown as Record<string, string>);
+          }
+        },
+        onCancel: () => {},
+      });
+      onOpenMapCSV?.();
     };
 
     Papa.parse(file, {
@@ -780,7 +792,6 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
     await saveRawTransactionLogs(mapping, exchange as Exchange);
     const { rows, excludedRows } = mapRowsFromMapping(mapping, 'import');
     if (importHistorical) {
-      setShowMapper(null);
       setAssignLegsContext({
         rows,
         excludedRows,
@@ -797,7 +808,6 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
       allowAllocations,
     });
 
-    setShowMapper(null);
     setAssignLegsContext({
       rows: filtered,
       excludedRows,
@@ -1006,7 +1016,6 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
         } else {
           setBackfillStatus({ type: 'error', message: 'No valid rows found for backfill.' });
         }
-        setShowMapper(null);
         return;
       }
 
@@ -1016,12 +1025,10 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
           type: 'error',
           message: 'No trade/order IDs found. Map trade_id or order_id columns to run backfill.',
         });
-        setShowMapper(null);
         return;
       }
 
       setBackfillStatus({ type: 'running', message: 'Backfill in progress…' });
-      setShowMapper(null);
       try {
         const result = await backfillLegExpiries(supabase, {
           rows,
@@ -2755,19 +2762,6 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
         onChange={(e) => e.target.files && handleBackfillFiles(e.target.files)}
       />
 
-      {showMapper && (
-        <ColumnMapper
-          headers={showMapper.headers}
-          mode={showMapper.mode}
-          onConfirm={(mapping) => {
-            if (showMapper.mode === 'backfill') {
-              return startBackfill(mapping);
-            }
-            return startImport(mapping);
-          }}
-          onCancel={() => setShowMapper(null)}
-        />
-      )}
     </div>
   );
 }

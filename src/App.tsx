@@ -3,12 +3,14 @@ import DashboardApp from './DashboardApp'
 import { PlaybookIndexPage } from './features/playbooks/PlaybookIndexPage'
 import { StrategyPlaybookPage } from './features/playbooks/StrategyPlaybookPage'
 import { AssignLegsPage } from './features/assignLegs/AssignLegsPage'
+import { MapCSVPage } from './features/mapCSV/MapCSVPage'
 
 type ViewState =
   | { type: 'dashboard' }
   | { type: 'playbookIndex' }
   | { type: 'playbookDetail'; slug: string }
   | { type: 'assignLegs' }
+  | { type: 'mapCSV' }
 
 function parseHash(hash: string | undefined | null): ViewState {
   if (!hash) return { type: 'dashboard' }
@@ -16,6 +18,7 @@ function parseHash(hash: string | undefined | null): ViewState {
   const segments = normalized.split('/').filter(Boolean)
   if (segments.length === 0) return { type: 'dashboard' }
   if (segments[0] === 'assign-legs') return { type: 'assignLegs' }
+  if (segments[0] === 'map-csv') return { type: 'mapCSV' }
   if (segments[0] !== 'playbooks') return { type: 'dashboard' }
   if (segments.length === 1) return { type: 'playbookIndex' }
   return { type: 'playbookDetail', slug: segments[1] }
@@ -51,6 +54,7 @@ export default function App() {
   const goPlaybookIndex = React.useCallback(() => navigate('#/playbooks'), [navigate])
   const goPlaybook = React.useCallback((slug: string) => navigate(`#/playbooks/${slug}`), [navigate])
   const goAssignLegs = React.useCallback(() => navigate('#/assign-legs'), [navigate])
+  const goMapCSV = React.useCallback(() => navigate('#/map-csv'), [navigate])
 
   if (view.type === 'playbookIndex') {
     return <PlaybookIndexPage onBack={goDashboard} onSelectPlaybook={goPlaybook} />
@@ -71,5 +75,9 @@ export default function App() {
     return <AssignLegsPage onBack={goDashboard} />
   }
 
-  return <DashboardApp onOpenPlaybookIndex={goPlaybookIndex} onOpenAssignLegs={goAssignLegs} />
+  if (view.type === 'mapCSV') {
+    return <MapCSVPage onBack={goDashboard} />
+  }
+
+  return <DashboardApp onOpenPlaybookIndex={goPlaybookIndex} onOpenAssignLegs={goAssignLegs} onOpenMapCSV={goMapCSV} />
 }
