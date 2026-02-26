@@ -68,7 +68,7 @@ function PremiumBadge({ value }: { value: number }) {
     : 'bg-rose-500 text-white border-rose-600'
   const sign = isCredit ? '+' : '-'
   return (
-    <span className={`inline-flex items-center border rounded px-1 py-0 text-[10px] font-mono leading-tight ${color}`}>
+    <span className={`inline-flex items-center border rounded px-2 py-0.5 text-[10px] font-mono leading-tight ${color}`}>
       {sign}{formatPremium(value)}
     </span>
   )
@@ -141,8 +141,8 @@ function LegChip({
     >
       <Blocks size={22} className="shrink-0 text-white/80" />
       <div className="flex flex-col gap-0.5 min-w-0">
-        {/* Primary row — larger text */}
-        <div className="flex items-baseline gap-2 flex-wrap">
+        {/* Primary row — larger text + price chip */}
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-base font-black whitespace-nowrap leading-tight">
             {qtyPart}
           </span>
@@ -154,10 +154,10 @@ function LegChip({
               {expiryPart}
             </span>
           )}
+          <PremiumBadge value={premium} />
         </div>
         {/* Secondary row — smaller text */}
         <div className="flex items-center gap-2 flex-wrap">
-          <PremiumBadge value={premium} />
           {action && (
             <span
               className={`text-[10px] font-medium px-1 py-0 rounded border leading-tight ${
@@ -887,15 +887,15 @@ function AssignLegsPageInner({
                 </p>
                 <Droppable
                   id={CONTAINER_BACKLOG}
-                  className="flex-1 min-h-0 overflow-y-auto border border-slate-700 rounded-lg p-2 bg-slate-800 overscroll-contain"
+                  className="flex-1 min-h-0 overflow-y-auto border border-slate-200 rounded-lg p-3 bg-slate-100 overscroll-contain"
                 >
                   <SortableContext
                     items={backlogItems.map((i) => i.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-3">
                       {backlogItems.length === 0 ? (
-                        <p className="text-[11px] text-slate-500 italic text-center py-4">
+                        <p className="text-[11px] text-slate-400 italic text-center py-4">
                           All legs assigned
                         </p>
                       ) : (
