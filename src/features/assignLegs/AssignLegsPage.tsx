@@ -214,15 +214,18 @@ function Droppable({
   id,
   children,
   className,
+  style,
 }: {
   id: string
   children: React.ReactNode
   className?: string
+  style?: React.CSSProperties
 }) {
   const { setNodeRef, isOver } = useDroppable({ id })
   return (
     <div
       ref={setNodeRef}
+      style={style}
       className={`${className ?? ''} ${isOver ? 'ring-2 ring-blue-400 ring-inset' : ''}`}
     >
       {children}
@@ -887,7 +890,8 @@ function AssignLegsPageInner({
                 </p>
                 <Droppable
                   id={CONTAINER_BACKLOG}
-                  className="flex-1 min-h-0 overflow-y-auto border border-slate-200 rounded-lg p-3 bg-slate-100 overscroll-contain"
+                  className="flex-1 min-h-0 overflow-y-auto rounded-lg p-3 overscroll-contain"
+                  style={{ backgroundColor: '#F1F5F9', border: '1px solid #E2E8F0' }}
                 >
                   <SortableContext
                     items={backlogItems.map((i) => i.id)}

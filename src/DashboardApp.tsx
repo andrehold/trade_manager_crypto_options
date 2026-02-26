@@ -2229,16 +2229,27 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
           </div>
         </div>
 
-        <div className="relative z-10 flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center text-slate-200">
-          <div className="max-w-xl space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">Authentication required</p>
-            <h1 className="text-3xl font-semibold tracking-tight">Sign in to continue</h1>
-            <p className="text-sm text-slate-400">
-              Unlock program lookups, structure imports, and live mark fetching with your workspace credentials.
+        <div className="relative z-10 flex min-h-screen items-center justify-center p-6">
+          <div className="w-full max-w-md space-y-8">
+            {/* Branding / copy */}
+            <div className="space-y-2 text-center text-slate-200">
+              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">
+                Authentication required
+              </p>
+              <h1 className="text-3xl font-semibold tracking-tight">Sign in to continue</h1>
+              <p className="text-sm text-slate-400">
+                Unlock lookups, structure imports, and live mark fetching.
+              </p>
+            </div>
+
+            {/* Form card */}
+            <SupabaseLogin />
+
+            {/* Footnote */}
+            <p className="text-center text-xs text-slate-600">
+              Access is limited to authorized trading workspaces.
             </p>
           </div>
-          <SupabaseLogin />
-          <p className="text-xs text-slate-500">Access is limited to authorized trading workspaces.</p>
         </div>
       </div>
     );
