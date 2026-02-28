@@ -205,6 +205,8 @@ function mapLeg(
     ? matchingFills
     : [
         {
+          leg_seq: null,
+          fees: null,
           ts: position.entry_ts,
           qty,
           price,
@@ -526,7 +528,7 @@ function mapPosition(
   const explicitLegFees = legs.map((leg) => {
     const key = legMergeKey(leg);
     const matchingFeeSeqs = mappedLegs.filter((entry) => entry.mergeKey === key).map((entry) => entry.feeSeq);
-    const feesForLeg = matchingFeeSeqs.reduce((sum, seq) => sum + (seq ? legFeesFromFills.get(seq) ?? 0 : 0), 0);
+    const feesForLeg = matchingFeeSeqs.reduce<number>((sum, seq) => sum + (seq ? legFeesFromFills.get(seq) ?? 0 : 0), 0);
     return feesForLeg;
   });
 

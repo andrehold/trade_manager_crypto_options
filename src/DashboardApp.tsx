@@ -1,6 +1,7 @@
 import React from 'react'
 import Papa from 'papaparse'
 import { Toggle } from './components/Toggle'
+import { Sidebar } from './components/Sidebar'
 import { UploadBox } from './components/UploadBox'
 import { setAssignLegsContext } from './features/assignLegs/assignLegsStore'
 import { setColumnMapperContext } from './features/mapCSV/columnMapperStore'
@@ -10,7 +11,7 @@ import { SupabaseLogin } from './features/auth/SupabaseLogin'
 import { useAuth } from './features/auth/useAuth'
 import { tryGetSupabaseClient } from './lib/supabase'
 import {
-  Position, TxnRow, Lot,
+  Position, TxnRow, Lot, Leg,
   useLocalStorage, devQuickTests,
   parseActionSide, toNumber, parseInstrumentByExchange, normalizeSecond,
   daysTo, daysSince, fifoMatchAndRealize, classifyStatus, calculatePnlPct,
@@ -20,7 +21,12 @@ import {
 import { PositionRow } from './components/PositionRow'
 import { PlaybookDrawer } from './components/PlaybookDrawer'
 import { ccGetBest } from './lib/venues/coincall'
-import { dbGetBest, dbGetTicker } from './lib/venues/deribit'
+import { dbGetBest, dbGetTicker, dbGetInstruments } from './lib/venues/deribit'
+import { DashboardHeader } from './components/DashboardHeader'
+import { ExpiryDatePicker } from './components/ExpiryDatePicker'
+import { ViewSelector, type ActiveView } from './components/ViewSelector'
+import { KanbanBoard } from './components/KanbanBoard'
+import { RefreshCw, TrendingUp, Upload, GanttChart } from 'lucide-react'
 import {
   archiveStructure,
   fetchSavedStructures,
@@ -39,6 +45,8 @@ import {
   extractIdentifier,
   sanitizeIdentifier,
 } from './lib/positions/identifiers'
+import { MapCSVPage } from './features/mapCSV/MapCSVPage'
+import { AssignLegsPage } from './features/assignLegs/AssignLegsPage'
 
 const CLIENT_LIST_STORAGE_KEY = 'tm_client_names_v1'
 const SELECTED_CLIENT_STORAGE_KEY = 'tm_selected_client_v1'
@@ -98,9 +106,10 @@ type DashboardAppProps = {
   onOpenPlaybookIndex?: () => void
   onOpenAssignLegs?: () => void
   onOpenMapCSV?: () => void
+  innerView?: 'mapCSV' | 'assignLegs'
 }
 
-export default function DashboardApp({ onOpenPlaybookIndex, onOpenAssignLegs, onOpenMapCSV }: DashboardAppProps = {}) {
+export default function DashboardApp({ onOpenPlaybookIndex, onOpenAssignLegs, onOpenMapCSV, innerView }: DashboardAppProps = {}) {
   React.useEffect(() => { devQuickTests(); }, []);
 
   const { user, loading: authLoading, supabaseConfigured } = useAuth();
@@ -227,6 +236,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
     message?: string;
   }>({ type: 'idle' });
   const [activePlaybookPosition, setActivePlaybookPosition] = React.useState<Position | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(true);
   const [alertsOnly, setAlertsOnly] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [showInstrumentSuggestions, setShowInstrumentSuggestions] = React.useState(false);
@@ -259,6 +269,11 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
   });
   const positionUploadRef = React.useRef<HTMLInputElement | null>(null);
   const backfillUploadRef = React.useRef<HTMLInputElement | null>(null);
+
+  // ── New UI state ──────────────────────────────────────────────────────────
+  const [activeView, setActiveView] = React.useState<ActiveView>('table');
+  const [selectedExpiry, setSelectedExpiry] = React.useState<string | null>(null);
+  const [apiExpiries, setApiExpiries] = React.useState<string[]>([]);
 
   React.useEffect(() => {
     if (!clientOptions.length) {
@@ -520,7 +535,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
           return { filtered: rows, duplicates: [] as TxnRow[] };
         }
 
-        for (const entry of data ?? []) {
+        for (const entry of (data as { trade_id?: string | null }[] | null) ?? []) {
           const id = typeof entry.trade_id === 'string' ? entry.trade_id.trim() : '';
           if (id) duplicateTradeIds.add(id);
         }
@@ -564,7 +579,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
           };
         }
 
-        for (const entry of data ?? []) {
+        for (const entry of (data as { order_id?: string | null }[] | null) ?? []) {
           const id = typeof entry.order_id === 'string' ? entry.order_id.trim() : '';
           if (id) duplicateOrderIds.add(id);
         }
@@ -1566,15 +1581,43 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
     [selectedClient],
   );
 
+  const matchesExpiry = React.useCallback(
+    (p: Position) => {
+      if (!selectedExpiry) return true;
+      return p.legs.some((leg) => leg.expiry === selectedExpiry);
+    },
+    [selectedExpiry],
+  );
+
   const filteredLive = React.useMemo(
-    () => positions.filter(matchesClientSelection).filter(matchesFilter),
-    [matchesClientSelection, matchesFilter, positions],
+    () => positions.filter(matchesClientSelection).filter(matchesFilter).filter(matchesExpiry),
+    [matchesClientSelection, matchesFilter, matchesExpiry, positions],
   );
 
   const filteredSaved = React.useMemo(
-    () => savedStructures.filter(matchesClientSelection).filter(matchesFilter),
-    [matchesClientSelection, matchesFilter, savedStructures],
+    () => savedStructures.filter(matchesClientSelection).filter(matchesFilter).filter(matchesExpiry),
+    [matchesClientSelection, matchesFilter, matchesExpiry, savedStructures],
   );
+
+  // Derived expiry dates from existing data (from saved structure legs + exchange positions)
+  const derivedExpiries = React.useMemo(() => {
+    const seen = new Set<string>();
+    for (const p of savedStructures) {
+      for (const leg of p.legs) {
+        if (leg.expiry) seen.add(leg.expiry);
+      }
+    }
+    for (const pos of exchangePositions) {
+      if (pos.expiryISO) seen.add(pos.expiryISO);
+    }
+    return [...seen].sort();
+  }, [savedStructures, exchangePositions]);
+
+  // Combined expiry list: API-fetched dates take priority, augmented with derived ones
+  const allExpiries = React.useMemo(() => {
+    const seen = new Set<string>([...apiExpiries, ...derivedExpiries]);
+    return [...seen].sort();
+  }, [apiExpiries, derivedExpiries]);
 
   const openInstrumentRows = React.useMemo(() => {
     const instrumentMap = new Map<
@@ -1731,9 +1774,17 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
     });
   }, [exchangePositions]);
 
+  const filteredExchangePositions = React.useMemo(
+    () =>
+      selectedExpiry
+        ? sortedExchangePositions.filter((p) => p.expiryISO === selectedExpiry)
+        : sortedExchangePositions,
+    [selectedExpiry, sortedExchangePositions],
+  );
+
   const exchangePositionGroups = React.useMemo(() => {
     const groups: { label: string; positions: ExchangePositionSnapshot[] }[] = [];
-    for (const position of sortedExchangePositions) {
+    for (const position of filteredExchangePositions) {
       const label = position.expiryISO ?? 'No expiry date';
       const current = groups[groups.length - 1];
       if (!current || current.label !== label) {
@@ -1743,7 +1794,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
       }
     }
     return groups;
-  }, [sortedExchangePositions]);
+  }, [filteredExchangePositions]);
 
   const formatQuantity = React.useCallback((value: number | null) => {
     if (value === null) return '—';
@@ -1772,6 +1823,20 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
       console.error('[btc spot] fetch failed', error);
     }
   }, []);
+
+  const fetchAvailableExpiries = React.useCallback(async () => {
+    try {
+      const expiries = await dbGetInstruments('BTC');
+      if (expiries.length > 0) setApiExpiries(expiries);
+    } catch (error) {
+      console.error('[expiries] fetch failed', error);
+    }
+  }, []);
+
+  // Auto-fetch all Deribit expiries on mount
+  React.useEffect(() => {
+    void fetchAvailableExpiries();
+  }, [fetchAvailableExpiries]);
 
   const savedStructureGroups = React.useMemo(
     () =>
@@ -2255,493 +2320,445 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
     );
   }
 
+  // Search suggestions dropdown (used in ViewSelector)
+  const searchSuggestionsNode = showInstrumentSuggestions && instrumentSuggestions.length > 0 ? (
+    <div className="absolute left-0 right-0 z-20 mt-2 rounded-2xl border border-zinc-700 bg-zinc-900 shadow-xl">
+      <ul className="max-h-56 overflow-y-auto py-2 text-sm text-zinc-300">
+        {instrumentSuggestions.map((instrument) => (
+          <li key={instrument}>
+            <button
+              type="button"
+              className="flex w-full items-center justify-between px-4 py-2 text-left hover:bg-zinc-800"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => handleInstrumentSelection(instrument)}
+            >
+              <span className="font-medium text-zinc-100">{instrument}</span>
+              <span className="text-xs text-zinc-500">Instrument</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  ) : null;
+
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="px-6 py-4 flex items-center gap-4 border-b bg-white sticky top-0 z-30">
-        <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-slate-900 text-white font-bold">⚡️</span>
-        <h1 className="text-xl font-semibold">Open Options Trades</h1>
-        <span className="text-xs text-slate-500 border rounded-lg px-2 py-1 ml-2">Demo • Frontend Only</span>
-        <div
-          className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600"
-          title={btcSpotUpdatedAt ? `BTC spot as of ${btcSpotUpdatedAt.toLocaleTimeString()}` : 'BTC spot updates with Get Live Marks'}
-        >
-          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">BTC Spot</span>
-          <span className="font-semibold text-slate-900">
-            {btcSpot === null ? '—' : `$${formatSpotPrice(btcSpot)}`}
-          </span>
-        </div>
-        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
-          <div className="flex flex-col leading-tight">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Client</span>
-            <select
-              className="bg-transparent text-sm font-semibold text-slate-900 focus:outline-none"
-              value={selectedClient}
-              onChange={(e) => setSelectedClient(e.target.value)}
-              disabled={!isAdmin}
-            >
-              {clientOptions.map((client) => (
-                <option key={client} value={client}>
-                  {client}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            type="button"
-            onClick={handleAddClient}
-            className={`rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold transition ${
-              isAdmin
-                ? 'text-slate-600 hover:bg-slate-100'
-                : 'text-slate-400 cursor-not-allowed bg-slate-50'
-            }`}
-            disabled={!isAdmin}
-            title={isAdmin ? undefined : 'Client creation is limited to admin users'}
-          >
-            + New
-          </button>
-          {!isAdmin ? (
-            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-              Locked
-            </span>
-          ) : null}
-        </div>
-        <div className="flex-1" />
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-sm text-slate-700">
-            <span>Alerts only</span>
-            <Toggle checked={alertsOnly} onChange={setAlertsOnly} label="Alerts only" />
-          </div>
-          <button className="rounded-xl bg-slate-900 text-white px-3 py-2 text-sm shadow">Add Trade</button>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
-            <span className="font-medium text-slate-700">{user.email ?? 'Signed in'}</span>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="text-xs font-semibold text-slate-500 transition hover:text-slate-700"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-      </div>
+    <div className="flex min-h-screen bg-zinc-950">
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((c) => !c)}
+        activeNav={innerView === 'mapCSV' ? 'mapCSV' : innerView === 'assignLegs' ? 'assignLegs' : 'dashboard'}
+        onNavigatePlaybooks={onOpenPlaybookIndex}
+        onNavigateAssignLegs={onOpenAssignLegs}
+        onNavigateMapCSV={onOpenMapCSV}
+        user={user}
+        btcSpot={btcSpot}
+        btcSpotUpdatedAt={btcSpotUpdatedAt}
+        isAdmin={isAdmin}
+        selectedClient={selectedClient}
+        clientOptions={clientOptions}
+        onSelectClient={setSelectedClient}
+        onAddClient={handleAddClient}
+        alertsOnly={alertsOnly}
+        onToggleAlertsOnly={setAlertsOnly}
+        onSignOut={handleSignOut}
+      />
 
-      <div className="px-6 py-4 flex flex-col gap-3 md:flex-row md:items-center">
-        <div className="relative flex-1 max-w-xl">
-          <input
-            className="w-full border rounded-2xl pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
-            placeholder="Search symbol, strategy, strike…"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setShowInstrumentSuggestions(true);
-            }}
-            onFocus={() => setShowInstrumentSuggestions(true)}
-            onBlur={() => setShowInstrumentSuggestions(false)}
-            onKeyDown={handleSearchKeyDown}
+      {/* Main content — dark-dashboard applies inverted slate tokens to all children */}
+      <div className="dark-dashboard flex-1 min-w-0 flex flex-col bg-zinc-950">
+
+        {/* ── Header: arrows + title + portfolio greeks ── */}
+        <DashboardHeader
+          title={innerView === 'mapCSV' ? 'Import CSV' : innerView === 'assignLegs' ? 'Assign Legs' : 'Dashboard'}
+          portfolioGreeks={portfolioGreeks}
+        />
+
+        {/* ── Embedded inner views (Map CSV / Assign Legs) ── */}
+        {innerView === 'mapCSV' && (
+          <MapCSVPage
+            embedded
+            onBack={() => window.history.back()}
+            onOpenAssignLegs={onOpenAssignLegs}
           />
-          <span className="absolute left-3 top-2.5 text-slate-400">🔎</span>
-          {showInstrumentSuggestions && instrumentSuggestions.length > 0 ? (
-            <div className="absolute left-0 right-0 z-20 mt-2 rounded-2xl border border-slate-200 bg-white shadow-lg">
-              <ul className="max-h-56 overflow-y-auto py-2 text-sm text-slate-700">
-                {instrumentSuggestions.map((instrument) => (
-                  <li key={instrument}>
-                    <button
-                      type="button"
-                      className="flex w-full items-center justify-between px-4 py-2 text-left hover:bg-slate-100"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => handleInstrumentSelection(instrument)}
-                    >
-                      <span className="font-medium text-slate-800">{instrument}</span>
-                      <span className="text-xs text-slate-400">Instrument</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </div>
-        <div className="flex items-center gap-3 relative">
-          <ColumnPicker />
-          {onOpenPlaybookIndex ? (
+        )}
+        {innerView === 'assignLegs' && (
+          <AssignLegsPage
+            embedded
+            onBack={() => window.history.back()}
+          />
+        )}
+
+        {/* ── Dashboard content (only when no inner view) ── */}
+        {!innerView && <>
+
+        {/* ── Page title + action buttons ── */}
+        <div className="px-6 pt-5 pb-2 flex items-end justify-between gap-4">
+          <h2 className="text-3xl font-bold tracking-tight text-zinc-100">Dashboard</h2>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Fetch */}
             <button
-              type="button"
-              onClick={onOpenPlaybookIndex}
-              className="rounded-xl border px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
+              className="rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-medium text-zinc-200 inline-flex items-center gap-2 hover:bg-zinc-800 hover:border-zinc-600 disabled:opacity-50 transition-colors"
+              onClick={() => { refreshSavedStructures(); void fetchAvailableExpiries(); }}
+              disabled={savedStructuresLoading || !supabase || !user}
+              title="Refresh saved structures and fetch available expiries"
             >
-              Playbook Library
+              {savedStructuresLoading ? (
+                <><Spinner className="h-3.5 w-3.5" /><span>Fetching…</span></>
+              ) : (
+                <><RefreshCw className="h-3.5 w-3.5" /><span>Fetch</span></>
+              )}
             </button>
-          ) : null}
-          <button
-            className="rounded-xl border px-3 py-2 text-sm inline-flex items-center gap-2 disabled:opacity-60"
-            onClick={refreshSavedStructures}
-            disabled={savedStructuresLoading || !supabase || !user}
-            title="Manually refresh saved structures from Supabase"
-          >
-            {savedStructuresLoading ? (
-              <>
-                <Spinner className="h-3.5 w-3.5" />
-                <span>Fetching…</span>
-              </>
-            ) : (
-              <>Fetch</>
-            )}
-          </button>
-          <button
-            className="rounded-xl border px-3 py-2 text-sm inline-flex items-center gap-2 disabled:opacity-60"
-            onClick={() => fetchAllMarksForPositions(positionsForMarks)}
-            disabled={markFetch.inProgress}
-            title="Fetch current mark/greeks for all visible legs (Coincall & Deribit)"
-          >
-            {markFetch.inProgress ? (
-              <>
-                <Spinner />
-                <span>Fetching {markFetch.done}/{markFetch.total}</span>
-              </>
-            ) : (
-              <>Get Live Marks</>
-            )}
-          </button>
-          <button
-            className="rounded-xl border px-3 py-2 text-sm inline-flex items-center gap-2 disabled:opacity-60"
-            onClick={() => {
-              setBackfillStatus({ type: 'idle' });
-              setShowImportedOverlay(true);
-            }}
-            disabled={!supabase || !user}
-            title="Review imported and unprocessed transactions"
-          >
-            Imported Transactions
-          </button>
-          <button
-            onClick={() => { setPositions([]); setRawRows([]); }}
-            className="text-sm text-slate-600 underline"
-          >Clear {selectedClient} data</button>
-        </div>
-      </div>
-      {/* Progress bar sits directly under the toolbar */}
-      {markFetch.inProgress && (
-        <div className="mt-2">
-          <div className="h-1 bg-slate-200 rounded">
-            <div
-              className="h-1 bg-slate-900 rounded transition-all"
-              style={{
-                width: markFetch.total
-                  ? `${Math.round((markFetch.done / markFetch.total) * 100)}%`
-                  : "10%",
-              }}
-            />
-          </div>
-          <div className="text-xs text-slate-500 mt-1">
-            Fetched {markFetch.done}/{markFetch.total}
-            {markFetch.errors ? <> • errors {markFetch.errors}</> : null}
-          </div>
-        </div>
-      )}
 
-      <div className="px-6 pt-3">
-        <div className="bg-white rounded-2xl shadow border overflow-hidden">
-          <div className="flex flex-col gap-1 px-4 py-3 border-b text-sm font-medium text-slate-700 sm:flex-row sm:items-center sm:justify-between">
-            <span>Portfolio Greeks</span>
-            <span className="text-xs font-normal text-slate-500">Based on saved structures</span>
-          </div>
-          <div className="overflow-x-auto">
-            <div className="flex min-w-[520px] divide-x divide-slate-100">
-              {GREEK_SUMMARY_FIELDS.map(({ key, label, symbol }) => {
-                const valueText = portfolioGreeks.hasValues[key]
-                  ? fmtGreek(portfolioGreeks.totals[key])
-                  : '—';
-                return (
-                  <div key={key} className="flex-1 px-4 py-4 text-center">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 flex items-center justify-center gap-1">
-                      <span className="text-sm text-slate-700">{symbol}</span>
-                      {label}
-                    </div>
-                    <div className="mt-1 text-xl font-semibold text-slate-900">{valueText}</div>
-                  </div>
-                );
-              })}
-            </div>
+            {/* Get Live Marks */}
+            <button
+              className="rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-medium text-zinc-200 inline-flex items-center gap-2 hover:bg-zinc-800 hover:border-zinc-600 disabled:opacity-50 transition-colors"
+              onClick={() => fetchAllMarksForPositions(positionsForMarks)}
+              disabled={markFetch.inProgress}
+              title="Fetch current mark/greeks for all visible legs"
+            >
+              {markFetch.inProgress ? (
+                <><Spinner className="h-3.5 w-3.5" /><span>{markFetch.done}/{markFetch.total}</span></>
+              ) : (
+                <><TrendingUp className="h-3.5 w-3.5" /><span>Get Live Marks</span></>
+              )}
+            </button>
+
+            {/* Import */}
+            <button
+              className="rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-medium text-zinc-200 inline-flex items-center gap-2 hover:bg-zinc-800 hover:border-zinc-600 transition-colors"
+              onClick={onOpenMapCSV}
+              title="Import CSV trade data"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              <span>Import</span>
+            </button>
           </div>
         </div>
-      </div>
 
-      <div className="px-6 py-3">
-        <details className="bg-white rounded-2xl shadow border overflow-hidden">
-          <summary className="flex items-center justify-between px-4 py-3 text-sm font-medium text-slate-700 cursor-pointer select-none">
-            <span>Exchange Positions</span>
-            <span className="text-xs font-normal text-slate-500">
-              {exchangePositions.length ? `${exchangePositions.length} loaded` : 'No positions loaded'}
-            </span>
-          </summary>
-          <div className="border-t">
-            <div className="flex flex-col gap-2 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-              <span className="text-xs text-slate-500">
-                Upload current positions from Coincall or Deribit CSV exports.
-              </span>
-              <button
-                className="rounded-xl border px-3 py-2 text-sm inline-flex items-center gap-2"
-                onClick={() => positionUploadRef.current?.click()}
-              >
-                Upload CSV
-              </button>
-              <input
-                ref={positionUploadRef}
-                type="file"
-                accept=".csv,text/csv"
-                className="hidden"
-                onChange={(e) => e.target.files && handlePositionFiles(e.target.files)}
+        {/* Mark-fetch progress bar */}
+        {markFetch.inProgress && (
+          <div className="px-6 pb-2">
+            <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
+              <div
+                className="h-1 bg-emerald-500 rounded-full transition-all"
+                style={{ width: markFetch.total ? `${Math.round((markFetch.done / markFetch.total) * 100)}%` : '10%' }}
               />
             </div>
-            {sortedExchangePositions.length === 0 ? (
-              <div className="px-4 pb-4 text-sm text-slate-500">
-                No exchange positions available yet.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="text-xs uppercase text-slate-500 border-t border-slate-100">
-                    <tr className="text-left">
-                      <th className="p-3">Exchange</th>
-                      <th className="p-3">Instrument</th>
-                      <th className="p-3">Expiry</th>
-                      <th className="p-3">Size</th>
-                      <th className="p-3">Side</th>
-                      <th className="p-3">Avg Price</th>
-                      <th className="p-3">Mark Price</th>
-                      <th className="p-3">Index Price</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {exchangePositionGroups.map((group) => (
-                      <React.Fragment key={group.label}>
-                        <tr className="bg-slate-100/80 border-t border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          <td colSpan={8} className="px-3 py-2 text-left">
-                            <div className="flex items-center gap-3">
-                              <span>Expiry date: {group.label}</span>
-                              <span className="h-px flex-1 bg-slate-300" aria-hidden />
-                            </div>
-                          </td>
-                        </tr>
-                        {group.positions.map((position) => {
-                          const sideLower = position.side.toLowerCase();
-                          const sideClass = sideLower === 'buy'
-                            ? 'text-emerald-600'
-                            : sideLower === 'sell'
-                            ? 'text-rose-600'
-                            : 'text-slate-600';
-                          return (
-                            <tr key={position.id} className="border-t border-slate-100">
-                              <td className="p-3 text-xs font-semibold uppercase text-slate-500">{position.exchange}</td>
-                              <td className="p-3 font-medium text-slate-800">{position.instrument}</td>
-                              <td className="p-3 text-slate-700">{position.expiryISO ?? '—'}</td>
-                              <td className="p-3 text-slate-700">{formatQuantity(position.size)}</td>
-                              <td className={`p-3 font-semibold ${sideClass}`}>{position.side}</td>
-                              <td className="p-3 text-slate-700">{formatPrice(position.avgPrice)}</td>
-                              <td className="p-3 text-slate-700">{formatPrice(position.markPrice)}</td>
-                              <td className="p-3 text-slate-700">{formatPrice(position.indexPrice)}</td>
+            <div className="text-xs text-zinc-500 mt-1">
+              Fetched {markFetch.done}/{markFetch.total}
+              {markFetch.errors ? <> · {markFetch.errors} errors</> : null}
+            </div>
+          </div>
+        )}
+
+        {/* ── Expiry date chips ── */}
+        <ExpiryDatePicker
+          expiries={allExpiries}
+          selected={selectedExpiry}
+          onSelect={setSelectedExpiry}
+        />
+
+        {/* ── View selector + search ── */}
+        <ViewSelector
+          activeView={activeView}
+          onViewChange={setActiveView}
+          query={query}
+          onQueryChange={(q) => { setQuery(q); setShowInstrumentSuggestions(true); }}
+          searchSuggestions={searchSuggestionsNode}
+          onSearchFocus={() => setShowInstrumentSuggestions(true)}
+          onSearchBlur={() => setShowInstrumentSuggestions(false)}
+          onSearchKeyDown={handleSearchKeyDown}
+        />
+
+        {/* ── Content rectangle ── */}
+        <div className="px-6 pb-6 flex-1">
+          <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
+
+            {/* ─── TABLE VIEW ─────────────────────────────────────────────── */}
+            {activeView === 'table' && (
+              <div>
+                {/* Section 1: Saved Structures */}
+                <div className="border-b border-zinc-800">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+                    <span className="text-sm font-semibold text-zinc-300">Saved Structures</span>
+                    <div className="flex items-center gap-2">
+                      {savedStructuresLoading && <span className="text-xs text-zinc-500">Refreshing…</span>}
+                      <ColumnPicker />
+                    </div>
+                  </div>
+                  {savedStructuresError && (
+                    <div className="px-4 py-3 text-sm text-rose-400">{savedStructuresError}</div>
+                  )}
+                  {programPlaybooksError && (
+                    <div className="px-4 py-3 text-sm text-amber-400">{programPlaybooksError}</div>
+                  )}
+                  {filteredSaved.length === 0 ? (
+                    <div className="px-4 py-4 text-sm text-zinc-500">
+                      {savedStructures.length > 0
+                        ? 'No saved structures match your filters.'
+                        : savedStructuresLoading
+                        ? 'Loading saved structures…'
+                        : 'No saved structures yet. Use the save action on a live position to create one.'}
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        {savedTableHead}
+                        <tbody>
+                          {savedStructureGroups.open.map((p) => (
+                            <PositionRow
+                              key={`saved-${p.id}`}
+                              p={p}
+                              onUpdate={noopUpdate}
+                              visibleCols={visibleCols}
+                              marks={legMarks}
+                              markLoading={markFetch.inProgress}
+                              allPositions={positionsForLinking}
+                              readOnly
+                              disableSave
+                              onArchive={handleArchiveStructure}
+                              archiving={Boolean(archiving[p.id])}
+                              clientScope={overlayClientScope}
+                              onPlaybookOpen={handleOpenPlaybookDrawer}
+                            />
+                          ))}
+                          {savedStructureGroups.closed.length > 0 && (
+                            <tr className="bg-slate-100/80 border-y border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              <td colSpan={savedStructureColSpan} className="px-3 py-2 text-left">
+                                <div className="flex items-center gap-3">
+                                  <span>Closed structures</span>
+                                  <span className="h-px flex-1 bg-slate-300" aria-hidden />
+                                </div>
+                              </td>
                             </tr>
-                          );
-                        })}
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-                </table>
+                          )}
+                          {savedStructureGroups.closed.map((p) => (
+                            <PositionRow
+                              key={`saved-${p.id}`}
+                              p={p}
+                              onUpdate={noopUpdate}
+                              visibleCols={visibleCols}
+                              marks={legMarks}
+                              markLoading={markFetch.inProgress}
+                              allPositions={positionsForLinking}
+                              readOnly
+                              disableSave
+                              onArchive={handleArchiveStructure}
+                              archiving={Boolean(archiving[p.id])}
+                              clientScope={overlayClientScope}
+                              onPlaybookOpen={handleOpenPlaybookDrawer}
+                            />
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Section 2: Open Instruments */}
+                <div className="border-b border-zinc-800">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+                    <span className="text-sm font-semibold text-zinc-300">Open Instruments</span>
+                    <span className="text-xs text-zinc-500">
+                      {openInstrumentRows.length > 0 ? `${openInstrumentRows.length} instruments` : 'None'}
+                    </span>
+                  </div>
+                  {openInstrumentRows.length === 0 ? (
+                    <div className="px-4 py-4 text-sm text-zinc-500">No open instruments.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead className="text-xs uppercase text-slate-500 border-t border-slate-100">
+                          <tr className="text-left">
+                            <th className="p-3">{renderOpenInstrumentSortHeader('Instrument', 'instrument', 'left')}</th>
+                            <th className="p-3 text-right">{renderOpenInstrumentSortHeader('Net Qty', 'qtyNet')}</th>
+                            <th className="p-3 text-right">{renderOpenInstrumentSortHeader('Abs PnL', 'absPnl')}</th>
+                            {GREEK_SUMMARY_FIELDS.map((field) => (
+                              <th key={field.key} className="p-3 text-right">
+                                {renderOpenInstrumentSortHeader(field.symbol, field.key)}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {openInstrumentRows.map((row) => (
+                            <tr key={row.instrument} className="border-t border-slate-100">
+                              <td className="p-3 font-medium text-slate-800">{row.instrument}</td>
+                              <td className="p-3 text-right text-slate-700">{formatQuantity(row.qtyNet)}</td>
+                              <td className="p-3 text-right text-slate-700">{fmtPremium(row.absPnl)}</td>
+                              {GREEK_SUMMARY_FIELDS.map((field) => (
+                                <td key={field.key} className="p-3 text-right text-slate-700">
+                                  {fmtGreek(row.greeks[field.key])}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Section 3: Exchange Positions */}
+                <div className="border-b border-zinc-800">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+                    <span className="text-sm font-semibold text-zinc-300">Exchange Positions</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-zinc-500">
+                        {exchangePositions.length ? `${exchangePositions.length} loaded` : 'None'}
+                      </span>
+                      <button
+                        className="rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-700 transition-colors"
+                        onClick={() => positionUploadRef.current?.click()}
+                      >
+                        Upload CSV
+                      </button>
+                      <input
+                        ref={positionUploadRef}
+                        type="file"
+                        accept=".csv,text/csv"
+                        className="hidden"
+                        onChange={(e) => e.target.files && handlePositionFiles(e.target.files)}
+                      />
+                    </div>
+                  </div>
+                  {filteredExchangePositions.length === 0 ? (
+                    <div className="px-4 py-4 text-sm text-zinc-500">
+                      No exchange positions.{' '}
+                      <span className="text-zinc-600">Upload a Deribit or Coincall CSV export above.</span>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead className="text-xs uppercase text-slate-500 border-t border-slate-100">
+                          <tr className="text-left">
+                            <th className="p-3">Exchange</th>
+                            <th className="p-3">Instrument</th>
+                            <th className="p-3">Expiry</th>
+                            <th className="p-3">Size</th>
+                            <th className="p-3">Side</th>
+                            <th className="p-3">Avg Price</th>
+                            <th className="p-3">Mark Price</th>
+                            <th className="p-3">Index Price</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {exchangePositionGroups.map((group) => (
+                            <React.Fragment key={group.label}>
+                              <tr className="bg-slate-100/80 border-t border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                <td colSpan={8} className="px-3 py-2 text-left">
+                                  <div className="flex items-center gap-3">
+                                    <span>Expiry: {group.label}</span>
+                                    <span className="h-px flex-1 bg-slate-300" aria-hidden />
+                                  </div>
+                                </td>
+                              </tr>
+                              {group.positions.map((position) => {
+                                const sideLower = position.side.toLowerCase();
+                                const sideClass = sideLower === 'buy'
+                                  ? 'text-emerald-500'
+                                  : sideLower === 'sell'
+                                  ? 'text-rose-500'
+                                  : 'text-slate-600';
+                                return (
+                                  <tr key={position.id} className="border-t border-slate-100">
+                                    <td className="p-3 text-xs font-semibold uppercase text-slate-500">{position.exchange}</td>
+                                    <td className="p-3 font-medium text-slate-800">{position.instrument}</td>
+                                    <td className="p-3 text-slate-700">{position.expiryISO ?? '—'}</td>
+                                    <td className="p-3 text-slate-700">{formatQuantity(position.size)}</td>
+                                    <td className={`p-3 font-semibold ${sideClass}`}>{position.side}</td>
+                                    <td className="p-3 text-slate-700">{formatPrice(position.avgPrice)}</td>
+                                    <td className="p-3 text-slate-700">{formatPrice(position.markPrice)}</td>
+                                    <td className="p-3 text-slate-700">{formatPrice(position.indexPrice)}</td>
+                                  </tr>
+                                );
+                              })}
+                            </React.Fragment>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Section 4: Live Positions (if any) */}
+                {positions.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+                      <span className="text-sm font-semibold text-zinc-300">Live Positions</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        {tableHead}
+                        <tbody>
+                          {filteredLive.length === 0 && (
+                            <tr>
+                              <td colSpan={livePositionColSpan} className="p-4 text-sm text-slate-500">
+                                No live positions match your filters.
+                              </td>
+                            </tr>
+                          )}
+                          {livePositionGroups.map((group) => (
+                            <React.Fragment key={group.label}>
+                              <tr className="bg-slate-100/80 border-y border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                <td colSpan={livePositionColSpan} className="px-3 py-2 text-left">
+                                  <div className="flex items-center gap-3">
+                                    <span>Expiry: {group.label}</span>
+                                    <span className="h-px flex-1 bg-slate-300" aria-hidden />
+                                  </div>
+                                </td>
+                              </tr>
+                              {group.positions.map((p) => (
+                                <PositionRow
+                                  key={p.id}
+                                  p={p}
+                                  onUpdate={updatePosition}
+                                  visibleCols={visibleCols}
+                                  marks={legMarks}
+                                  markLoading={markFetch.inProgress}
+                                  allPositions={positionsForLinking}
+                                  onSaved={refreshSavedStructures}
+                                  clientScope={overlayClientScope}
+                                />
+                              ))}
+                            </React.Fragment>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload box when no local positions */}
+                {positions.length === 0 && (
+                  <div className="p-4">
+                    <UploadBox onFiles={handleFiles} />
+                    <p className="text-xs text-zinc-600 mt-3">
+                      Tip: You can re-open the Column Picker to adjust visible columns.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        </details>
-      </div>
 
-      <div className="px-6 py-3">
-        <details className="bg-white rounded-2xl shadow border overflow-hidden">
-          <summary className="flex items-center justify-between px-4 py-3 text-sm font-medium text-slate-700 cursor-pointer select-none">
-            <span>Open Instruments</span>
-            <span className="text-xs font-normal text-slate-500">
-              {openInstrumentRows.length ? `${openInstrumentRows.length} instruments` : 'No open instruments'}
-            </span>
-          </summary>
-          <div className="border-t">
-            {openInstrumentRows.length === 0 ? (
-              <div className="px-4 py-3 text-sm text-slate-500">
-                No open instruments available yet.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="text-xs uppercase text-slate-500 border-t border-slate-100">
-                    <tr className="text-left">
-                      <th className="p-3">
-                        {renderOpenInstrumentSortHeader('Instrument', 'instrument', 'left')}
-                      </th>
-                      <th className="p-3 text-right">
-                        {renderOpenInstrumentSortHeader('Net Qty', 'qtyNet')}
-                      </th>
-                      <th className="p-3 text-right">
-                        {renderOpenInstrumentSortHeader('Abs PnL', 'absPnl')}
-                      </th>
-                      {GREEK_SUMMARY_FIELDS.map((field) => (
-                        <th key={field.key} className="p-3 text-right">
-                          {renderOpenInstrumentSortHeader(field.symbol, field.key)}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {openInstrumentRows.map((row) => (
-                      <tr key={row.instrument} className="border-t border-slate-100">
-                        <td className="p-3 font-medium text-slate-800">{row.instrument}</td>
-                        <td className="p-3 text-right text-slate-700">{formatQuantity(row.qtyNet)}</td>
-                        <td className="p-3 text-right text-slate-700">{fmtPremium(row.absPnl)}</td>
-                        {GREEK_SUMMARY_FIELDS.map((field) => (
-                          <td key={field.key} className="p-3 text-right text-slate-700">
-                            {fmtGreek(row.greeks[field.key])}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {/* ─── KANBAN VIEW ────────────────────────────────────────────── */}
+            {activeView === 'kanban' && (
+              <KanbanBoard positions={filteredSaved} marks={legMarks} />
+            )}
+
+            {/* ─── GANTT VIEW ─────────────────────────────────────────────── */}
+            {activeView === 'gantt' && (
+              <div className="flex flex-col items-center justify-center h-64 gap-2">
+                <GanttChart className="w-8 h-8 text-zinc-700" />
+                <p className="text-sm font-medium text-zinc-500">Gantt chart</p>
+                <p className="text-xs text-zinc-700">Coming soon</p>
               </div>
             )}
+
           </div>
-        </details>
+        </div>
+
+      </>}
       </div>
-
-      <div className="px-6 py-3">
-        <div className="bg-white rounded-2xl shadow border overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b text-sm font-medium text-slate-700">
-            <span>Saved Structures</span>
-            {savedStructuresLoading ? (
-              <span className="text-xs text-slate-500">Refreshing…</span>
-            ) : null}
-          </div>
-          {savedStructuresError ? (
-            <div className="px-4 py-3 text-sm text-rose-600">{savedStructuresError}</div>
-          ) : null}
-          {programPlaybooksError ? (
-            <div className="px-4 py-3 text-sm text-amber-700 bg-amber-50 border-t border-amber-200">
-              {programPlaybooksError}
-            </div>
-          ) : null}
-          {filteredSaved.length === 0 ? (
-            <div className="px-4 py-3 text-sm text-slate-500">
-              {savedStructures.length > 0
-                ? 'No saved structures match your filters.'
-                : savedStructuresLoading
-                ? 'Loading saved structures…'
-                : 'No saved structures yet. Use the save action on a live position to create one.'}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                {savedTableHead}
-                <tbody>
-                  {savedStructureGroups.open.map((p) => (
-                    <PositionRow
-                      key={`saved-${p.id}`}
-                      p={p}
-                      onUpdate={noopUpdate}
-                      visibleCols={visibleCols}
-                      marks={legMarks}
-                      markLoading={markFetch.inProgress}
-                      allPositions={positionsForLinking}
-                      readOnly
-                      disableSave
-                      onArchive={handleArchiveStructure}
-                      archiving={Boolean(archiving[p.id])}
-                      clientScope={overlayClientScope}
-                      onPlaybookOpen={handleOpenPlaybookDrawer}
-                    />
-                  ))}
-                  {savedStructureGroups.closed.length ? (
-                    <tr className="bg-slate-100/80 border-y border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      <td colSpan={savedStructureColSpan} className="px-3 py-2 text-left">
-                        <div className="flex items-center gap-3">
-                          <span>Closed structures</span>
-                          <span className="h-px flex-1 bg-slate-300" aria-hidden />
-                        </div>
-                      </td>
-                    </tr>
-                  ) : null}
-                  {savedStructureGroups.closed.map((p) => (
-                    <PositionRow
-                      key={`saved-${p.id}`}
-                      p={p}
-                      onUpdate={noopUpdate}
-                      visibleCols={visibleCols}
-                      marks={legMarks}
-                      markLoading={markFetch.inProgress}
-                      allPositions={positionsForLinking}
-                      readOnly
-                      disableSave
-                      onArchive={handleArchiveStructure}
-                      archiving={Boolean(archiving[p.id])}
-                      clientScope={overlayClientScope}
-                      onPlaybookOpen={handleOpenPlaybookDrawer}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {positions.length === 0 && (
-        <div className="px-6 pb-6">
-          <UploadBox onFiles={handleFiles} />
-          <p className="text-xs text-slate-500 mt-3">Tip: You can re-open the Column Picker later to adjust visible columns.</p>
-        </div>
-      )}
-
-      {positions.length > 0 && (
-        <div className="px-6 py-3">
-          <div className="bg-white rounded-2xl shadow border overflow-hidden">
-            <div className="px-4 py-3 border-b text-sm font-medium text-slate-700">Live Positions</div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                {tableHead}
-                <tbody>
-                  {filteredLive.length === 0 ? (
-                    <tr>
-                      <td colSpan={livePositionColSpan} className="p-4 text-sm text-slate-500">
-                        No live positions match your filters.
-                      </td>
-                    </tr>
-                  ) : null}
-                  {livePositionGroups.map((group) => (
-                    <React.Fragment key={group.label}>
-                      <tr className="bg-slate-100/80 border-y border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        <td colSpan={livePositionColSpan} className="px-3 py-2 text-left">
-                          <div className="flex items-center gap-3">
-                            <span>Expiry date: {group.label}</span>
-                            <span className="h-px flex-1 bg-slate-300" aria-hidden />
-                          </div>
-                        </td>
-                      </tr>
-                      {group.positions.map((p) => (
-                        <PositionRow
-                          key={p.id}
-                          p={p}
-                          onUpdate={updatePosition}
-                          visibleCols={visibleCols}
-                          marks={legMarks}
-                          markLoading={markFetch.inProgress}
-                          allPositions={positionsForLinking}
-                          onSaved={refreshSavedStructures}
-                          clientScope={overlayClientScope}
-                        />
-                      ))}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
 
       <PlaybookDrawer
         open={Boolean(activePlaybookPosition)}
@@ -2772,7 +2789,6 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
         className="hidden"
         onChange={(e) => e.target.files && handleBackfillFiles(e.target.files)}
       />
-
     </div>
   );
 }

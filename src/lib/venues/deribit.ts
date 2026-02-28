@@ -44,6 +44,33 @@ export async function dbGetTicker(instrument: string): Promise<DeribitTickerResu
 }
 
 /**
+ * Fetch all non-expired option instruments for a currency and return
+ * deduplicated, sorted expiry dates as ISO strings ("YYYY-MM-DD").
+ */
+export async function dbGetInstruments(currency = 'BTC'): Promise<string[]> {
+  try {
+    const url = `${BASE}/public/get_instruments?currency=${encodeURIComponent(currency)}&kind=option&expired=false`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const json = await res.json();
+    const instruments: Array<{ expiration_timestamp?: number }> = json?.result ?? [];
+    const seen = new Set<string>();
+    const expiries: string[] = [];
+    for (const inst of instruments) {
+      if (!inst.expiration_timestamp) continue;
+      const iso = new Date(inst.expiration_timestamp).toISOString().slice(0, 10);
+      if (!seen.has(iso)) {
+        seen.add(iso);
+        expiries.push(iso);
+      }
+    }
+    return expiries.sort();
+  } catch {
+    return [];
+  }
+}
+
+/**
  * High-level helper: best available price + greeks.
  * Price preference: mark_price -> mid(bid/ask) -> last_price.
  * Multiplier: treat as 1 for Deribit options.

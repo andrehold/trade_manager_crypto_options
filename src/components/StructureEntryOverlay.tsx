@@ -145,7 +145,7 @@ function formatSaveErrorDetails(
       for (const issue of issues as unknown[]) {
         if (!issue || typeof issue !== 'object') continue;
         const message = typeof (issue as { message?: unknown }).message === 'string'
-          ? (issue as { message?: string }).message.trim()
+          ? (issue as { message: string }).message.trim()
           : '';
         if (!message) continue;
         const code = typeof (issue as { code?: unknown }).code === 'string'

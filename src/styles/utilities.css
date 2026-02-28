@@ -37,7 +37,38 @@
   --color-surface-0:     #FFFFFF;
 
   /* ── Font family ── */
-  --font-sans: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  /* SF Pro on Apple platforms; Inter everywhere else */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+               'Inter', 'Helvetica Neue', Arial, sans-serif;
+
+  /* ── Type scale (SF Pro / system hierarchy) ── */
+  --text-display-l: 2.5rem;
+  --text-display-l--line-height: 1.075;
+  --text-display-l--letter-spacing: -0.03em;
+
+  --text-display-m: 2rem;
+  --text-display-m--line-height: 1.1;
+  --text-display-m--letter-spacing: -0.025em;
+
+  --text-title-l: 1.5rem;
+  --text-title-l--line-height: 1.2;
+  --text-title-l--letter-spacing: -0.02em;
+
+  --text-title-m: 1.25rem;
+  --text-title-m--line-height: 1.25;
+  --text-title-m--letter-spacing: -0.015em;
+
+  --text-headline: 1rem;
+  --text-headline--line-height: 1.375;
+  --text-headline--letter-spacing: -0.01em;
+
+  --text-subhead: 0.875rem;
+  --text-subhead--line-height: 1.43;
+  --text-subhead--letter-spacing: -0.005em;
+
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.5;
+  --text-caption--letter-spacing: 0em;
 }
 
 /* ── Dark mode: override the theme tokens ── */
@@ -68,6 +99,54 @@
     --color-amber-500:   #F59E0B;
     --color-blue-600:    #60A5FA;
   }
+}
+
+/* ── scheme-light: pins light-mode tokens even in dark OS preference ──
+   Apply to panels that must always use the light-mode palette
+   (e.g. always-dark sidebar, light login card on dark background).
+   Has no effect in light mode (the @media block doesn't fire). */
+@media (prefers-color-scheme: dark) {
+  .scheme-light {
+    --color-slate-50:      #F7F9FC;
+    --color-slate-100:     #EEF2F7;
+    --color-slate-200:     #E2E8F0;
+    --color-slate-300:     #CBD5E1;
+    --color-slate-400:     #94A3B8;
+    --color-slate-500:     #64748B;
+    --color-slate-600:     #475569;
+    --color-slate-700:     #334155;
+    --color-slate-800:     #1E293B;
+    --color-slate-900:     #0B1220;
+    --color-surface-0:     #FFFFFF;
+    --color-emerald-50:    #D1FAF5;
+    --color-emerald-200:   #99EDE3;
+    --color-emerald-500:   #0E9384;
+    --color-emerald-600:   #0B7A6E;
+    --color-rose-50:       #FEECEE;
+    --color-rose-400:      #F87171;
+    --color-rose-500:      #DC2626;
+    --color-rose-600:      #B91C1C;
+    --color-amber-500:     #D97706;
+    --color-blue-600:      #2563EB;
+  }
+}
+
+/* ── Dark dashboard surface overrides ───────────────────────────────────────
+   Apply .dark-dashboard to the dashboard container to flip all slate/surface
+   tokens to dark zinc equivalents. All children inherit via CSS custom props.
+   ────────────────────────────────────────────────────────────────────────── */
+.dark-dashboard {
+  --color-slate-50:      #18181b;   /* zinc-900  — hover rows, subtle bg */
+  --color-slate-100:     #27272a;   /* zinc-800  — table header, section bg */
+  --color-slate-200:     #3f3f46;   /* zinc-700  — borders */
+  --color-slate-300:     #52525b;   /* zinc-600  */
+  --color-slate-400:     #71717a;   /* zinc-500  — muted text */
+  --color-slate-500:     #a1a1aa;   /* zinc-400  — secondary text */
+  --color-slate-600:     #d4d4d8;   /* zinc-300  */
+  --color-slate-700:     #e4e4e7;   /* zinc-200  — body text */
+  --color-slate-800:     #f4f4f5;   /* zinc-100  — strong text */
+  --color-slate-900:     #fafafa;   /* zinc-50   — headings */
+  --color-surface-0:     #27272a;   /* zinc-800  — bg-white → dark card */
 }
 
 /* ── Base resets (kept from old utilities.css) ── */
@@ -104,4 +183,49 @@ details > summary {
 /* ── bg-white maps to surface-0 (theme-aware) ── */
 .bg-white {
   background-color: var(--color-surface-0) !important;
+}
+
+/* ── Semantic type utilities (SF Pro scale) ── */
+/* Usage: <h1 class="type-display-l"> — size + tracking + weight in one class */
+.type-display-l {
+  font-size: var(--text-display-l);
+  line-height: var(--text-display-l--line-height);
+  letter-spacing: var(--text-display-l--letter-spacing);
+  font-weight: 700;
+}
+.type-display-m {
+  font-size: var(--text-display-m);
+  line-height: var(--text-display-m--line-height);
+  letter-spacing: var(--text-display-m--letter-spacing);
+  font-weight: 700;
+}
+.type-title-l {
+  font-size: var(--text-title-l);
+  line-height: var(--text-title-l--line-height);
+  letter-spacing: var(--text-title-l--letter-spacing);
+  font-weight: 600;
+}
+.type-title-m {
+  font-size: var(--text-title-m);
+  line-height: var(--text-title-m--line-height);
+  letter-spacing: var(--text-title-m--letter-spacing);
+  font-weight: 600;
+}
+.type-headline {
+  font-size: var(--text-headline);
+  line-height: var(--text-headline--line-height);
+  letter-spacing: var(--text-headline--letter-spacing);
+  font-weight: 600;
+}
+.type-subhead {
+  font-size: var(--text-subhead);
+  line-height: var(--text-subhead--line-height);
+  letter-spacing: var(--text-subhead--letter-spacing);
+  font-weight: 500;
+}
+.type-caption {
+  font-size: var(--text-caption);
+  line-height: var(--text-caption--line-height);
+  letter-spacing: var(--text-caption--letter-spacing);
+  font-weight: 500;
 }

@@ -255,7 +255,7 @@ export async function fetchStructurePayload(
 
       venuePayload = {
         venue_id: venue.venue_id,
-        type: (venue.type ?? 'exchange') as ImportPayload['venue']['type'],
+        type: (venue.type ?? 'exchange') as NonNullable<ImportPayload['venue']>['type'],
         name: venue.name ?? '',
         mic: coalesceString(venue.mic),
         underlying_exchange: coalesceString(venue.underlying_exchange) ?? undefined,
@@ -290,11 +290,11 @@ export async function fetchStructurePayload(
       price: coalesceNumber(row.price) ?? 0,
       open_close: coalesceString(row.open_close) as StructureLifecycle | undefined,
       leg_seq: row.leg_seq ?? undefined,
-      side: (row.side ?? undefined) as ImportPayload['fills'][number]['side'],
+      side: (row.side ?? undefined) as NonNullable<ImportPayload['fills']>[number]['side'],
       liquidity_role:
-        (row.liquidity_role ?? undefined) as ImportPayload['fills'][number]['liquidity_role'],
+        (row.liquidity_role ?? undefined) as NonNullable<ImportPayload['fills']>[number]['liquidity_role'],
       execution_mode:
-        (row.execution_mode ?? undefined) as ImportPayload['fills'][number]['execution_mode'],
+        (row.execution_mode ?? undefined) as NonNullable<ImportPayload['fills']>[number]['execution_mode'],
       provider: row.provider ?? undefined,
       venue_id: row.venue_id ?? undefined,
       order_id: row.order_id ?? undefined,
@@ -303,7 +303,7 @@ export async function fetchStructurePayload(
       deal_id: row.deal_id ?? undefined,
       fees: row.fees ?? undefined,
       notes: row.notes ?? undefined,
-    } satisfies ImportPayload['fills'][number];
+    } satisfies NonNullable<ImportPayload['fills']>[number];
   });
 
   const payload: ImportPayload = {

@@ -34,7 +34,7 @@ export async function saveUnprocessedTrades(
   const payload = rows.map((row) => {
     const orderId = extractIdentifier(row, 'order')
     const tradeIdFromRow = extractIdentifier(row, 'trade')
-    const tradeId = tradeIdFromRow ?? deriveSyntheticDeliveryTradeId(row, row as Record<string, unknown>) ?? orderId
+    const tradeId = tradeIdFromRow ?? deriveSyntheticDeliveryTradeId(row, row as unknown as Record<string, unknown>) ?? orderId
 
     return nullifyUndefined({
       client_name: clientName,

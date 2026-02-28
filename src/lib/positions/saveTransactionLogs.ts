@@ -74,7 +74,7 @@ export async function saveTransactionLogs(
       return { ok: false, error: error.message }
     }
 
-    for (const entry of data ?? []) {
+    for (const entry of (data as { trade_id?: string | null }[] | null) ?? []) {
       const id = typeof entry.trade_id === 'string' ? entry.trade_id.trim() : ''
       if (id) existingTradeIds.add(id)
     }
@@ -96,7 +96,7 @@ export async function saveTransactionLogs(
       return { ok: false, error: error.message }
     }
 
-    for (const entry of data ?? []) {
+    for (const entry of (data as { order_id?: string | null }[] | null) ?? []) {
       const id = typeof entry.order_id === 'string' ? entry.order_id.trim() : ''
       if (id) existingOrderIds.add(id)
     }

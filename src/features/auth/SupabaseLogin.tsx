@@ -39,7 +39,7 @@ export function SupabaseLogin() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="relative w-full max-w-md space-y-6 overflow-hidden rounded-3xl border border-slate-200/60 bg-white/80 p-8 text-left shadow-2xl backdrop-blur-xl"
+      className="scheme-light relative w-full max-w-md space-y-6 overflow-hidden rounded-3xl border border-slate-200/60 bg-slate-100/80 p-8 text-left shadow-2xl backdrop-blur-xl"
     >
       <div className="pointer-events-none absolute -top-40 right-10 h-56 w-56 rounded-full bg-sky-200/40 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-48 left-6 h-56 w-56 rounded-full bg-blue-500/30 blur-3xl" />
@@ -101,7 +101,7 @@ export function SupabaseLogin() {
       <button
         type="submit"
         disabled={submitting}
-        className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-lg transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:cursor-not-allowed disabled:bg-slate-400"
+        className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-50 shadow-lg transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:cursor-not-allowed disabled:bg-slate-400"
       >
         <span className="absolute inset-0 -z-10 bg-gradient-to-r from-slate-900 via-sky-600 to-slate-900 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         {submitting ? 'Signing you in…' : 'Continue'}

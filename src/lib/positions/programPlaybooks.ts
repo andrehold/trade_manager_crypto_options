@@ -113,9 +113,9 @@ export async function fetchProgramPlaybooks(
         marketSignals: row.market_signals,
         signals: [],
         links: linksByProgram.get(programId) ?? [],
-      } satisfies ProgramPlaybook;
+      } as ProgramPlaybook;
     })
-    .filter((row): row is ProgramPlaybook => Boolean(row));
+    .filter((row): row is NonNullable<typeof row> => row !== null) as ProgramPlaybook[];
 
   return { ok: true, playbooks };
 }

@@ -504,7 +504,7 @@ function LocalStructureCard({
 
 /* ═══════════════════════ MAIN PAGE ═══════════════════════ */
 
-export function AssignLegsPage({ onBack }: { onBack: () => void }) {
+export function AssignLegsPage({ onBack, embedded }: { onBack: () => void; embedded?: boolean }) {
   const ctx = getAssignLegsContext()
 
   // If no context (e.g. navigated directly), go back
@@ -514,7 +514,7 @@ export function AssignLegsPage({ onBack }: { onBack: () => void }) {
 
   if (!ctx) return null
 
-  return <AssignLegsPageInner {...ctx} onBack={onBack} />
+  return <AssignLegsPageInner {...ctx} onBack={onBack} embedded={embedded} />
 }
 
 function AssignLegsPageInner({
@@ -525,6 +525,7 @@ function AssignLegsPageInner({
   onConfirm,
   onCancel,
   onBack,
+  embedded,
 }: {
   rows: TxnRow[]
   excludedRows: TxnRow[]
@@ -533,6 +534,7 @@ function AssignLegsPageInner({
   onConfirm: (rows: TxnRow[], unprocessedRows?: TxnRow[]) => void | Promise<void>
   onCancel: () => void
   onBack: () => void
+  embedded?: boolean
 }) {
   const [activeTab, setActiveTab] = useState<'included' | 'excluded'>('included')
   const [importing, setImporting] = useState(false)
@@ -841,18 +843,20 @@ function AssignLegsPageInner({
   /* ═════════════════════ RENDER ═════════════════════ */
 
   return (
-    <div className="h-screen flex flex-col bg-white">
+    <div className={embedded ? 'flex-1 min-h-0 flex flex-col bg-white' : 'h-screen flex flex-col bg-white'}>
       {/* ── header ── */}
       <div className="shrink-0 flex items-center gap-3 px-6 pt-5 pb-3 border-b">
-        <button
-          onClick={handleCancel}
-          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors"
-          title="Back to dashboard"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <h3 className="text-lg font-semibold">Assign Legs to Structures</h3>
-        <div className="ml-auto flex gap-2 text-sm">
+        {!embedded && (
+          <button
+            onClick={handleCancel}
+            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors"
+            title="Back to dashboard"
+          >
+            <ArrowLeft size={18} />
+          </button>
+        )}
+        {!embedded && <h3 className="text-lg font-semibold">Assign Legs to Structures</h3>}
+        <div className={embedded ? 'flex gap-2 text-sm' : 'ml-auto flex gap-2 text-sm'}>
           <button
             className={`px-3 py-1 rounded-lg border text-xs ${
               activeTab === 'included' ? 'bg-slate-900 text-white' : ''

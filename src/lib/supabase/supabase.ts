@@ -7,7 +7,7 @@ function createSupabaseFetchProxy(supabaseUrl: string) {
   return async (input: RequestInfo | URL, init?: RequestInit) => {
     if (typeof window === "undefined") return fetch(input, init);
 
-    const targetUrl = typeof input === "string" ? input : input.url;
+    const targetUrl = typeof input === "string" ? input : input instanceof URL ? input.href : (input as Request).url;
     if (!targetUrl.startsWith(normalizedUrl)) return fetch(input, init);
 
     const serializedHeaders = Array.from(new Headers(init?.headers ?? {}).entries());
@@ -45,7 +45,7 @@ function initClient(): SupabaseClient | null {
   }
 
   cachedClient = createClient(url, key, {
-    global: { fetch: createSupabaseFetchProxy(url) },
+    global: import.meta.env.DEV ? {} : { fetch: createSupabaseFetchProxy(url) },
     auth: {
       persistSession: true,
       autoRefreshToken: true,

@@ -2,8 +2,6 @@ import React from 'react'
 import DashboardApp from './DashboardApp'
 import { PlaybookIndexPage } from './features/playbooks/PlaybookIndexPage'
 import { StrategyPlaybookPage } from './features/playbooks/StrategyPlaybookPage'
-import { AssignLegsPage } from './features/assignLegs/AssignLegsPage'
-import { MapCSVPage } from './features/mapCSV/MapCSVPage'
 
 type ViewState =
   | { type: 'dashboard' }
@@ -71,13 +69,17 @@ export default function App() {
     )
   }
 
-  if (view.type === 'assignLegs') {
-    return <AssignLegsPage onBack={goDashboard} />
-  }
+  const dashboardInnerView =
+    view.type === 'mapCSV' ? 'mapCSV' as const :
+    view.type === 'assignLegs' ? 'assignLegs' as const :
+    undefined
 
-  if (view.type === 'mapCSV') {
-    return <MapCSVPage onBack={goDashboard} />
-  }
-
-  return <DashboardApp onOpenPlaybookIndex={goPlaybookIndex} onOpenAssignLegs={goAssignLegs} onOpenMapCSV={goMapCSV} />
+  return (
+    <DashboardApp
+      innerView={dashboardInnerView}
+      onOpenPlaybookIndex={goPlaybookIndex}
+      onOpenAssignLegs={goAssignLegs}
+      onOpenMapCSV={goMapCSV}
+    />
+  )
 }
