@@ -33,6 +33,12 @@
   --color-blue-400:      #60A5FA;
   --color-blue-600:      #2563EB;
 
+  /* ── Dark UI layer scale ── */
+  --color-layer-page:      #0a0a0a;   /* rgb(10,10,10)  — page background    */
+  --color-layer-container: #0f0f0f;   /* rgb(15,15,15)  — section containers  */
+  --color-layer-card:      #181818;   /* rgb(24,24,24)  — cards               */
+  --color-layer-chip:      #262626;   /* rgb(38,38,38)  — chips / tags        */
+
   /* ── Surface alias ── */
   --color-surface-0:     #FFFFFF;
 
@@ -149,35 +155,39 @@
   --color-surface-0:     #27272a;   /* zinc-800  — bg-white → dark card */
 }
 
-/* ── Base resets (kept from old utilities.css) ── */
-body {
-  font-family: var(--font-sans);
-  background-color: var(--color-slate-50);
-  color: var(--color-slate-900);
-}
+/* ── Base resets (kept from old utilities.css) ──
+   Wrapped in @layer base so that Tailwind utility classes (bg-*, rounded-*)
+   always win — unlayered CSS beats @layer utilities regardless of specificity. */
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-slate-50);
+    color: var(--color-slate-900);
+  }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
-  color: inherit;
-  background-color: transparent;
-}
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+    background-color: transparent;
+  }
 
-button {
-  border: none;
-  cursor: pointer;
-}
+  button {
+    border: none;
+    cursor: pointer;
+  }
 
-input,
-textarea,
-select {
-  border-radius: 0;
-}
+  input,
+  textarea,
+  select {
+    border-radius: 0;
+  }
 
-details > summary {
-  cursor: pointer;
+  details > summary {
+    cursor: pointer;
+  }
 }
 
 /* ── bg-white maps to surface-0 (theme-aware) ── */

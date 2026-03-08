@@ -1,6 +1,6 @@
 import React from 'react'
 import Papa from 'papaparse'
-import { ArrowLeft, FileText } from 'lucide-react'
+import { ArrowLeft, FileText, ChevronsUpDown } from 'lucide-react'
 import {
   EXPECTED_FIELDS,
   parseActionSide,
@@ -22,9 +22,10 @@ type Props = {
   onBack: () => void
   onOpenAssignLegs?: () => void
   embedded?: boolean
+  onStepChange?: (step: 'upload' | 'mapping') => void
 }
 
-export function MapCSVPage({ onBack, onOpenAssignLegs, embedded }: Props) {
+export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }: Props) {
   const ctx = getColumnMapperContext()
 
   // Local state for direct file upload (no pre-existing context)
@@ -41,6 +42,12 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded }: Props) {
   const [exchange, setExchange] = React.useState<'deribit' | 'coincall' | 'cme'>('deribit')
   const [importHistoricalRows, setImportHistoricalRows] = React.useState(false)
   const [allowAllocations, setAllowAllocations] = React.useState(false)
+
+  // Notify parent when step transitions between upload ↔ mapping
+  const isMapping = Boolean(ctx || localHeaders)
+  React.useEffect(() => {
+    onStepChange?.(isMapping ? 'mapping' : 'upload')
+  }, [isMapping]) // onStepChange intentionally omitted — setter is stable
 
   React.useEffect(() => {
     if (!headers.length) return
@@ -268,7 +275,7 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded }: Props) {
   // ── Upload zone (no file yet, no pre-existing context) ──────────────────────
   if (!ctx && !localHeaders) {
     return (
-      <div className={embedded ? 'flex-1 flex flex-col' : 'min-h-screen bg-zinc-950 flex flex-col'}>
+      <div className={embedded ? 'flex-1 flex flex-col' : 'min-h-screen bg-layer-page flex flex-col'}>
         {/* Header — only shown when not embedded (standalone page) */}
         {!embedded && (
           <div className="flex items-center gap-3 px-6 py-4 border-b border-zinc-800">
@@ -279,7 +286,7 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded }: Props) {
             >
               <ArrowLeft size={18} className="text-zinc-400" />
             </button>
-            <h1 className="text-base font-semibold text-zinc-100">Import CSV</h1>
+            <h1 className="type-headline font-semibold text-zinc-100">Import CSV</h1>
           </div>
         )}
 
@@ -294,8 +301,8 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded }: Props) {
             className={[
               'flex-1 flex flex-col rounded-2xl border p-5 transition-colors',
               isDragging
-                ? 'bg-zinc-800 border-zinc-600'
-                : 'bg-zinc-900 border-zinc-800',
+                ? 'bg-layer-card border-zinc-600'
+                : 'bg-layer-container border-zinc-800',
             ].join(' ')}
           >
             {/* Section label — upper left */}
@@ -318,7 +325,7 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded }: Props) {
                 ].join(' ')}
               >
                 <FileText size={15} />
-                <span className="text-sm font-medium">+ Import CSV</span>
+                <span className="type-subhead font-medium">+ Import CSV</span>
               </button>
             </div>
           </div>
@@ -337,121 +344,139 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded }: Props) {
 
   // ── Column mapping UI ────────────────────────────────────────────────────────
   return (
-    <div className={embedded ? 'flex-1 flex flex-col text-white' : 'min-h-screen bg-slate-900 text-white flex flex-col'}>
+    <div className={embedded ? 'flex-1 flex flex-col' : 'min-h-screen bg-layer-page flex flex-col'}>
       {/* Header — only shown when not embedded (standalone page) */}
       {!embedded && (
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-700">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-zinc-800">
           <button
             onClick={handleCancel}
-            className="p-1.5 rounded-lg hover:bg-slate-700 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
             aria-label="Back"
           >
-            <ArrowLeft size={18} className="text-slate-400" />
+            <ArrowLeft size={18} className="text-zinc-400" />
           </button>
-          <h1 className="text-base font-semibold">Map CSV Columns</h1>
+          <h1 className="type-headline font-semibold text-zinc-100">Mapping</h1>
           {localHeaders && (
-            <span className="text-xs text-slate-400 ml-1">
-              — {localRawRows?.length ?? 0} rows detected
-            </span>
+            <span className="type-caption text-zinc-500 ml-1">— {localRawRows?.length ?? 0} rows</span>
           )}
         </div>
       )}
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-2xl mx-auto space-y-6">
-          <p className="text-sm text-slate-400">
-            {mode === 'backfill'
-              ? 'Select the instrument column plus trade_id or order_id to backfill legs. Other fields are optional.'
-              : 'Tell the importer which CSV columns correspond to the required fields.'}
-          </p>
+      {/* Card area — mirrors the upload zone layout */}
+      <div className="flex-1 flex flex-col p-6 min-h-0">
+        <div className="flex-1 flex flex-col bg-layer-container rounded-2xl border border-zinc-800 overflow-hidden">
 
-          {/* Exchange selector */}
-          <div>
-            <label className="text-sm block text-slate-400 mb-1">Exchange</label>
-            <select
-              value={exchange}
-              onChange={(e) => setExchange(e.target.value as 'deribit' | 'coincall' | 'cme')}
-              className="w-full bg-slate-800 border border-slate-600 rounded-xl p-2 text-white focus:outline-none focus:ring-2 focus:ring-slate-500"
-            >
-              <option value="deribit">Deribit</option>
-              <option value="coincall">Coincall</option>
-              <option value="cme">CME</option>
-            </select>
+          {/* Card section label */}
+          <div className="flex items-center gap-1.5 px-5 pt-5 pb-0">
+            <FileText size={13} className="text-zinc-500" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+              Mapping
+            </span>
+            {localHeaders && (
+              <span className="text-[10px] text-zinc-600 ml-1">— {localRawRows?.length ?? 0} rows</span>
+            )}
           </div>
 
-          {/* Column mappings */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {EXPECTED_FIELDS.map((f) => (
-              <label key={f.key} className="text-sm">
-                <span className="block text-slate-400 mb-1">{f.label}</span>
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto p-5 pt-4 space-y-5">
+
+            {/* Exchange selector */}
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500 mb-2">
+                Exchange
+              </label>
+              <div className="relative">
                 <select
-                  value={mapping[f.key] || ''}
-                  onChange={(e) => setMapping((m) => ({ ...m, [f.key]: e.target.value }))}
-                  className="w-full bg-slate-800 border border-slate-600 rounded-xl p-2 text-white focus:outline-none focus:ring-2 focus:ring-slate-500"
+                  value={exchange}
+                  onChange={(e) => setExchange(e.target.value as 'deribit' | 'coincall' | 'cme')}
+                  className="w-full appearance-none bg-layer-chip border border-zinc-600/30 rounded-2xl px-4 py-3 pr-9 type-subhead text-zinc-100 focus:outline-none focus:border-zinc-500 cursor-pointer transition-colors"
                 >
-                  <option value="">— Select column —</option>
-                  {headers.map((h) => (
-                    <option key={h} value={h}>{h}</option>
-                  ))}
+                  <option value="deribit">Deribit</option>
+                  <option value="coincall">Coincall</option>
+                  <option value="cme">CME</option>
                 </select>
-              </label>
-            ))}
+                <ChevronsUpDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Column mappings grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {EXPECTED_FIELDS.map((f) => (
+                <div key={f.key}>
+                  <label className="block text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500 mb-2">
+                    {f.label}
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={mapping[f.key] || ''}
+                      onChange={(e) => setMapping((m) => ({ ...m, [f.key]: e.target.value }))}
+                      className="w-full appearance-none bg-layer-chip border border-zinc-600/30 rounded-2xl px-4 py-3 pr-9 type-subhead text-zinc-100 focus:outline-none focus:border-zinc-500 cursor-pointer transition-colors"
+                    >
+                      <option value="">— select —</option>
+                      {headers.map((h) => (
+                        <option key={h} value={h}>{h}</option>
+                      ))}
+                    </select>
+                    <ChevronsUpDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Import-only options */}
+            {mode === 'import' && (
+              <div className="space-y-2 pt-1">
+                <label className="inline-flex items-center gap-2.5 type-caption text-zinc-400 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={importHistoricalRows}
+                    onChange={(e) => setImportHistoricalRows(e.target.checked)}
+                    className="rounded accent-emerald-500"
+                  />
+                  <span>Import historical rows (skip duplicates)</span>
+                </label>
+                <label className="inline-flex items-center gap-2.5 type-caption text-zinc-400 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={allowAllocations}
+                    onChange={(e) => setAllowAllocations(e.target.checked)}
+                    className="rounded accent-emerald-500"
+                  />
+                  <span>Allow trade allocations (reuse trade/order IDs across structures)</span>
+                </label>
+              </div>
+            )}
+
+            {/* Re-upload option for local flow */}
+            {localHeaders && (
+              <div className="pt-1 border-t border-zinc-800">
+                <button
+                  onClick={() => { setLocalHeaders(null); setLocalRawRows(null) }}
+                  className="type-caption text-zinc-500 hover:text-zinc-300 transition-colors"
+                >
+                  ← Upload a different file
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Import-only options */}
-          {mode === 'import' && (
-            <div className="space-y-2">
-              <label className="inline-flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={importHistoricalRows}
-                  onChange={(e) => setImportHistoricalRows(e.target.checked)}
-                  className="rounded"
-                />
-                <span>Import historical rows (skip duplicates)</span>
-              </label>
-              <label className="inline-flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={allowAllocations}
-                  onChange={(e) => setAllowAllocations(e.target.checked)}
-                  className="rounded"
-                />
-                <span>Allow trade allocations (reuse trade/order IDs across structures)</span>
-              </label>
-            </div>
-          )}
-
-          {/* Re-upload option for local flow */}
-          {localHeaders && (
-            <div className="pt-2 border-t border-slate-700">
-              <button
-                onClick={() => { setLocalHeaders(null); setLocalRawRows(null) }}
-                className="text-sm text-slate-400 hover:text-slate-200 transition-colors"
-              >
-                ← Upload a different file
-              </button>
-            </div>
-          )}
+          {/* Footer actions */}
+          <div className="px-5 py-4 border-t border-zinc-800 flex justify-end gap-3">
+            <button
+              onClick={handleCancel}
+              className="px-4 py-2 rounded-xl border border-zinc-700 text-zinc-400 hover:bg-zinc-800 type-subhead transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={isProcessing}
+              className="px-4 py-2 rounded-xl bg-zinc-100 text-zinc-900 type-subhead font-medium hover:bg-white transition-colors disabled:opacity-50"
+            >
+              {isProcessing ? 'Processing…' : mode === 'backfill' ? 'Start Backfill' : 'Start Import'}
+            </button>
+          </div>
         </div>
-      </div>
-
-      {/* Footer actions */}
-      <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3">
-        <button
-          onClick={handleCancel}
-          className="px-4 py-2 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-700 transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleConfirm}
-          disabled={isProcessing}
-          className="px-4 py-2 rounded-xl bg-white text-slate-900 font-medium hover:bg-slate-100 transition-colors disabled:opacity-50"
-        >
-          {isProcessing ? 'Processing…' : mode === 'backfill' ? 'Start Backfill' : 'Start Import'}
-        </button>
       </div>
     </div>
   )

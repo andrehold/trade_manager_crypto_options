@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, Blocks } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, ArrowLeft, Blocks, Calendar, Clock, TrendingDown, TrendingUp } from 'lucide-react'
 import {
   DndContext,
   DragEndEvent,
@@ -13,11 +13,12 @@ import {
   useSensor,
   useSensors,
   useDroppable,
+  useDraggable,
   type CollisionDetection,
 } from '@dnd-kit/core'
 import {
   SortableContext,
-  verticalListSortingStrategy,
+  rectSortingStrategy,
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -34,44 +35,18 @@ import {
 } from '../../components/dndUtils'
 import { buildStructureChipSummary } from '../../lib/positions'
 import { getAssignLegsContext, clearAssignLegsContext } from './assignLegsStore'
+import { PremiumBadge } from '../../components/TradeCard'
 
 const CONTAINER_BACKLOG = 'backlog'
 const CONTAINER_NEW_STRUCTURE = 'new-structure'
+const BACKLOG_PAGE_SIZE = 15
 
-/* ── premium helpers ── */
+/* ── premium helper ── */
 
 function calcLegPremium(row: TxnRow): number {
   const qty = Math.abs(row.amount ?? 0)
   const price = row.price ?? 0
-  // sell = premium received (positive), buy = premium paid (negative)
   return price * qty * (row.side === 'sell' ? 1 : -1)
-}
-
-function formatPremium(value: number): string {
-  const abs = Math.abs(value)
-  if (abs === 0) return '0'
-  if (abs % 1 === 0) return String(Math.round(abs))
-  // Use enough decimal places so at least 2 significant digits are visible
-  // e.g. 0.00216 → "0.0022", 0.0129 → "0.0129", 1.23 → "1.23"
-  if (abs >= 1) return abs.toFixed(2)
-  const magnitude = Math.floor(Math.log10(abs))   // e.g. -3 for 0.00216
-  const decimals = Math.max(2, -magnitude + 1)     // show 2 sig figs past leading zeros
-  return abs.toFixed(decimals)
-}
-
-function PremiumBadge({ value }: { value: number }) {
-  if (value === 0) return null
-  // negative = received (credit) = green; positive = paid (debit) = red
-  const isCredit = value < 0
-  const color = isCredit
-    ? 'bg-emerald-500 text-white border-emerald-600'
-    : 'bg-rose-500 text-white border-rose-600'
-  const sign = isCredit ? '+' : '-'
-  return (
-    <span className={`inline-flex items-center border rounded px-2 py-0.5 text-[10px] font-mono leading-tight ${color}`}>
-      {sign}{formatPremium(value)}
-    </span>
-  )
 }
 
 /* ─────────────────────── types ─────────────────────── */
@@ -82,16 +57,18 @@ type SavedStructureInfo = {
   position: Position
 }
 
-/* ─────────────── compact draggable chip ─────────────── */
+/* ─────────────── sortable draggable wrapper ─────────────── */
 
-function LegChip({
+function SortableLegChip({
   legItem,
   exchange,
   onRemove,
+  className: extraClassName,
 }: {
   legItem: LegItem
   exchange: Exchange
   onRemove?: () => void
+  className?: string
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: legItem.id,
@@ -100,11 +77,11 @@ function LegChip({
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : 1,
+    opacity: isDragging ? 0.35 : 1,
     ...(isDragging
       ? {
-          transform: CSS.Transform.toString(transform) + ' scale(1.025)',
-          boxShadow: 'inset 0px 0px 1px rgba(0,0,0,0.5), -1px 0 15px 0 rgba(34,33,81,0.01), 0px 15px 15px 0 rgba(34,33,81,0.25)',
+          transform: CSS.Transform.toString(transform) + ' scale(1.03)',
+          boxShadow: '0px 16px 24px rgba(0,0,0,0.5)',
         }
       : {}),
   }
@@ -120,16 +97,13 @@ function LegChip({
   const premium = calcLegPremium(row)
   const action = row.action
 
-  // Parse instrument parts for display
   const parsed = parseInstrumentByExchange(exchange, row.instrument)
   const qty = Math.abs(row.amount ?? 0)
   const qtyStr = qty % 1 === 0 ? String(qty) : qty.toFixed(2)
   const sign = row.side === 'sell' ? '-' : '+'
-  const qtyPart = `${sign}${qtyStr}`
   const strikePart = parsed ? `${parsed.optionType}${parsed.strike}` : row.instrument
-  const expiryPart = parsed?.expiryISO
-    ? parsed.expiryISO.split('-').slice(1, 3).reverse().join('-')
-    : ''
+  const [exY, exM, exD] = (parsed?.expiryISO ?? '').split('-')
+  const expiryPart = exD && exM && exY ? `${exD}/${exM}/${exY}` : ''
 
   return (
     <div
@@ -137,56 +111,66 @@ function LegChip({
       style={style}
       {...attributes}
       {...listeners}
-      className="flex items-center gap-3 bg-black text-white rounded-[10px] px-[18px] py-[14px] cursor-grab active:cursor-grabbing touch-none select-none transition-transform"
+      className={`flex flex-col bg-layer-card border border-zinc-700/60 rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing touch-none select-none min-w-[160px] flex-1 max-w-[260px] transition-transform${extraClassName ? ' ' + extraClassName : ''}`}
     >
-      <Blocks size={22} className="shrink-0 text-white/80" />
-      <div className="flex flex-col gap-0.5 min-w-0">
-        {/* Primary row — larger text + price chip */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-base font-black whitespace-nowrap leading-tight">
-            {qtyPart}
+      {/* Header: icon + qty+strike + remove */}
+      <div className="flex items-center justify-between gap-1">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Blocks size={13} className="shrink-0 text-zinc-500" />
+          <span className="type-caption font-bold text-zinc-100 truncate">
+            {sign}{qtyStr} {strikePart}
           </span>
-          <span className="text-base font-black whitespace-nowrap leading-tight">
-            {strikePart}
+        </div>
+        {onRemove && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onRemove() }}
+            className="shrink-0 text-zinc-600 hover:text-rose-400 type-caption leading-none ml-1 transition-colors"
+            title="Remove from structure"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-zinc-700/60 my-2" />
+
+      {/* Expiry */}
+      {expiryPart && (
+        <div className="flex items-center gap-1.5 mb-1">
+          <Calendar size={11} className="shrink-0 text-zinc-500" />
+          <span className="type-caption text-zinc-400 whitespace-nowrap">{expiryPart}</span>
+        </div>
+      )}
+
+      {/* Timestamp */}
+      {(datePart || timePart) && (
+        <div className="flex items-center gap-1.5 mb-2">
+          <Clock size={11} className="shrink-0 text-zinc-500" />
+          <span className="type-caption text-zinc-400 whitespace-nowrap" title={ts}>
+            {datePart}{timePart ? ` ${timePart}` : ''}
           </span>
-          {expiryPart && (
-            <span className="text-base font-black whitespace-nowrap leading-tight">
-              {expiryPart}
-            </span>
-          )}
+        </div>
+      )}
+
+      {/* Open/close chip */}
+      {action && (
+        <div className="mb-1">
+          <span className="inline-flex items-center gap-1 bg-layer-chip rounded-md px-2 py-0.5 type-caption font-bold leading-tight text-zinc-100">
+            {action === 'open'
+              ? <ArrowUpRight size={10} className="shrink-0 text-blue-400" />
+              : <ArrowDownLeft size={10} className="shrink-0 text-orange-400" />
+            }
+            {action}
+          </span>
+        </div>
+      )}
+
+      {/* Premium chip */}
+      {premium !== 0 && (
+        <div>
           <PremiumBadge value={premium} />
         </div>
-        {/* Secondary row — smaller text */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {action && (
-            <span
-              className={`text-[10px] font-medium px-1 py-0 rounded border leading-tight ${
-                action === 'open'
-                  ? 'bg-blue-50/10 text-blue-300 border-blue-400/40'
-                  : 'bg-white/10 text-white/50 border-white/20'
-              }`}
-            >
-              {action}
-            </span>
-          )}
-          {(datePart || timePart) && (
-            <span className="text-[10px] text-white/40 whitespace-nowrap" title={ts}>
-              {datePart} {timePart}
-            </span>
-          )}
-        </div>
-      </div>
-      {onRemove && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onRemove()
-          }}
-          className="ml-auto shrink-0 text-white/30 hover:text-rose-400 text-[11px] leading-none"
-          title="Remove from structure"
-        >
-          ✕
-        </button>
       )}
     </div>
   )
@@ -197,13 +181,108 @@ function LegChip({
 function GhostChip({ legItem, exchange }: { legItem: LegItem; exchange: Exchange }) {
   return (
     <div
-      className="flex items-center gap-3 bg-black text-white rounded-[10px] px-[18px] py-[14px] shadow-xl opacity-90 touch-none select-none"
-      style={{ boxShadow: '-1px 0 15px 0 rgba(34,33,81,0.01), 0px 15px 15px 0 rgba(34,33,81,0.25)' }}
+      className="flex flex-col bg-layer-chip border border-zinc-600 rounded-xl px-2.5 py-2 shadow-2xl opacity-90 touch-none select-none min-w-[148px] max-w-[240px]"
     >
-      <Blocks size={22} className="shrink-0 text-white/80" />
-      <span className="text-base font-black whitespace-nowrap leading-tight">
-        {formatLegLabel(legItem.row, exchange)}
-      </span>
+      <div className="flex items-center gap-1.5">
+        <Blocks size={12} className="shrink-0 text-zinc-400" />
+        <span className="type-caption font-bold text-zinc-100 truncate">
+          {formatLegLabel(legItem.row, exchange)}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────── plain draggable chip (backlog only) ─────────────── */
+// Uses useDraggable instead of useSortable — no SortableContext subscription,
+// no rectSortingStrategy computation. Critical for performance with large backlogs.
+
+function DraggableLegChip({
+  legItem,
+  exchange,
+  className: extraClassName,
+}: {
+  legItem: LegItem
+  exchange: Exchange
+  className?: string
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: legItem.id,
+  })
+
+  // Don't translate the original chip — DragOverlay renders the moving ghost.
+  // Applying the transform would make the full-size chip chase the cursor alongside the overlay.
+  const style: React.CSSProperties = isDragging ? { opacity: 0.35 } : {}
+
+  const row = legItem.row
+  const ts = row.timestamp ?? ''
+  const timePart = ts.includes('T')
+    ? ts.split('T')[1]?.slice(0, 8) ?? ''
+    : ts.includes(' ')
+    ? ts.split(' ')[1]?.slice(0, 8) ?? ''
+    : ''
+  const datePart = ts.slice(0, 10)
+  const premium = calcLegPremium(row)
+  const action = row.action
+
+  const parsed = parseInstrumentByExchange(exchange, row.instrument)
+  const qty = Math.abs(row.amount ?? 0)
+  const qtyStr = qty % 1 === 0 ? String(qty) : qty.toFixed(2)
+  const sign = row.side === 'sell' ? '-' : '+'
+  const strikePart = parsed ? `${parsed.optionType}${parsed.strike}` : row.instrument
+  const [exY, exM, exD] = (parsed?.expiryISO ?? '').split('-')
+  const expiryPart = exD && exM && exY ? `${exD}/${exM}/${exY}` : ''
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`flex flex-col bg-layer-card border border-zinc-700/60 rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing touch-none select-none min-w-[160px] flex-1 max-w-[260px]${extraClassName ? ' ' + extraClassName : ''}`}
+    >
+      <div className="flex items-center gap-1.5 min-w-0">
+        <Blocks size={13} className="shrink-0 text-zinc-500" />
+        <span className="type-caption font-bold text-zinc-100 truncate">
+          {sign}{qtyStr} {strikePart}
+        </span>
+      </div>
+
+      <div className="border-t border-zinc-700/60 my-2" />
+
+      {expiryPart && (
+        <div className="flex items-center gap-1.5 mb-1">
+          <Calendar size={11} className="shrink-0 text-zinc-500" />
+          <span className="type-caption text-zinc-400 whitespace-nowrap">{expiryPart}</span>
+        </div>
+      )}
+
+      {(datePart || timePart) && (
+        <div className="flex items-center gap-1.5 mb-2">
+          <Clock size={11} className="shrink-0 text-zinc-500" />
+          <span className="type-caption text-zinc-400 whitespace-nowrap" title={ts}>
+            {datePart}{timePart ? ` ${timePart}` : ''}
+          </span>
+        </div>
+      )}
+
+      {action && (
+        <div className="mb-1">
+          <span className="inline-flex items-center gap-1 bg-layer-chip rounded-md px-2 py-0.5 type-caption font-bold leading-tight text-zinc-100">
+            {action === 'open'
+              ? <ArrowUpRight size={10} className="shrink-0 text-blue-400" />
+              : <ArrowDownLeft size={10} className="shrink-0 text-orange-400" />
+            }
+            {action}
+          </span>
+        </div>
+      )}
+
+      {premium !== 0 && (
+        <div>
+          <PremiumBadge value={premium} />
+        </div>
+      )}
     </div>
   )
 }
@@ -226,7 +305,7 @@ function Droppable({
     <div
       ref={setNodeRef}
       style={style}
-      className={`${className ?? ''} ${isOver ? 'ring-2 ring-blue-400 ring-inset' : ''}`}
+      className={`${className ?? ''} ${isOver ? 'ring-2 ring-blue-500/50 ring-inset' : ''}`}
     >
       {children}
     </div>
@@ -264,23 +343,20 @@ function NewStructureDropZone({
   return (
     <div
       ref={setNodeRef}
-      className={`border-2 border-dashed rounded-lg p-3 transition-colors ${
+      className={`border border-dashed rounded-xl p-3 transition-colors ${
         isOver
-          ? 'border-blue-500 bg-blue-50'
+          ? 'border-blue-500/60 bg-blue-500/5'
           : items.length > 0
-          ? 'border-emerald-300 bg-emerald-50/50'
-          : 'border-slate-300 bg-slate-50'
+          ? 'border-emerald-500/40 bg-emerald-500/5'
+          : 'border-zinc-700 bg-zinc-900/50'
       }`}
     >
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-2.5">
         <div className="flex items-center gap-2">
-          <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
-            New Structure
-          </p>
           <select
             value={structureType}
             onChange={(e) => onStructureTypeChange(e.target.value)}
-            className="border border-slate-300 rounded px-1.5 py-0.5 text-[11px] bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className="bg-zinc-800 border border-zinc-700 rounded-lg px-1.5 py-0.5 type-caption text-zinc-300 focus:outline-none focus:border-zinc-500"
           >
             {STRUCTURE_TYPES.map((st) => (
               <option key={st.code} value={st.code}>
@@ -291,7 +367,7 @@ function NewStructureDropZone({
           {items.length > 0 && (
             <button
               onClick={handleAutoDetect}
-              className="px-2 py-0.5 text-[11px] font-medium rounded border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-400 transition-colors"
+              className="px-2 py-0.5 type-caption font-medium rounded-lg border border-zinc-600 bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:border-zinc-500 transition-colors"
               title="Auto-detect structure type from legs"
             >
               Auto
@@ -303,28 +379,28 @@ function NewStructureDropZone({
           <div className="flex items-center gap-1.5">
             <button
               onClick={onSort}
-              className="px-2.5 py-0.5 text-xs font-medium rounded bg-slate-500 text-white hover:bg-slate-600 transition-colors"
+              className="px-2.5 py-0.5 type-caption font-medium rounded-lg bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors"
             >
               Sort
             </button>
             <button
               onClick={onSave}
-              className="px-2.5 py-0.5 text-xs font-medium rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+              className="px-2.5 py-0.5 type-caption font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 transition-colors"
             >
               Save
             </button>
           </div>
         )}
       </div>
-      <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-wrap gap-1.5 min-h-[32px]">
+      <SortableContext items={items.map((i) => i.id)} strategy={rectSortingStrategy}>
+        <div className="flex flex-wrap gap-2 min-h-[36px] content-start">
           {items.length === 0 ? (
-            <p className="text-[11px] text-slate-400 italic py-1">
+            <p className="type-caption text-zinc-600 italic py-1">
               Drop legs here to create a new structure
             </p>
           ) : (
             items.map((item) => (
-              <LegChip
+              <SortableLegChip
                 key={item.id}
                 legItem={item}
                 exchange={exchange}
@@ -345,11 +421,9 @@ function ExistingLegChip({ leg }: { leg: import('../../utils').Leg }) {
   const qty = Math.abs(leg.qtyNet)
   const qtyStr = qty % 1 === 0 ? String(qty) : qty.toFixed(2)
   return (
-    <span className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 rounded-md px-2 py-1 text-xs text-slate-800 select-none">
-      <span className="font-semibold">
-        {sign}
-        {qtyStr} / {leg.optionType}
-        {leg.strike}
+    <span className="inline-flex items-center gap-1 bg-zinc-700/50 border border-zinc-600/50 rounded-lg px-2 py-1 type-caption text-zinc-300 select-none">
+      <span className="font-medium">
+        {sign}{qtyStr} / {leg.optionType}{leg.strike}
       </span>
     </span>
   )
@@ -378,12 +452,12 @@ function SavedStructureCard({
   return (
     <div
       ref={setNodeRef}
-      className={`border rounded-lg px-3 py-2.5 transition-colors ${
-        isOver ? 'border-blue-400 bg-blue-50/60' : 'border-slate-200 bg-slate-50/40'
+      className={`border rounded-xl px-3 py-2.5 transition-colors ${
+        isOver ? 'border-blue-500/50 bg-blue-500/5' : 'border-zinc-700 bg-zinc-800/50'
       }`}
     >
       <div className="flex items-center gap-2 mb-2">
-        <p className="text-xs font-semibold text-slate-700 truncate flex-1" title={label}>
+        <p className="type-caption font-semibold text-zinc-400 truncate flex-1" title={label}>
           {label}
         </p>
         {newLegsNetPremium !== null && <PremiumBadge value={newLegsNetPremium} />}
@@ -391,27 +465,27 @@ function SavedStructureCard({
       <div className="flex gap-3">
         <div className="flex-1 min-w-0">
           {existingLegs.length > 0 ? (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-wrap gap-1">
               {existingLegs.map((leg, i) => (
                 <ExistingLegChip key={`existing-${i}`} leg={leg} />
               ))}
             </div>
           ) : (
-            <p className="text-[10px] text-slate-400 italic">No legs</p>
+            <p className="type-caption text-zinc-600 italic">No legs</p>
           )}
         </div>
-        <SortableContext items={newLegs.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={newLegs.map((i) => i.id)} strategy={rectSortingStrategy}>
           <div
-            className={`flex-1 min-w-0 border-2 border-dashed rounded-lg p-2 min-h-[32px] transition-colors ${
-              isOver ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-100/80'
+            className={`flex-1 min-w-0 border border-dashed rounded-xl p-2 min-h-[36px] transition-colors ${
+              isOver ? 'border-blue-500/50 bg-blue-500/5' : 'border-zinc-700 bg-zinc-900/50'
             }`}
           >
             {newLegs.length === 0 ? (
-              <p className="text-[10px] text-slate-400 italic text-center py-0.5">Drop legs to add</p>
+              <p className="type-caption text-zinc-600 italic text-center py-0.5">Drop legs to add</p>
             ) : (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-wrap gap-2">
                 {newLegs.map((item) => (
-                  <LegChip
+                  <SortableLegChip
                     key={item.id}
                     legItem={item}
                     exchange={exchange}
@@ -452,12 +526,12 @@ function LocalStructureCard({
   return (
     <div
       ref={setNodeRef}
-      className={`border rounded-lg p-3 transition-colors ${
-        isOver ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-white'
+      className={`border rounded-xl p-3 transition-colors ${
+        isOver ? 'border-blue-500/50 bg-blue-500/5' : 'border-zinc-700 bg-zinc-800/50'
       }`}
     >
-      <div className="flex items-center justify-between mb-1.5">
-        <p className="text-xs font-semibold text-slate-700 truncate flex-1">
+      <div className="flex items-center justify-between mb-2">
+        <p className="type-caption font-semibold text-zinc-400 truncate flex-1">
           {formatStructureLabel(items, meta.type)}
         </p>
         <div className="flex items-center gap-1.5 ml-2 shrink-0">
@@ -465,7 +539,7 @@ function LocalStructureCard({
           <select
             value={meta.type}
             onChange={(e) => onTypeChange(e.target.value)}
-            className="border border-slate-300 rounded px-1.5 py-0.5 text-[11px] bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className="bg-zinc-800 border border-zinc-700 rounded-lg px-1.5 py-0.5 type-caption text-zinc-300 focus:outline-none focus:border-zinc-500"
           >
             {STRUCTURE_TYPES.map((st) => (
               <option key={st.code} value={st.code}>
@@ -475,20 +549,20 @@ function LocalStructureCard({
           </select>
           <button
             onClick={onRemove}
-            className="text-[10px] text-rose-500 hover:text-rose-700"
+            className="type-caption text-zinc-600 hover:text-rose-400 transition-colors"
             title="Delete structure"
           >
             ✕
           </button>
         </div>
       </div>
-      <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-wrap gap-1.5 min-h-[28px]">
+      <SortableContext items={items.map((i) => i.id)} strategy={rectSortingStrategy}>
+        <div className="flex flex-wrap gap-2 min-h-[28px] content-start">
           {items.length === 0 ? (
-            <p className="text-[10px] text-slate-400 italic py-0.5">Drop legs here</p>
+            <p className="type-caption text-zinc-600 italic py-0.5">Drop legs here</p>
           ) : (
             items.map((item) => (
-              <LegChip
+              <SortableLegChip
                 key={item.id}
                 legItem={item}
                 exchange={exchange}
@@ -507,7 +581,6 @@ function LocalStructureCard({
 export function AssignLegsPage({ onBack, embedded }: { onBack: () => void; embedded?: boolean }) {
   const ctx = getAssignLegsContext()
 
-  // If no context (e.g. navigated directly), go back
   useEffect(() => {
     if (!ctx) onBack()
   }, [ctx, onBack])
@@ -540,6 +613,7 @@ function AssignLegsPageInner({
   const [importing, setImporting] = useState(false)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [newStructureType, setNewStructureType] = useState<string>('IC')
+  const [backlogPage, setBacklogPage] = useState(0)
 
   /* ── build saved-structure info ── */
   const savedStructureInfos = useMemo<SavedStructureInfo[]>(() => {
@@ -682,7 +756,14 @@ function AssignLegsPageInner({
   const localStructureIds = board.structureOrder.filter((id) => board.containers[id])
   const backlogCount = backlogItems.length
   const newStructureCount = newStructureItems.length
-  const canImport = backlogCount === 0 && newStructureCount === 0
+  const canImport = newStructureCount === 0
+
+  /* ── backlog pagination ── */
+  const totalBacklogPages = Math.max(1, Math.ceil(backlogCount / BACKLOG_PAGE_SIZE))
+  const currentPage = Math.min(backlogPage, totalBacklogPages - 1)
+  const pageStart = currentPage * BACKLOG_PAGE_SIZE
+  const pageEnd = Math.min(pageStart + BACKLOG_PAGE_SIZE, backlogCount)
+  const visibleBacklogItems = backlogItems.slice(pageStart, pageEnd)
 
   /* ── sort new-structure items ── */
   const handleSortNewStructure = useCallback(() => {
@@ -843,35 +924,62 @@ function AssignLegsPageInner({
   /* ═════════════════════ RENDER ═════════════════════ */
 
   return (
-    <div className={embedded ? 'flex-1 min-h-0 flex flex-col bg-white' : 'h-screen flex flex-col bg-white'}>
+    <div className={embedded ? 'flex-1 min-h-0 flex flex-col bg-layer-page' : 'h-screen flex flex-col bg-layer-page'}>
       {/* ── header ── */}
-      <div className="shrink-0 flex items-center gap-3 px-6 pt-5 pb-3 border-b">
+      <div className="shrink-0 flex items-center gap-3 px-6 pt-5 pb-3 border-b border-zinc-800">
         {!embedded && (
           <button
             onClick={handleCancel}
-            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 transition-colors"
             title="Back to dashboard"
           >
             <ArrowLeft size={18} />
           </button>
         )}
-        {!embedded && <h3 className="text-lg font-semibold">Assign Legs to Structures</h3>}
-        <div className={embedded ? 'flex gap-2 text-sm' : 'ml-auto flex gap-2 text-sm'}>
+        {!embedded && (
+          <h3 className="type-subhead font-semibold text-zinc-100 tracking-tight">Assign Legs to Structures</h3>
+        )}
+        <div className="flex gap-2">
           <button
-            className={`px-3 py-1 rounded-lg border text-xs ${
-              activeTab === 'included' ? 'bg-slate-900 text-white' : ''
+            className={`px-3 py-1 rounded-lg border type-caption font-bold uppercase tracking-[0.1em] transition-colors ${
+              activeTab === 'included'
+                ? 'bg-zinc-100 text-zinc-900 border-zinc-100'
+                : 'border-zinc-700 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'
             }`}
             onClick={() => setActiveTab('included')}
           >
             Included ({rows.length})
           </button>
           <button
-            className={`px-3 py-1 rounded-lg border text-xs ${
-              activeTab === 'excluded' ? 'bg-slate-900 text-white' : ''
+            className={`px-3 py-1 rounded-lg border type-caption font-bold uppercase tracking-[0.1em] transition-colors ${
+              activeTab === 'excluded'
+                ? 'bg-zinc-100 text-zinc-900 border-zinc-100'
+                : 'border-zinc-700 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'
             }`}
             onClick={() => setActiveTab('excluded')}
           >
             Excluded ({excludedRows.length})
+          </button>
+        </div>
+        <div className="ml-auto flex items-center gap-3">
+          {validationMsg && (
+            <span className="type-caption font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-1">
+              {validationMsg}
+            </span>
+          )}
+          <button
+            onClick={handleImport}
+            disabled={!canImport || importing}
+            title={
+              importing
+                ? 'Import in progress…'
+                : !canImport && validationMsg
+                ? validationMsg
+                : undefined
+            }
+            className="px-3 py-1 rounded-lg bg-emerald-600 text-white type-caption font-bold hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            {importing ? 'Importing…' : 'Import'}
           </button>
         </div>
       </div>
@@ -886,33 +994,51 @@ function AssignLegsPageInner({
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
-            <div className="flex gap-8 h-full overflow-hidden">
+            <div className="flex gap-5 h-full overflow-hidden">
               {/* ──── LEFT COLUMN: Backlog ──── */}
               <div className="flex-1 min-w-0 flex flex-col">
-                <p className="shrink-0 text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                  New Legs ({backlogCount})
-                </p>
+                {/* Header row: label + pagination controls */}
+                <div className="shrink-0 flex items-center justify-between mb-2">
+                  <p className="type-caption font-semibold text-zinc-500 uppercase tracking-[0.12em]">
+                    New Legs ({backlogCount})
+                  </p>
+                  {backlogCount > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setBacklogPage(p => Math.max(0, p - 1))}
+                        disabled={currentPage === 0}
+                        className="w-5 h-5 flex items-center justify-center rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors type-caption"
+                      >
+                        ‹
+                      </button>
+                      <span className="type-caption text-zinc-500 tabular-nums">
+                        {pageStart + 1}–{pageEnd} of {backlogCount}
+                      </span>
+                      <button
+                        onClick={() => setBacklogPage(p => Math.min(totalBacklogPages - 1, p + 1))}
+                        disabled={currentPage >= totalBacklogPages - 1}
+                        className="w-5 h-5 flex items-center justify-center rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors type-caption"
+                      >
+                        ›
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <Droppable
                   id={CONTAINER_BACKLOG}
-                  className="flex-1 min-h-0 overflow-y-auto rounded-lg p-3 overscroll-contain"
-                  style={{ backgroundColor: '#F1F5F9', border: '1px solid #E2E8F0' }}
+                  className="flex-1 min-h-0 rounded-xl p-3 bg-layer-container border border-zinc-800"
                 >
-                  <SortableContext
-                    items={backlogItems.map((i) => i.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className="flex flex-col gap-3">
-                      {backlogItems.length === 0 ? (
-                        <p className="text-[11px] text-slate-400 italic text-center py-4">
-                          All legs assigned
-                        </p>
-                      ) : (
-                        backlogItems.map((item) => (
-                          <LegChip key={item.id} legItem={item} exchange={exchange} />
-                        ))
-                      )}
-                    </div>
-                  </SortableContext>
+                  <div className="grid grid-cols-2 gap-2">
+                    {backlogCount === 0 ? (
+                      <p className="type-caption text-zinc-600 italic text-center py-4 col-span-2">
+                        All legs assigned
+                      </p>
+                    ) : (
+                      visibleBacklogItems.map((item) => (
+                        <DraggableLegChip key={item.id} legItem={item} exchange={exchange} className="w-full min-w-0 flex-none" />
+                      ))
+                    )}
+                  </div>
                 </Droppable>
               </div>
 
@@ -920,6 +1046,9 @@ function AssignLegsPageInner({
               <div className="flex-1 min-w-0 flex flex-col gap-3">
                 {/* Pinned: New structure drop zone */}
                 <div className="shrink-0">
+                  <p className="type-caption font-semibold text-zinc-500 uppercase tracking-[0.12em] mb-2">
+                    New Structure
+                  </p>
                   <NewStructureDropZone
                     items={newStructureItems}
                     exchange={exchange}
@@ -932,14 +1061,17 @@ function AssignLegsPageInner({
                 </div>
 
                 {/* Scrollable: structure cards */}
-                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col gap-4 bg-slate-800 border border-slate-700 rounded-lg p-3">
+                <p className="shrink-0 type-caption font-semibold text-zinc-500 uppercase tracking-[0.12em] mb-2">
+                  Saved Structures
+                </p>
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col gap-3 bg-layer-container border border-zinc-800 rounded-xl p-3">
                   {/* Local (unsaved) structures */}
                   {localStructureIds.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-slate-300 uppercase tracking-wide mb-2">
+                      <p className="type-caption font-semibold text-zinc-500 uppercase tracking-[0.12em] mb-2">
                         New Structures (overlay only)
                       </p>
-                      <div className="space-y-3">
+                      <div className="space-y-2.5">
                         {localStructureIds.map((sId) => (
                           <LocalStructureCard
                             key={sId}
@@ -959,10 +1091,7 @@ function AssignLegsPageInner({
                   {/* Saved structures from DB */}
                   {savedStructureInfos.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold text-slate-300 uppercase tracking-wide mb-2">
-                        Saved Structures
-                      </p>
-                      <div className="space-y-3">
+                      <div className="space-y-2.5">
                         {savedStructureInfos.map((info) => {
                           const containerId = `saved:${info.id}`
                           const newLegs = (board.containers[containerId] ?? []).map(
@@ -985,7 +1114,7 @@ function AssignLegsPageInner({
                   )}
 
                   {savedStructureInfos.length === 0 && localStructureIds.length === 0 && (
-                    <p className="text-xs text-slate-500 italic text-center py-6">
+                    <p className="type-caption text-zinc-600 italic text-center py-6">
                       No saved structures. Drop legs above to create one.
                     </p>
                   )}
@@ -1002,26 +1131,26 @@ function AssignLegsPageInner({
         ) : (
           /* ──── Excluded tab ──── */
           <div className="h-full flex flex-col gap-3 overflow-hidden">
-            <p className="shrink-0 text-sm text-slate-600">
+            <p className="shrink-0 type-caption text-zinc-500">
               These rows were auto-excluded (non-option instruments). Review only.
             </p>
             {excludedRows.length === 0 ? (
-              <p className="text-xs text-slate-400 italic">No excluded rows.</p>
+              <p className="type-caption text-zinc-600 italic">No excluded rows.</p>
             ) : (
-              <div className="flex-1 min-h-0 overflow-auto border rounded-lg">
-                <table className="min-w-full text-xs">
-                  <thead className="bg-slate-50 text-slate-600 sticky top-0">
+              <div className="flex-1 min-h-0 overflow-auto border border-zinc-800 rounded-xl">
+                <table className="min-w-full type-caption">
+                  <thead className="bg-zinc-900 text-zinc-500 sticky top-0">
                     <tr>
-                      <th className="p-2 text-left">Instrument</th>
-                      <th className="p-2 text-left">Side</th>
-                      <th className="p-2 text-left">Amount</th>
-                      <th className="p-2 text-left">Price</th>
-                      <th className="p-2 text-left">Trade ID</th>
+                      <th className="p-2 text-left font-medium">Instrument</th>
+                      <th className="p-2 text-left font-medium">Side</th>
+                      <th className="p-2 text-left font-medium">Amount</th>
+                      <th className="p-2 text-left font-medium">Price</th>
+                      <th className="p-2 text-left font-medium">Trade ID</th>
                     </tr>
                   </thead>
                   <tbody>
                     {excludedRows.map((r, i) => (
-                      <tr key={i} className="border-t opacity-70">
+                      <tr key={i} className="border-t border-zinc-800 text-zinc-400">
                         <td className="p-2">{r.instrument}</td>
                         <td className="p-2 capitalize">{r.side}</td>
                         <td className="p-2">{r.amount}</td>
@@ -1037,26 +1166,6 @@ function AssignLegsPageInner({
         )}
       </div>
 
-      {/* ── footer ── */}
-      <div className="shrink-0 px-6 py-3 border-t flex items-center gap-3">
-        {validationMsg && (
-          <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1">
-            {validationMsg}
-          </span>
-        )}
-        <div className="ml-auto flex gap-3">
-          <button onClick={handleCancel} className="px-4 py-2 rounded-xl border text-sm">
-            Back
-          </button>
-          <button
-            onClick={handleImport}
-            disabled={!canImport || importing}
-            className="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm disabled:opacity-50"
-          >
-            {importing ? 'Importing…' : 'Import'}
-          </button>
-        </div>
-      </div>
     </div>
   )
 }

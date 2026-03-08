@@ -59,13 +59,13 @@ export function ImportedTransactionsOverlay({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-6xl rounded-2xl bg-white p-6 shadow-xl">
         <div className="flex flex-wrap items-center gap-3">
-          <h3 className="text-lg font-semibold">Imported Transactions</h3>
-          <span className="text-xs text-slate-500">{rows.length} rows</span>
+          <h3 className="type-title-m font-semibold">Imported Transactions</h3>
+          <span className="type-caption text-slate-500">{rows.length} rows</span>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={onRefresh}
-              className="rounded-xl border px-3 py-1.5 text-sm font-medium text-slate-700"
+              className="rounded-xl border px-3 py-1.5 type-subhead font-medium text-slate-700"
               disabled={loading}
             >
               {loading ? 'Refreshing…' : 'Refresh'}
@@ -73,14 +73,14 @@ export function ImportedTransactionsOverlay({
             <button
               type="button"
               onClick={onBackfill}
-              className="rounded-xl border px-3 py-1.5 text-sm font-medium text-slate-700"
+              className="rounded-xl border px-3 py-1.5 type-subhead font-medium text-slate-700"
             >
               Backfill from CSV
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border px-3 py-1.5 text-sm font-medium text-slate-700"
+              className="rounded-xl border px-3 py-1.5 type-subhead font-medium text-slate-700"
             >
               Close
             </button>
@@ -88,14 +88,14 @@ export function ImportedTransactionsOverlay({
         </div>
 
         {error ? (
-          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 type-subhead text-rose-700">
             {error}
           </div>
         ) : null}
 
         {backfillStatus.type !== 'idle' ? (
           <div
-            className={`mt-3 rounded-xl border px-3 py-2 text-sm ${
+            className={`mt-3 rounded-xl border px-3 py-2 type-subhead ${
               backfillStatus.type === 'success'
                 ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                 : backfillStatus.type === 'error'
@@ -108,8 +108,8 @@ export function ImportedTransactionsOverlay({
         ) : null}
 
         <div className="mt-4 max-h-[60vh] overflow-auto rounded-xl border">
-          <table className="min-w-full text-sm">
-            <thead className="sticky top-0 bg-slate-50 text-xs uppercase text-slate-500">
+          <table className="min-w-full type-subhead">
+            <thead className="sticky top-0 bg-slate-50 type-caption uppercase text-slate-500">
               <tr className="text-left">
                 <th className="p-2">Status</th>
                 <th className="p-2">Timestamp</th>
@@ -137,7 +137,7 @@ export function ImportedTransactionsOverlay({
               ) : null}
               {rows.length === 0 && !loading ? (
                 <tr>
-                  <td colSpan={10} className="p-4 text-center text-sm text-slate-500">
+                  <td colSpan={10} className="p-4 text-center type-subhead text-slate-500">
                     No imported transactions found.
                   </td>
                 </tr>
@@ -153,7 +153,7 @@ export function ImportedTransactionsOverlay({
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-slate-800">{row.instrument}</span>
                         {row.warning ? (
-                          <span className="text-xs text-amber-600" title={row.warning}>
+                          <span className="type-caption text-amber-600" title={row.warning}>
                             ⚠️
                           </span>
                         ) : null}

@@ -25,7 +25,7 @@ export function ExpiryDatePicker({ expiries, selected, onSelect }: Props) {
     <div className="flex items-center gap-1.5 px-6 py-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
       <button
         onClick={() => onSelect(null)}
-        className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium tracking-wide transition-all ${
+        className={`flex-shrink-0 px-3 py-1 rounded-full type-caption font-medium tracking-wide transition-all ${
           selected === null
             ? 'bg-zinc-100 text-zinc-900 shadow-sm'
             : 'bg-transparent text-zinc-500 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-300'
@@ -37,7 +37,7 @@ export function ExpiryDatePicker({ expiries, selected, onSelect }: Props) {
         <button
           key={exp}
           onClick={() => onSelect(exp === selected ? null : exp)}
-          className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium tracking-wide transition-all ${
+          className={`flex-shrink-0 px-3 py-1 rounded-full type-caption font-medium tracking-wide transition-all ${
             exp === selected
               ? 'bg-zinc-100 text-zinc-900 shadow-sm'
               : 'bg-transparent text-zinc-500 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-300'

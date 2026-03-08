@@ -46,15 +46,15 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6">
-        <h3 className="text-lg font-semibold">Map CSV Columns</h3>
-        <p className="text-sm text-slate-600 mb-4">
+        <h3 className="type-title-m font-semibold">Map CSV Columns</h3>
+        <p className="type-subhead text-slate-600 mb-4">
           {mode === 'backfill'
             ? 'Select the instrument column plus trade_id or order_id to backfill legs. Other fields are optional.'
             : 'Tell the importer which CSV columns correspond to the required fields.'}
         </p>
         {/* NEW: Exchange selector */}
         <div className="mb-4">
-          <label className="text-sm block text-slate-600 mb-1">Exchange</label>
+          <label className="type-subhead block text-slate-600 mb-1">Exchange</label>
           <select
             value={exchange}
             onChange={(e) => setExchange(e.target.value as 'deribit' | 'coincall' | 'cme')}
@@ -67,7 +67,7 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {EXPECTED_FIELDS.map((f) => (
-            <label key={f.key} className="text-sm">
+            <label key={f.key} className="type-subhead">
               <span className="block text-slate-600 mb-1">{f.label}</span>
               <select
                 value={mapping[f.key] || ""}
@@ -84,7 +84,7 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
         </div>
         {mode === 'import' ? (
           <div className="mt-4 space-y-2">
-            <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+            <label className="inline-flex items-center gap-2 type-subhead text-slate-700">
               <input
                 type="checkbox"
                 checked={importHistoricalRows}
@@ -92,7 +92,7 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
               />
               <span>Import historical rows (skip duplicates)</span>
             </label>
-            <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+            <label className="inline-flex items-center gap-2 type-subhead text-slate-700">
               <input
                 type="checkbox"
                 checked={allowAllocations}

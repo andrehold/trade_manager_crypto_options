@@ -101,7 +101,7 @@ const ReviewRow = React.memo(function ReviewRow({
         />
       </td>
       <td className="p-2 align-top">
-        <label className="inline-flex items-center gap-2 text-xs text-slate-700">
+        <label className="inline-flex items-center gap-2 type-caption text-slate-700">
           <input
             type="checkbox"
             checked={isUnprocessed}
@@ -115,7 +115,7 @@ const ReviewRow = React.memo(function ReviewRow({
       <td className="p-2 align-top">
         <div className="flex flex-col gap-1">
           <select
-            className="border rounded-lg px-2 py-1 text-sm bg-white disabled:bg-slate-50"
+            className="border rounded-lg px-2 py-1 type-subhead bg-white disabled:bg-slate-50"
             value={hasAllocations ? '' : selectedStructureId ?? ''}
             onChange={(e) => onChangeLinkedStructure(i, e.target.value)}
             disabled={!hasSavedStructures || isUnprocessed || hasAllocations}
@@ -127,7 +127,7 @@ const ReviewRow = React.memo(function ReviewRow({
               </option>
             ))}
           </select>
-          <span className={`text-xs ${selectedStructureId ? 'text-emerald-600' : 'text-slate-500'}`}>
+          <span className={`type-caption ${selectedStructureId ? 'text-emerald-600' : 'text-slate-500'}`}>
             {isUnprocessed
               ? 'Will be saved as unprocessed and excluded from future imports.'
               : hasAllocations
@@ -144,11 +144,11 @@ const ReviewRow = React.memo(function ReviewRow({
           </span>
           {allowAllocations && !isUnprocessed ? (
             <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
-              <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
+              <div className="flex items-center justify-between type-caption text-slate-600 mb-2">
                 <span>Allocations (split qty across structures)</span>
                 <button
                   type="button"
-                  className="text-xs text-slate-700 hover:text-slate-900"
+                  className="type-caption text-slate-700 hover:text-slate-900"
                   onClick={() => onAddAllocation(i)}
                   disabled={!hasSavedStructures}
                 >
@@ -161,7 +161,7 @@ const ReviewRow = React.memo(function ReviewRow({
                     {rowAllocations.map((entry, allocIndex) => (
                       <div key={`${i}-alloc-${allocIndex}`} className="flex items-center gap-2">
                         <select
-                          className="border rounded-lg px-2 py-1 text-xs bg-white flex-1"
+                          className="border rounded-lg px-2 py-1 type-caption bg-white flex-1"
                           value={entry.structureId ?? ''}
                           onChange={(e) => onChangeAllocationStructure(i, allocIndex, e.target.value)}
                         >
@@ -176,13 +176,13 @@ const ReviewRow = React.memo(function ReviewRow({
                           type="number"
                           min={0}
                           step="0.01"
-                          className="border rounded-lg px-2 py-1 text-xs w-24"
+                          className="border rounded-lg px-2 py-1 type-caption w-24"
                           value={entry.qty}
                           onChange={(e) => onChangeAllocationQty(i, allocIndex, Number(e.target.value))}
                         />
                         <button
                           type="button"
-                          className="text-xs text-rose-600 hover:text-rose-700"
+                          className="type-caption text-rose-600 hover:text-rose-700"
                           onClick={() => onRemoveAllocation(i, allocIndex)}
                         >
                           Remove
@@ -191,16 +191,16 @@ const ReviewRow = React.memo(function ReviewRow({
                     ))}
                   </div>
                 ) : (
-                  <div className="text-xs text-slate-500">No allocations added yet.</div>
+                  <div className="type-caption text-slate-500">No allocations added yet.</div>
                 )
               ) : (
-                <div className="text-xs text-slate-500">
+                <div className="type-caption text-slate-500">
                   No saved structures available for allocation.
                 </div>
               )}
               {rowAllocations.length ? (
                 <div
-                  className={`mt-2 text-xs ${
+                  className={`mt-2 type-caption ${
                     Math.abs(totalAllocated - rowQty) <= Number.EPSILON
                       ? 'text-emerald-600'
                       : 'text-amber-600'
@@ -217,7 +217,7 @@ const ReviewRow = React.memo(function ReviewRow({
         <input
           type="number"
           min={1}
-          className={`border rounded-lg px-2 py-1 text-sm w-20 ${selectedStructureId || isUnprocessed ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : ''}`}
+          className={`border rounded-lg px-2 py-1 type-subhead w-20 ${selectedStructureId || isUnprocessed ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : ''}`}
           value={structureNumber ?? 1}
           onChange={(e) => {
             const v = Number(e.target.value);
@@ -482,21 +482,21 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-6xl p-6">
         <div className="flex items-center gap-3 mb-3">
-          <h3 className="text-lg font-semibold">Review & Select Lines</h3>
-          <div className="ml-auto flex gap-2 text-sm">
+          <h3 className="type-title-m font-semibold">Review & Select Lines</h3>
+          <div className="ml-auto flex gap-2 type-subhead">
             <button className={`px-3 py-1 rounded-lg border ${activeTab==='included' ? 'bg-slate-900 text-white' : ''}`} onClick={() => setActiveTab('included')}>Included ({rows.length})</button>
             <button className={`px-3 py-1 rounded-lg border ${activeTab==='excluded' ? 'bg-slate-900 text-white' : ''}`} onClick={() => setActiveTab('excluded')}>Excluded ({excludedRows.length})</button>
           </div>
         </div>
         {importHistorical ? (
-          <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-900 text-sm p-3">
+          <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-900 type-subhead p-3">
             <p className="font-medium">
               Historical mode is enabled. Duplicate trade or order IDs may already exist in your saved imports.
             </p>
           </div>
         ) : null}
         {(duplicateTradeIds?.length || duplicateOrderIds?.length) ? (
-          <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 text-sm p-3">
+          <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 type-subhead p-3">
             <p className="font-medium">
               {allowAllocations
                 ? 'Trade/order IDs already exist in saved fills or unprocessed trades. Allocation mode keeps these rows so you can split the execution across structures.'
@@ -504,7 +504,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                 ? '1 row was hidden because its trade or order ID already exists in saved fills or unprocessed trades.'
                 : `${(duplicateTradeIds?.length ?? 0) + (duplicateOrderIds?.length ?? 0)} rows were hidden because their trade or order IDs already exist in saved fills or unprocessed trades.`}
             </p>
-            <div className="text-xs mt-1 space-y-1">
+            <div className="type-caption mt-1 space-y-1">
               {duplicateTradeIds?.length ? (
                 <p>
                   Trade IDs: {duplicateTradeIds.slice(0, 5).join(', ')}{duplicateTradeIds.length > 5 ? '…' : ''}
@@ -520,7 +520,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
         ) : null}
         {activeTab==='included' && (
           <>
-            <p className="text-sm text-slate-600 mb-3">Uncheck any rows you don’t want to import. Lines with the same second form one “trade structure”.</p>
+            <p className="type-subhead text-slate-600 mb-3">Uncheck any rows you don’t want to import. Lines with the same second form one “trade structure”.</p>
             <div className="flex gap-2 mb-3 items-center">
               <button className="px-3 py-1 border rounded-lg" onClick={() => toggleAll(true)}>Select all</button>
               <button className="px-3 py-1 border rounded-lg" onClick={() => toggleAll(false)}>Select none</button>
@@ -545,7 +545,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
               >Auto by time</button>
             </div>
             <div className="max-h-[60vh] overflow-auto border rounded-xl">
-              <table className="min-w-full text-sm">
+              <table className="min-w-full type-subhead">
                 <TableHead />
                 <tbody>
                   {rows.map((r, i) => {
@@ -609,9 +609,9 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
         )}
         {activeTab==='excluded' && (
           <>
-            <p className="text-sm text-slate-600 mb-3">These rows were auto-excluded because their instruments aren’t recognized as options (format: UNDERLYING-DDMONYY-STRIKE-C|P). Review-only.</p>
+            <p className="type-subhead text-slate-600 mb-3">These rows were auto-excluded because their instruments aren’t recognized as options (format: UNDERLYING-DDMONYY-STRIKE-C|P). Review-only.</p>
             <div className="max-h-[60vh] overflow-auto border rounded-xl">
-              <table className="min-w-full text-sm">
+              <table className="min-w-full type-subhead">
                 <TableHead />
                 <tbody>
                   {excludedRows.map((r, i) => {
@@ -619,7 +619,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                     return (
                       <tr key={i} className="border-t opacity-70">
                         <td className="p-2"><input type="checkbox" disabled checked={false} readOnly /></td>
-                        <td className="p-2 text-xs text-slate-500">—</td>
+                        <td className="p-2 type-caption text-slate-500">—</td>
                         <td className="p-2">{r.timestamp || '—'}</td>
                         <td className="p-2">{structure}</td>
                         <td className="p-2">—</td>

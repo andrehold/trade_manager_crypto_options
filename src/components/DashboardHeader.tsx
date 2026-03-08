@@ -13,13 +13,14 @@ type HeaderGreekKey = typeof HEADER_GREEKS[number]['key']
 
 type Props = {
   title: string
+  clientName?: string
   portfolioGreeks: {
     totals: Record<string, number>
     hasValues: Record<string, boolean>
   }
 }
 
-export function DashboardHeader({ title, portfolioGreeks }: Props) {
+export function DashboardHeader({ title, clientName, portfolioGreeks }: Props) {
   return (
     <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-800 bg-zinc-950">
       {/* Left: nav arrows + page title */}
@@ -40,11 +41,19 @@ export function DashboardHeader({ title, portfolioGreeks }: Props) {
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
-        <h1 className="text-base font-semibold text-zinc-100 tracking-tight">{title}</h1>
+        <h1 className="type-headline font-semibold text-zinc-100 tracking-tight">{title}</h1>
       </div>
 
-      {/* Right: portfolio greeks (4 chips) */}
+      {/* Right: client name + portfolio greeks (4 chips) */}
       <div className="flex items-center gap-1.5">
+        {clientName && (
+          <>
+            <div className="flex items-center px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800">
+              <span className="text-[11px] font-semibold text-zinc-200 tracking-wide">{clientName}</span>
+            </div>
+            <div className="w-px h-4 bg-zinc-800 mx-1" />
+          </>
+        )}
         {HEADER_GREEKS.map(({ key, symbol, label }) => {
           const value = portfolioGreeks.hasValues[key]
             ? fmtGreek(portfolioGreeks.totals[key])

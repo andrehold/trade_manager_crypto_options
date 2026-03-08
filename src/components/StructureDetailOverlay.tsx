@@ -154,8 +154,8 @@ export function StructureDetailOverlay({ open, onClose, position }: StructureDet
       <div className="bg-white rounded-2xl shadow-xl max-w-5xl w-full max-h-[80vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between border-b p-4">
           <div>
-            <div className="text-sm text-slate-500">Structure details</div>
-            <div className="text-lg font-semibold text-slate-800">
+            <div className="type-subhead text-slate-500">Structure details</div>
+            <div className="type-title-m font-semibold text-slate-800">
               {position.underlying} · {position.expiryISO}
             </div>
           </div>
@@ -169,14 +169,14 @@ export function StructureDetailOverlay({ open, onClose, position }: StructureDet
           </button>
         </div>
         <div className="p-4 overflow-auto">
-          <div className="text-sm text-slate-600 mb-3">
+          <div className="type-subhead text-slate-600 mb-3">
             Transaction log for this structure. Click any column header to sort ascending/descending.
           </div>
           {sortedTransactions.length === 0 ? (
-            <div className="text-sm text-slate-500">No transactions available for this structure.</div>
+            <div className="type-subhead text-slate-500">No transactions available for this structure.</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
+              <table className="min-w-full type-subhead">
                 <thead className="text-slate-500 border-b">
                   <tr>
                     <th className="p-2 text-left min-w-[160px]">
@@ -208,7 +208,7 @@ export function StructureDetailOverlay({ open, onClose, position }: StructureDet
                 <tbody>
                   {sortedTransactions.map((txn) => (
                     <tr key={txn.id} className="border-b last:border-0">
-                      <td className="p-2 font-mono text-xs text-slate-700">{formatTimestamp(txn.timestamp)}</td>
+                      <td className="p-2 font-mono type-caption text-slate-700">{formatTimestamp(txn.timestamp)}</td>
                       <td className="p-2 text-slate-800">{txn.instrument}</td>
                       <td className="p-2 text-right font-mono text-slate-800">{txn.qty}</td>
                       <td className="p-2 text-right font-mono text-slate-800">{txn.price}</td>

@@ -20,15 +20,15 @@ export function PlaybookIndexPage({ onBack, onSelectPlaybook }: PlaybookIndexPag
             <button
               type="button"
               onClick={onBack}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-700 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-900"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-700 px-3 py-1.5 type-subhead text-slate-200 hover:bg-slate-900"
             >
               ← Back to dashboard
             </button>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-indigo-300">Strategy Library</p>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-white sm:text-5xl">Strategy Playbooks</h1>
-            <p className="mt-4 max-w-3xl text-lg text-slate-300">
+            <p className="type-caption uppercase tracking-[0.3em] text-indigo-300">Strategy Library</p>
+            <h1 className="mt-3 type-display-l font-semibold tracking-tight text-white">Strategy Playbooks</h1>
+            <p className="mt-4 max-w-3xl type-title-m text-slate-300">
               Reusable frameworks that codify how we trade crypto options across common market regimes. Pick one to drill into
               structure selection, key KPIs, and risk controls.
             </p>
@@ -44,14 +44,14 @@ export function PlaybookIndexPage({ onBack, onSelectPlaybook }: PlaybookIndexPag
               onClick={() => onSelectPlaybook(playbook.slug)}
               className="group flex h-full flex-col rounded-3xl border border-slate-800 bg-slate-900/60 p-6 text-left shadow-xl transition hover:border-indigo-400/60 hover:bg-slate-900"
             >
-              <div className="text-xs uppercase tracking-[0.3em] text-indigo-300">{playbook.slug}</div>
-              <h2 className="mt-2 text-2xl font-semibold text-white group-hover:text-indigo-100">{playbook.name}</h2>
+              <div className="type-caption uppercase tracking-[0.3em] text-indigo-300">{playbook.slug}</div>
+              <h2 className="mt-2 type-title-l font-semibold text-white group-hover:text-indigo-100">{playbook.name}</h2>
               {playbook.tagline ? (
-                <p className="mt-3 text-sm text-slate-300">{playbook.tagline}</p>
+                <p className="mt-3 type-subhead text-slate-300">{playbook.tagline}</p>
               ) : null}
-              <p className="mt-4 text-sm text-slate-400">{playbook.description}</p>
+              <p className="mt-4 type-subhead text-slate-400">{playbook.description}</p>
               {playbook.lastUpdated ? (
-                <div className="mt-5 text-xs text-slate-500">Updated {playbook.lastUpdated}</div>
+                <div className="mt-5 type-caption text-slate-500">Updated {playbook.lastUpdated}</div>
               ) : null}
             </button>
           ))}

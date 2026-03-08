@@ -193,7 +193,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                     : 'bg-slate-400'
                 }`}
               />
-              <span className="text-slate-700 text-sm">{p.status}</span>
+              <span className="text-slate-700 type-subhead">{p.status}</span>
             </div>
           </td>
         )}
@@ -202,7 +202,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           <td className="p-3 align-top">
             <div className="flex flex-col leading-tight">
               <span>{p.dte}</span>
-              <span className="text-xs text-slate-500">
+              <span className="type-caption text-slate-500">
                 ({p.openSinceDays != null ? p.openSinceDays : '—'})
               </span>
             </div>
@@ -214,36 +214,36 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
             {readOnly ? (
               structureSummaryLines ? (
                 <div className="flex flex-col gap-1">
-                  <span className="text-sm font-medium text-slate-800">{structureSummaryLines.header}</span>
+                  <span className="type-subhead font-medium text-slate-800">{structureSummaryLines.header}</span>
                   {structureSummaryLines.legs ? (
-                    <span className="text-xs text-slate-500">{structureSummaryLines.legs}</span>
+                    <span className="type-caption text-slate-500">{structureSummaryLines.legs}</span>
                   ) : null}
                 </div>
               ) : (
-                <span className="inline-flex min-h-[2.25rem] items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-400">
+                <span className="inline-flex min-h-[2.25rem] items-center rounded-lg border border-slate-200 bg-slate-50 px-3 type-subhead text-slate-400">
                   —
                 </span>
               )
             ) : programLabel || strategyLabel || showStructureChip ? (
               <div className="flex flex-col gap-1">
                 {programLabel && (
-                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm">
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 type-caption font-medium text-slate-700 shadow-sm">
                     {programLabel}
                   </span>
                 )}
                 {showStructureChip && structureChipSummary && (
-                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 shadow-sm">
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 type-caption font-medium text-slate-700 shadow-sm">
                     {structureChipSummary}
                   </span>
                 )}
                 {strategyLabel && (
-                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm">
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 type-caption font-medium text-slate-700 shadow-sm">
                     {strategyLabel}
                   </span>
                 )}
               </div>
             ) : (
-              <span className="inline-flex min-h-[2.25rem] items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-400">
+              <span className="inline-flex min-h-[2.25rem] items-center rounded-lg border border-slate-200 bg-slate-50 px-3 type-subhead text-slate-400">
                 —
               </span>
             )}
@@ -252,7 +252,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
         {visibleCols.includes('pnl') && (
           <td className={`p-3 align-top ${posTotalPnl < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
             {fmtPremium(posTotalPnl, p.underlying)}
-            <div className="text-xs text-slate-500">
+            <div className="type-caption text-slate-500">
               <span title="Realized">{fmtPremium(p.realizedPnl, p.underlying)}</span>
               {' + '}
               <span title="Unrealized (from Marks)">{fmtPremium(posUnrealized, p.underlying)}</span>
@@ -294,7 +294,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                 <button
                   type="button"
                   onClick={() => onArchive(p.id)}
-                  className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-1 type-caption font-medium text-slate-600 shadow-sm hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
                   title="Archive this saved structure"
                   disabled={archiving}
                 >
@@ -363,14 +363,14 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           <td colSpan={20} className="p-3">
             <div className="grid md:grid-cols-3 gap-3">
               <div className="bg-white border rounded-xl p-3">
-                <div className="text-xs text-slate-500">Underlying</div>
-                <div className="text-sm font-medium">{p.underlying}</div>
-                <div className="mt-2 text-xs text-slate-500">Expiry</div>
-                <div className="text-sm font-medium">{expirySummary} ({p.dte} DTE)</div>
-                <div className="mt-2 text-xs text-slate-500">Exchange</div>
-                <div className="text-sm font-medium capitalize">{p.exchange ?? '—'}</div>
-                <div className="mt-2 text-xs text-slate-500">Net Premium</div>
-                <div className="text-sm font-medium flex items-center gap-2">
+                <div className="type-caption text-slate-500">Underlying</div>
+                <div className="type-subhead font-medium">{p.underlying}</div>
+                <div className="mt-2 type-caption text-slate-500">Expiry</div>
+                <div className="type-subhead font-medium">{expirySummary} ({p.dte} DTE)</div>
+                <div className="mt-2 type-caption text-slate-500">Exchange</div>
+                <div className="type-subhead font-medium capitalize">{p.exchange ?? '—'}</div>
+                <div className="mt-2 type-caption text-slate-500">Net Premium</div>
+                <div className="type-subhead font-medium flex items-center gap-2">
                   <span>{fmtPremium(p.netPremium, p.underlying)}</span>
                   {isClosed ? (
                     <span className={p.realizedPnl < 0 ? 'text-rose-600' : 'text-emerald-600'}>
@@ -380,9 +380,9 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                 </div>
               </div>
               <div className="bg-white border rounded-xl p-3 md:col-span-2">
-                <div className="text-xs text-slate-500 mb-2">Legs</div>
+                <div className="type-caption text-slate-500 mb-2">Legs</div>
                 <div className="overflow-x-auto">
-                  <table className="min-w-full text-xs">
+                  <table className="min-w-full type-caption">
                     <thead className="text-slate-500">
                       <tr>
                         <th className="text-left p-2">Leg</th>

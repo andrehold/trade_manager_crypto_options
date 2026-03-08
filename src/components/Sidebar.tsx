@@ -6,7 +6,6 @@ import {
   GitMerge,
   FileSpreadsheet,
   ChevronLeft,
-  ChevronRight,
   LogOut,
   Users,
   Bell,
@@ -82,7 +81,7 @@ export function Sidebar({
     <aside
       className={[
         'scheme-light',
-        'flex flex-col bg-slate-900 text-white',
+        'flex flex-col bg-zinc-950 text-white',
         'sticky top-0 h-screen overflow-y-auto overflow-x-hidden shrink-0',
         'transition-[width] duration-200 ease-in-out',
         collapsed ? 'w-16' : 'w-60',
@@ -91,16 +90,26 @@ export function Sidebar({
       {/* ── Logo + collapse toggle ── */}
       <div
         className={[
-          'flex items-center gap-3 px-3 py-4 border-b border-slate-700/60',
+          'flex items-center gap-3 px-3 py-4 border-b border-zinc-800',
           collapsed ? 'justify-center' : '',
         ].join(' ')}
       >
-        <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-500 text-white shrink-0">
-          <Zap className="w-4 h-4" strokeWidth={2.5} />
-        </span>
+        {collapsed ? (
+          <button
+            onClick={onToggle}
+            className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-500 text-white shrink-0 hover:bg-emerald-600 transition-colors"
+            title="Expand sidebar"
+          >
+            <Zap className="w-4 h-4" strokeWidth={2.5} />
+          </button>
+        ) : (
+          <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-500 text-white shrink-0">
+            <Zap className="w-4 h-4" strokeWidth={2.5} />
+          </span>
+        )}
         {!collapsed && (
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold leading-tight truncate tracking-tight">
+            <p className="type-subhead font-semibold leading-tight truncate tracking-tight">
               Trade Desk
             </p>
             <p className="text-[10px] text-slate-400 leading-tight truncate">
@@ -108,20 +117,15 @@ export function Sidebar({
             </p>
           </div>
         )}
-        <button
-          onClick={onToggle}
-          className={[
-            'p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition shrink-0',
-            collapsed ? 'mt-0' : 'ml-auto',
-          ].join(' ')}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? (
-            <ChevronRight className="w-4 h-4" />
-          ) : (
+        {!collapsed && (
+          <button
+            onClick={onToggle}
+            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-zinc-800 transition ml-auto shrink-0"
+            title="Collapse sidebar"
+          >
             <ChevronLeft className="w-4 h-4" />
-          )}
-        </button>
+          </button>
+        )}
       </div>
 
       {/* ── Main navigation ── */}
@@ -134,12 +138,12 @@ export function Sidebar({
               onClick={onClick}
               title={collapsed ? label : undefined}
               className={[
-                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium',
+                'flex items-center gap-3 rounded-xl px-3 py-2.5 type-subhead font-medium',
                 'transition-colors w-full text-left',
                 collapsed ? 'justify-center' : '',
                 isActive
                   ? 'bg-emerald-500/15 text-emerald-400'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100',
+                  : 'text-slate-400 hover:bg-zinc-900 hover:text-slate-100',
               ].join(' ')}
             >
               <Icon
@@ -152,7 +156,7 @@ export function Sidebar({
       </nav>
 
       {/* ── Divider ── */}
-      <div className="mx-3 border-t border-slate-700/60" />
+      <div className="mx-3 border-t border-zinc-800" />
 
       {/* ── BTC Spot ── */}
       <div
@@ -172,7 +176,7 @@ export function Sidebar({
             <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
               BTC Spot
             </span>
-            <span className="text-sm font-semibold text-white tabular-nums">{btcFormatted}</span>
+            <span className="type-subhead font-semibold text-white tabular-nums">{btcFormatted}</span>
           </div>
         )}
       </div>
@@ -182,7 +186,7 @@ export function Sidebar({
         <button
           className={[
             'w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700',
-            'text-white py-2 text-sm font-semibold transition-colors',
+            'text-white py-2 type-subhead font-semibold transition-colors',
             'flex items-center justify-center gap-2',
           ].join(' ')}
           title="Add Trade"
@@ -196,7 +200,7 @@ export function Sidebar({
       <div className="flex-1" />
 
       {/* ── Divider ── */}
-      <div className="mx-3 border-t border-slate-700/60" />
+      <div className="mx-3 border-t border-zinc-800" />
 
       {/* ── Alerts only ── */}
       <div
@@ -219,14 +223,14 @@ export function Sidebar({
         </button>
         {!collapsed && (
           <>
-            <span className="flex-1 text-sm text-slate-300">Alerts only</span>
+            <span className="flex-1 type-subhead text-slate-300">Alerts only</span>
             <Toggle checked={alertsOnly} onChange={onToggleAlertsOnly} label="Alerts only" />
           </>
         )}
       </div>
 
       {/* ── Client selector ── */}
-      <div className="border-t border-slate-700/60">
+      <div className="border-t border-zinc-800">
         {collapsed ? (
           <div className="flex justify-center px-4 py-3" title={selectedClient}>
             <Users className="w-4 h-4 text-slate-400" />
@@ -239,13 +243,13 @@ export function Sidebar({
                 Client
               </span>
               <select
-                className="bg-transparent text-sm font-semibold text-white focus:outline-none"
+                className="bg-transparent type-subhead font-semibold text-white focus:outline-none"
                 value={selectedClient}
                 onChange={(e) => onSelectClient(e.target.value)}
                 disabled={!isAdmin}
               >
                 {clientOptions.map((c) => (
-                  <option key={c} value={c} className="bg-slate-900 text-white">
+                  <option key={c} value={c} className="bg-zinc-950 text-white">
                     {c}
                   </option>
                 ))}
@@ -254,7 +258,7 @@ export function Sidebar({
             {isAdmin && (
               <button
                 onClick={onAddClient}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition shrink-0"
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-zinc-800 transition shrink-0"
                 title="Add client"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -272,19 +276,19 @@ export function Sidebar({
       {/* ── User + sign out ── */}
       <div
         className={[
-          'flex items-center gap-2 px-4 py-3 border-t border-slate-700/60',
+          'flex items-center gap-2 px-4 py-3 border-t border-zinc-800',
           collapsed ? 'justify-center' : '',
         ].join(' ')}
       >
         <UserCircle className="w-4 h-4 text-slate-400 shrink-0" />
         {!collapsed && (
-          <span className="flex-1 text-xs text-slate-400 truncate min-w-0">
+          <span className="flex-1 type-caption text-slate-400 truncate min-w-0">
             {user?.email ?? 'Signed in'}
           </span>
         )}
         <button
           onClick={onSignOut}
-          className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-700 transition shrink-0"
+          className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-zinc-800 transition shrink-0"
           title="Sign out"
         >
           <LogOut className="w-4 h-4" />

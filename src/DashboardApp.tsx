@@ -112,6 +112,12 @@ type DashboardAppProps = {
 export default function DashboardApp({ onOpenPlaybookIndex, onOpenAssignLegs, onOpenMapCSV, innerView }: DashboardAppProps = {}) {
   React.useEffect(() => { devQuickTests(); }, []);
 
+  // Tracks which sub-step of the mapCSV flow is active (upload zone vs column mapping)
+  const [mapCsvStep, setMapCsvStep] = React.useState<'upload' | 'mapping'>('upload');
+  React.useEffect(() => {
+    if (innerView !== 'mapCSV') setMapCsvStep('upload');
+  }, [innerView]);
+
   const { user, loading: authLoading, supabaseConfigured } = useAuth();
   const { isAdmin, clientName: lockedClientName } = React.useMemo(
     () => resolveClientAccess(user),
@@ -301,6 +307,29 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
       });
     }
   }, [savedStructures, clientOptions, setClientOptions, isAdmin]);
+
+  // Sync client list from Supabase `clients` table on startup (admin only)
+  React.useEffect(() => {
+    if (!isAdmin || !supabase) return;
+    supabase
+      .from('clients')
+      .select('client_name')
+      .then(({ data, error }) => {
+        if (error || !data) return;
+        const dbNames = data
+          .map((r: { client_name: string }) => (r.client_name ?? '').trim())
+          .filter(Boolean);
+        if (!dbNames.length) return;
+        setClientOptions((prev) => {
+          const next = [...prev];
+          for (const name of dbNames) {
+            if (!next.includes(name)) next.push(name);
+          }
+          return next;
+        });
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, supabase]);
 
   const handleAddClient = React.useCallback(async () => {
     if (!isAdmin) {
@@ -2126,10 +2155,10 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
     ];
     return (
       <details className="ml-auto">
-        <summary className="text-sm text-slate-600 cursor-pointer select-none">Columns</summary>
+        <summary className="type-subhead text-slate-600 cursor-pointer select-none">Columns</summary>
         <div className="absolute mt-2 bg-white border rounded-xl shadow p-3 z-10">
           {all.map((c) => (
-            <label key={c.key} className="flex items-center gap-2 text-sm py-1">
+            <label key={c.key} className="flex items-center gap-2 type-subhead py-1">
               <input
                 type="checkbox"
                 checked={visibleCols.includes(c.key)}
@@ -2236,8 +2265,8 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
   if (!supabaseConfigured || !supabase) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-        <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-600 shadow-sm">
-          <p className="text-base font-semibold text-slate-700">Supabase configuration required</p>
+        <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white p-8 text-center type-subhead text-slate-600 shadow-sm">
+          <p className="type-headline font-semibold text-slate-700">Supabase configuration required</p>
           <p>
             Set <code className="rounded bg-slate-100 px-1 py-0.5">VITE_SUPABASE_URL</code> and{' '}
             <code className="rounded bg-slate-100 px-1 py-0.5">VITE_SUPABASE_PUBLISHABLE_KEY</code> to enable
@@ -2251,8 +2280,8 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
   if (authLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-        <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-600 shadow-sm">
-          <p className="text-base font-semibold text-slate-700">Checking Supabase session…</p>
+        <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white p-8 text-center type-subhead text-slate-600 shadow-sm">
+          <p className="type-headline font-semibold text-slate-700">Checking Supabase session…</p>
           <p>Hold tight while we verify your saved Supabase credentials.</p>
         </div>
       </div>
@@ -2271,7 +2300,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
 
         <div className="absolute inset-0 bg-slate-950/50 backdrop-blur">
           <div className="absolute inset-x-6 top-28 hidden gap-6 opacity-60 lg:flex">
-            <div className="flex flex-1 flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 text-left text-xs text-slate-200/80">
+            <div className="flex flex-1 flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 text-left type-caption text-slate-200/80">
               <div className="h-3 w-32 rounded-full bg-white/20" />
               <div className="grid grid-cols-2 gap-3">
                 <div className="h-24 rounded-2xl border border-white/5 bg-slate-900/40" />
@@ -2281,7 +2310,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
               </div>
               <div className="h-3 w-20 rounded-full bg-white/20" />
             </div>
-            <div className="hidden w-64 flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 text-xs text-slate-200/80 xl:flex">
+            <div className="hidden w-64 flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 type-caption text-slate-200/80 xl:flex">
               <div className="h-3 w-24 rounded-full bg-white/20" />
               <div className="space-y-3">
                 <div className="h-10 rounded-2xl border border-white/5 bg-slate-900/40" />
@@ -2298,11 +2327,11 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
           <div className="w-full max-w-md space-y-8">
             {/* Branding / copy */}
             <div className="space-y-2 text-center text-slate-200">
-              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">
+              <p className="type-caption font-semibold uppercase tracking-[0.35em] text-slate-400">
                 Authentication required
               </p>
-              <h1 className="text-3xl font-semibold tracking-tight">Sign in to continue</h1>
-              <p className="text-sm text-slate-400">
+              <h1 className="type-display-l font-semibold tracking-tight">Sign in to continue</h1>
+              <p className="type-subhead text-slate-400">
                 Unlock lookups, structure imports, and live mark fetching.
               </p>
             </div>
@@ -2311,7 +2340,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
             <SupabaseLogin />
 
             {/* Footnote */}
-            <p className="text-center text-xs text-slate-600">
+            <p className="text-center type-caption text-slate-600">
               Access is limited to authorized trading workspaces.
             </p>
           </div>
@@ -2323,7 +2352,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
   // Search suggestions dropdown (used in ViewSelector)
   const searchSuggestionsNode = showInstrumentSuggestions && instrumentSuggestions.length > 0 ? (
     <div className="absolute left-0 right-0 z-20 mt-2 rounded-2xl border border-zinc-700 bg-zinc-900 shadow-xl">
-      <ul className="max-h-56 overflow-y-auto py-2 text-sm text-zinc-300">
+      <ul className="max-h-56 overflow-y-auto py-2 type-subhead text-zinc-300">
         {instrumentSuggestions.map((instrument) => (
           <li key={instrument}>
             <button
@@ -2333,7 +2362,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
               onClick={() => handleInstrumentSelection(instrument)}
             >
               <span className="font-medium text-zinc-100">{instrument}</span>
-              <span className="text-xs text-zinc-500">Instrument</span>
+              <span className="type-caption text-zinc-500">Instrument</span>
             </button>
           </li>
         ))}
@@ -2368,7 +2397,14 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
 
         {/* ── Header: arrows + title + portfolio greeks ── */}
         <DashboardHeader
-          title={innerView === 'mapCSV' ? 'Import CSV' : innerView === 'assignLegs' ? 'Assign Legs' : 'Dashboard'}
+          title={
+            innerView === 'mapCSV'
+              ? (mapCsvStep === 'mapping' ? 'Mapping' : 'Import CSV')
+              : innerView === 'assignLegs'
+              ? 'Assign Legs'
+              : 'Dashboard'
+          }
+          clientName={activeClientName}
           portfolioGreeks={portfolioGreeks}
         />
 
@@ -2378,6 +2414,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
             embedded
             onBack={() => window.history.back()}
             onOpenAssignLegs={onOpenAssignLegs}
+            onStepChange={setMapCsvStep}
           />
         )}
         {innerView === 'assignLegs' && (
@@ -2392,11 +2429,11 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
 
         {/* ── Page title + action buttons ── */}
         <div className="px-6 pt-5 pb-2 flex items-end justify-between gap-4">
-          <h2 className="text-3xl font-bold tracking-tight text-zinc-100">Dashboard</h2>
+          <h2 className="type-display-l font-bold tracking-tight text-zinc-100">Dashboard</h2>
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* Fetch */}
             <button
-              className="rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-medium text-zinc-200 inline-flex items-center gap-2 hover:bg-zinc-800 hover:border-zinc-600 disabled:opacity-50 transition-colors"
+              className="rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 type-subhead font-medium text-zinc-200 inline-flex items-center gap-2 hover:bg-zinc-800 hover:border-zinc-600 disabled:opacity-50 transition-colors"
               onClick={() => { refreshSavedStructures(); void fetchAvailableExpiries(); }}
               disabled={savedStructuresLoading || !supabase || !user}
               title="Refresh saved structures and fetch available expiries"
@@ -2410,7 +2447,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
 
             {/* Get Live Marks */}
             <button
-              className="rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-medium text-zinc-200 inline-flex items-center gap-2 hover:bg-zinc-800 hover:border-zinc-600 disabled:opacity-50 transition-colors"
+              className="rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 type-subhead font-medium text-zinc-200 inline-flex items-center gap-2 hover:bg-zinc-800 hover:border-zinc-600 disabled:opacity-50 transition-colors"
               onClick={() => fetchAllMarksForPositions(positionsForMarks)}
               disabled={markFetch.inProgress}
               title="Fetch current mark/greeks for all visible legs"
@@ -2424,7 +2461,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
 
             {/* Import */}
             <button
-              className="rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-medium text-zinc-200 inline-flex items-center gap-2 hover:bg-zinc-800 hover:border-zinc-600 transition-colors"
+              className="rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 type-subhead font-medium text-zinc-200 inline-flex items-center gap-2 hover:bg-zinc-800 hover:border-zinc-600 transition-colors"
               onClick={onOpenMapCSV}
               title="Import CSV trade data"
             >
@@ -2443,7 +2480,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                 style={{ width: markFetch.total ? `${Math.round((markFetch.done / markFetch.total) * 100)}%` : '10%' }}
               />
             </div>
-            <div className="text-xs text-zinc-500 mt-1">
+            <div className="type-caption text-zinc-500 mt-1">
               Fetched {markFetch.done}/{markFetch.total}
               {markFetch.errors ? <> · {markFetch.errors} errors</> : null}
             </div>
@@ -2479,20 +2516,20 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                 {/* Section 1: Saved Structures */}
                 <div className="border-b border-zinc-800">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
-                    <span className="text-sm font-semibold text-zinc-300">Saved Structures</span>
+                    <span className="type-subhead font-semibold text-zinc-300">Saved Structures</span>
                     <div className="flex items-center gap-2">
-                      {savedStructuresLoading && <span className="text-xs text-zinc-500">Refreshing…</span>}
+                      {savedStructuresLoading && <span className="type-caption text-zinc-500">Refreshing…</span>}
                       <ColumnPicker />
                     </div>
                   </div>
                   {savedStructuresError && (
-                    <div className="px-4 py-3 text-sm text-rose-400">{savedStructuresError}</div>
+                    <div className="px-4 py-3 type-subhead text-rose-400">{savedStructuresError}</div>
                   )}
                   {programPlaybooksError && (
-                    <div className="px-4 py-3 text-sm text-amber-400">{programPlaybooksError}</div>
+                    <div className="px-4 py-3 type-subhead text-amber-400">{programPlaybooksError}</div>
                   )}
                   {filteredSaved.length === 0 ? (
-                    <div className="px-4 py-4 text-sm text-zinc-500">
+                    <div className="px-4 py-4 type-subhead text-zinc-500">
                       {savedStructures.length > 0
                         ? 'No saved structures match your filters.'
                         : savedStructuresLoading
@@ -2501,7 +2538,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="min-w-full text-sm">
+                      <table className="min-w-full type-subhead">
                         {savedTableHead}
                         <tbody>
                           {savedStructureGroups.open.map((p) => (
@@ -2522,7 +2559,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                             />
                           ))}
                           {savedStructureGroups.closed.length > 0 && (
-                            <tr className="bg-slate-100/80 border-y border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            <tr className="bg-slate-100/80 border-y border-slate-200 type-caption font-semibold uppercase tracking-wide text-slate-500">
                               <td colSpan={savedStructureColSpan} className="px-3 py-2 text-left">
                                 <div className="flex items-center gap-3">
                                   <span>Closed structures</span>
@@ -2557,17 +2594,17 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                 {/* Section 2: Open Instruments */}
                 <div className="border-b border-zinc-800">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
-                    <span className="text-sm font-semibold text-zinc-300">Open Instruments</span>
-                    <span className="text-xs text-zinc-500">
+                    <span className="type-subhead font-semibold text-zinc-300">Open Instruments</span>
+                    <span className="type-caption text-zinc-500">
                       {openInstrumentRows.length > 0 ? `${openInstrumentRows.length} instruments` : 'None'}
                     </span>
                   </div>
                   {openInstrumentRows.length === 0 ? (
-                    <div className="px-4 py-4 text-sm text-zinc-500">No open instruments.</div>
+                    <div className="px-4 py-4 type-subhead text-zinc-500">No open instruments.</div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="min-w-full text-sm">
-                        <thead className="text-xs uppercase text-slate-500 border-t border-slate-100">
+                      <table className="min-w-full type-subhead">
+                        <thead className="type-caption uppercase text-slate-500 border-t border-slate-100">
                           <tr className="text-left">
                             <th className="p-3">{renderOpenInstrumentSortHeader('Instrument', 'instrument', 'left')}</th>
                             <th className="p-3 text-right">{renderOpenInstrumentSortHeader('Net Qty', 'qtyNet')}</th>
@@ -2601,13 +2638,13 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                 {/* Section 3: Exchange Positions */}
                 <div className="border-b border-zinc-800">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
-                    <span className="text-sm font-semibold text-zinc-300">Exchange Positions</span>
+                    <span className="type-subhead font-semibold text-zinc-300">Exchange Positions</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-zinc-500">
+                      <span className="type-caption text-zinc-500">
                         {exchangePositions.length ? `${exchangePositions.length} loaded` : 'None'}
                       </span>
                       <button
-                        className="rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-700 transition-colors"
+                        className="rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 type-caption font-medium text-zinc-300 hover:bg-zinc-700 transition-colors"
                         onClick={() => positionUploadRef.current?.click()}
                       >
                         Upload CSV
@@ -2622,14 +2659,14 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                     </div>
                   </div>
                   {filteredExchangePositions.length === 0 ? (
-                    <div className="px-4 py-4 text-sm text-zinc-500">
+                    <div className="px-4 py-4 type-subhead text-zinc-500">
                       No exchange positions.{' '}
                       <span className="text-zinc-600">Upload a Deribit or Coincall CSV export above.</span>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="min-w-full text-sm">
-                        <thead className="text-xs uppercase text-slate-500 border-t border-slate-100">
+                      <table className="min-w-full type-subhead">
+                        <thead className="type-caption uppercase text-slate-500 border-t border-slate-100">
                           <tr className="text-left">
                             <th className="p-3">Exchange</th>
                             <th className="p-3">Instrument</th>
@@ -2644,7 +2681,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                         <tbody>
                           {exchangePositionGroups.map((group) => (
                             <React.Fragment key={group.label}>
-                              <tr className="bg-slate-100/80 border-t border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              <tr className="bg-slate-100/80 border-t border-slate-200 type-caption font-semibold uppercase tracking-wide text-slate-500">
                                 <td colSpan={8} className="px-3 py-2 text-left">
                                   <div className="flex items-center gap-3">
                                     <span>Expiry: {group.label}</span>
@@ -2661,7 +2698,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                                   : 'text-slate-600';
                                 return (
                                   <tr key={position.id} className="border-t border-slate-100">
-                                    <td className="p-3 text-xs font-semibold uppercase text-slate-500">{position.exchange}</td>
+                                    <td className="p-3 type-caption font-semibold uppercase text-slate-500">{position.exchange}</td>
                                     <td className="p-3 font-medium text-slate-800">{position.instrument}</td>
                                     <td className="p-3 text-slate-700">{position.expiryISO ?? '—'}</td>
                                     <td className="p-3 text-slate-700">{formatQuantity(position.size)}</td>
@@ -2684,22 +2721,22 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                 {positions.length > 0 && (
                   <div>
                     <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
-                      <span className="text-sm font-semibold text-zinc-300">Live Positions</span>
+                      <span className="type-subhead font-semibold text-zinc-300">Live Positions</span>
                     </div>
                     <div className="overflow-x-auto">
-                      <table className="min-w-full text-sm">
+                      <table className="min-w-full type-subhead">
                         {tableHead}
                         <tbody>
                           {filteredLive.length === 0 && (
                             <tr>
-                              <td colSpan={livePositionColSpan} className="p-4 text-sm text-slate-500">
+                              <td colSpan={livePositionColSpan} className="p-4 type-subhead text-slate-500">
                                 No live positions match your filters.
                               </td>
                             </tr>
                           )}
                           {livePositionGroups.map((group) => (
                             <React.Fragment key={group.label}>
-                              <tr className="bg-slate-100/80 border-y border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              <tr className="bg-slate-100/80 border-y border-slate-200 type-caption font-semibold uppercase tracking-wide text-slate-500">
                                 <td colSpan={livePositionColSpan} className="px-3 py-2 text-left">
                                   <div className="flex items-center gap-3">
                                     <span>Expiry: {group.label}</span>
@@ -2732,7 +2769,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                 {positions.length === 0 && (
                   <div className="p-4">
                     <UploadBox onFiles={handleFiles} />
-                    <p className="text-xs text-zinc-600 mt-3">
+                    <p className="type-caption text-zinc-600 mt-3">
                       Tip: You can re-open the Column Picker to adjust visible columns.
                     </p>
                   </div>
@@ -2749,8 +2786,8 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
             {activeView === 'gantt' && (
               <div className="flex flex-col items-center justify-center h-64 gap-2">
                 <GanttChart className="w-8 h-8 text-zinc-700" />
-                <p className="text-sm font-medium text-zinc-500">Gantt chart</p>
-                <p className="text-xs text-zinc-700">Coming soon</p>
+                <p className="type-subhead font-medium text-zinc-500">Gantt chart</p>
+                <p className="type-caption text-zinc-700">Coming soon</p>
               </div>
             )}
 

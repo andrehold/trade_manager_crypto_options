@@ -24,19 +24,19 @@ export function StrategyPlaybookPage({
           <button
             type="button"
             onClick={onBackToDashboard}
-            className="w-fit rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-200 hover:bg-slate-900"
+            className="w-fit rounded-full border border-slate-700 px-4 py-2 type-subhead text-slate-200 hover:bg-slate-900"
           >
             ← Back to dashboard
           </button>
           <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-8 shadow-xl">
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-50">Playbook not found</h1>
+            <h1 className="type-display-l font-semibold tracking-tight text-slate-50">Playbook not found</h1>
             <p className="mt-4 text-slate-300">
               We could not find the requested strategy playbook. Choose another strategy from the catalogue.
             </p>
             <button
               type="button"
               onClick={onBackToIndex}
-              className="mt-6 inline-flex items-center justify-center rounded-full bg-sky-500 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-sky-400"
+              className="mt-6 inline-flex items-center justify-center rounded-full bg-sky-500 px-5 py-2 type-subhead font-semibold text-white shadow hover:bg-sky-400"
             >
               Browse playbooks
             </button>
@@ -53,7 +53,7 @@ export function StrategyPlaybookPage({
 
       <header className="px-6 py-8">
         <div className="mx-auto flex max-w-5xl flex-col gap-4">
-          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-300">
+          <div className="flex flex-wrap items-center gap-3 type-subhead text-slate-300">
             <button
               type="button"
               onClick={onBackToDashboard}
@@ -71,16 +71,16 @@ export function StrategyPlaybookPage({
           </div>
 
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-sky-300">Strategy Playbook</p>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+            <p className="type-caption uppercase tracking-[0.3em] text-sky-300">Strategy Playbook</p>
+            <h1 className="mt-3 type-display-l font-semibold tracking-tight text-white">
               {playbook.name}
             </h1>
             {playbook.tagline ? (
-              <p className="mt-4 max-w-3xl text-lg text-slate-300">{playbook.tagline}</p>
+              <p className="mt-4 max-w-3xl type-title-m text-slate-300">{playbook.tagline}</p>
             ) : null}
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-400">
+          <div className="flex flex-wrap items-center gap-4 type-subhead text-slate-400">
             {playbook.lastUpdated ? (
               <span className="rounded-full border border-slate-700 px-3 py-1">Updated {playbook.lastUpdated}</span>
             ) : null}
@@ -96,19 +96,19 @@ export function StrategyPlaybookPage({
           <article className="space-y-8">
             {playbook.sections.map((section) => (
               <section key={section.title} className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl">
-                <h2 className="text-2xl font-semibold text-white">{section.title}</h2>
-                {section.intro ? <p className="mt-3 text-sm text-slate-300">{section.intro}</p> : null}
+                <h2 className="type-title-l font-semibold text-white">{section.title}</h2>
+                {section.intro ? <p className="mt-3 type-subhead text-slate-300">{section.intro}</p> : null}
                 {section.paragraphs?.map((paragraph, idx) => (
-                  <p key={idx} className="mt-4 text-base leading-relaxed text-slate-200">
+                  <p key={idx} className="mt-4 type-headline leading-relaxed text-slate-200">
                     {paragraph}
                   </p>
                 ))}
                 {section.lists?.map((list) => (
                   <div key={list.title ?? list.items[0]} className="mt-5 rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
                     {list.title ? (
-                      <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">{list.title}</h3>
+                      <h3 className="type-subhead font-semibold uppercase tracking-wide text-slate-300">{list.title}</h3>
                     ) : null}
-                    <ul className="mt-3 space-y-2 text-sm text-slate-200">
+                    <ul className="mt-3 space-y-2 type-subhead text-slate-200">
                       {list.items.map((item) => (
                         <li key={item} className="flex gap-2">
                           <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-sky-400" />
@@ -124,11 +124,11 @@ export function StrategyPlaybookPage({
 
           <aside className="flex flex-col gap-6">
             <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-300">Execution Checklist</h2>
-              <p className="mt-3 text-sm text-slate-300">
+              <h2 className="type-subhead font-semibold uppercase tracking-[0.3em] text-slate-300">Execution Checklist</h2>
+              <p className="mt-3 type-subhead text-slate-300">
                 Snapshot the plan before you stage orders. Confirm IV context, liquidity, and catalysts before sizing.
               </p>
-              <ul className="mt-4 space-y-3 text-sm text-slate-200">
+              <ul className="mt-4 space-y-3 type-subhead text-slate-200">
                 <li className="flex gap-2">
                   <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-400" />
                   <span>Validate short-dated IV premium versus weekly tenor.</span>
@@ -146,9 +146,9 @@ export function StrategyPlaybookPage({
 
             {others.length ? (
               <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl">
-                <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-300">Other Playbooks</h2>
-                <p className="mt-3 text-sm text-slate-300">Explore more strategies built on the same framework.</p>
-                <ul className="mt-4 space-y-3 text-sm text-slate-200">
+                <h2 className="type-subhead font-semibold uppercase tracking-[0.3em] text-slate-300">Other Playbooks</h2>
+                <p className="mt-3 type-subhead text-slate-300">Explore more strategies built on the same framework.</p>
+                <ul className="mt-4 space-y-3 type-subhead text-slate-200">
                   {others.map((item) => (
                     <li key={item.slug}>
                       <button
@@ -165,15 +165,15 @@ export function StrategyPlaybookPage({
             ) : null}
 
             <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-300">Need to tweak it?</h2>
-              <p className="mt-3 text-sm text-slate-300">
+              <h2 className="type-subhead font-semibold uppercase tracking-[0.3em] text-slate-300">Need to tweak it?</h2>
+              <p className="mt-3 type-subhead text-slate-300">
                 Document any adjustments directly in the playbook field inside the positions table so teammates see the latest
                 nuance.
               </p>
               <button
                 type="button"
                 onClick={onBackToDashboard}
-                className="mt-4 inline-flex items-center justify-center rounded-full bg-sky-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-sky-400"
+                className="mt-4 inline-flex items-center justify-center rounded-full bg-sky-500 px-4 py-2 type-subhead font-semibold text-white shadow hover:bg-sky-400"
               >
                 Back to positions
               </button>

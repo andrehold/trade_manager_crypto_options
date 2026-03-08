@@ -78,7 +78,7 @@ function KanbanCard({ p, marks }: { p: Position; marks: MarksMap }) {
   return (
     <div className="bg-zinc-800 border border-zinc-700/80 rounded-xl p-3 flex flex-col gap-2 hover:border-zinc-600 transition-colors">
       <div className="flex items-start justify-between gap-2">
-        <span className="text-sm font-semibold text-zinc-100 truncate leading-snug">
+        <span className="type-subhead font-semibold text-zinc-100 truncate leading-snug">
           {p.structureId ?? p.id}
         </span>
         {p.strategy ? (
@@ -88,7 +88,7 @@ function KanbanCard({ p, marks }: { p: Position; marks: MarksMap }) {
         ) : null}
       </div>
 
-      <div className="flex items-center gap-3 text-xs">
+      <div className="flex items-center gap-3 type-caption">
         {hasPnl ? (
           <span className={pnl >= 0 ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}>
             {pnl >= 0 ? '+' : ''}{fmtPremium(pnl)}
@@ -140,8 +140,8 @@ export function KanbanBoard({ positions, marks }: Props) {
         >
           {/* Lane header */}
           <div className={`${headerBg} px-3 py-2.5 flex items-center justify-between flex-shrink-0`}>
-            <span className={`text-sm font-semibold ${accent}`}>{label}</span>
-            <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${countBg}`}>
+            <span className={`type-subhead font-semibold ${accent}`}>{label}</span>
+            <span className={`type-caption font-semibold px-1.5 py-0.5 rounded-full ${countBg}`}>
               {lanes[id].length}
             </span>
           </div>
@@ -149,7 +149,7 @@ export function KanbanBoard({ positions, marks }: Props) {
           {/* Cards */}
           <div className="flex flex-col gap-2 p-2 overflow-y-auto flex-1">
             {lanes[id].length === 0 ? (
-              <p className="text-xs text-zinc-700 text-center py-6">No structures</p>
+              <p className="type-caption text-zinc-700 text-center py-6">No structures</p>
             ) : (
               lanes[id].map((p) => <KanbanCard key={p.id} p={p} marks={marks} />)
             )}

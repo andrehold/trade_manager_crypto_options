@@ -13,7 +13,7 @@ export function NumberCell({ value, onChange }: { value: number | null | undefin
       }}
       placeholder="—"
       maxLength={20}
-      className="border rounded-lg px-2 py-1 text-sm w-20"
+      className="border rounded-lg px-2 py-1 type-subhead w-20"
     />
   );
 }

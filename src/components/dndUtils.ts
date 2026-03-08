@@ -40,10 +40,10 @@ export type StructureTypeCode = (typeof STRUCTURE_TYPES)[number]['code']
  */
 export function generateLegId(row: TxnRow, index: number): string {
   if (row.trade_id && row.trade_id.trim()) {
-    return `leg:${row.trade_id}`
+    return `leg:${row.trade_id}:${index}`
   }
   if (row.order_id && row.order_id.trim()) {
-    return `leg:${row.order_id}`
+    return `leg:${row.order_id}:${index}`
   }
   const ts = row.timestamp || 'NO_TS'
   return `leg:${row.instrument}|${ts}|${index}`
