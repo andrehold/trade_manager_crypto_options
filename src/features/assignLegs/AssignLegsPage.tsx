@@ -874,9 +874,10 @@ function AssignLegsPageInner({
 
     for (const structureId of board.structureOrder) {
       const itemIds = board.containers[structureId] || []
+      const structureType = board.structureMeta[structureId]?.type
       for (const itemId of itemIds) {
         const item = board.itemsById[itemId]
-        if (item?.included) payload.push({ ...item.row, structureId })
+        if (item?.included) payload.push({ ...item.row, structureId, structureType })
       }
     }
 

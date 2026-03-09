@@ -22,6 +22,7 @@ export interface TxnRow {
   optionType?: 'C' | 'P' | string;
   structureId?: string;
   linkedStructureId?: string;
+  structureType?: string;
   exchange?: Exchange;
 }
 

@@ -35,6 +35,11 @@ export {
   type ArchiveStructureParams,
   type ArchiveStructureResult,
 } from "./archiveStructure";
+export {
+  createStructure,
+  type CreateStructureParams,
+  type CreateStructureResult,
+} from "./createStructure";
 export { type SupabaseClientScope } from "./clientScope";
 export {
   fetchProgramPlaybooks,

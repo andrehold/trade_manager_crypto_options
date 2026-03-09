@@ -31,6 +31,7 @@ import {
   archiveStructure,
   fetchSavedStructures,
   appendTradesToStructure,
+  createStructure,
   backfillLegExpiries,
   saveTransactionLogs,
   saveUnprocessedTrades,
@@ -1203,18 +1204,53 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
       refreshSavedStructures();
     }
 
-    for (const row of localRows) {
-      const parsed = parseInstrumentByExchange(selectedExchange, row.instrument);
-      if (parsed) {
-        row.underlying = parsed.underlying;
-        row.expiry = parsed.expiryISO;
-        row.strike = parsed.strike;
-        row.optionType = parsed.optionType as any;
+    if (localRows.length > 0) {
+      if (!supabase) {
+        alert('Supabase is not configured. Configure environment variables to save new structures.');
+        return;
       }
-    }
 
-    const grouped = buildPositionsFromTransactions(localRows);
-    setPositions(grouped);
+      if (!user) {
+        alert('Sign in to Supabase to save new structures.');
+        return;
+      }
+
+      const byStructure = new Map<string, TxnRow[]>();
+      for (const row of localRows) {
+        const key = row.structureId ?? 'default';
+        if (!byStructure.has(key)) byStructure.set(key, []);
+        byStructure.get(key)!.push(row);
+      }
+
+      for (const groupedRows of byStructure.values()) {
+        const structureType = groupedRows[0]?.structureType;
+        const underlying = groupedRows[0]?.underlying
+          ?? parseInstrumentByExchange(selectedExchange, groupedRows[0]?.instrument)?.underlying
+          ?? '';
+
+        console.log('[Import] Creating new structure in Supabase', {
+          rows: groupedRows,
+          structureType,
+          underlying,
+          clientScope: { clientName: activeClientName, isAdmin },
+        });
+
+        const result = await createStructure(supabase, {
+          rows: groupedRows,
+          structureType,
+          exchange: selectedExchange as any,
+          clientScope: { clientName: activeClientName, isAdmin },
+          createdBy: user.id,
+        });
+
+        if (!result.ok) {
+          alert(`Failed to save new structure: ${result.error}`);
+          return;
+        }
+      }
+
+      refreshSavedStructures();
+    }
   }
 
   const refreshSavedStructures = React.useCallback(() => {
