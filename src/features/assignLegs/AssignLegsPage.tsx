@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowDownLeft, ArrowUpRight, ArrowLeft, Blocks, Calendar, Clock, TrendingDown, TrendingUp } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, ArrowLeft, Blocks, Calendar, Clock, EyeOff, RotateCcw, TrendingDown, TrendingUp } from 'lucide-react'
 import {
   DndContext,
   DragEndEvent,
@@ -39,6 +39,7 @@ import { PremiumBadge } from '../../components/TradeCard'
 
 const CONTAINER_BACKLOG = 'backlog'
 const CONTAINER_NEW_STRUCTURE = 'new-structure'
+const CONTAINER_EXCLUDED = 'excluded'
 const BACKLOG_PAGE_SIZE = 15
 
 /* ── premium helper ── */
@@ -200,10 +201,12 @@ function GhostChip({ legItem, exchange }: { legItem: LegItem; exchange: Exchange
 function DraggableLegChip({
   legItem,
   exchange,
+  onExclude,
   className: extraClassName,
 }: {
   legItem: LegItem
   exchange: Exchange
+  onExclude?: () => void
   className?: string
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -241,11 +244,23 @@ function DraggableLegChip({
       {...listeners}
       className={`flex flex-col bg-layer-card border border-zinc-700/60 rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing touch-none select-none min-w-[160px] flex-1 max-w-[260px]${extraClassName ? ' ' + extraClassName : ''}`}
     >
-      <div className="flex items-center gap-1.5 min-w-0">
-        <Blocks size={13} className="shrink-0 text-zinc-500" />
-        <span className="type-caption font-bold text-zinc-100 truncate">
-          {sign}{qtyStr} {strikePart}
-        </span>
+      <div className="flex items-center justify-between gap-1">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Blocks size={13} className="shrink-0 text-zinc-500" />
+          <span className="type-caption font-bold text-zinc-100 truncate">
+            {sign}{qtyStr} {strikePart}
+          </span>
+        </div>
+        {onExclude && (
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onExclude() }}
+            className="shrink-0 text-zinc-600 hover:text-amber-400 leading-none ml-1 transition-colors"
+            title="Exclude from import"
+          >
+            <EyeOff size={11} />
+          </button>
+        )}
       </div>
 
       <div className="border-t border-zinc-700/60 my-2" />
@@ -614,6 +629,7 @@ function AssignLegsPageInner({
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [newStructureType, setNewStructureType] = useState<string>('IC')
   const [backlogPage, setBacklogPage] = useState(0)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
 
   /* ── build saved-structure info ── */
   const savedStructureInfos = useMemo<SavedStructureInfo[]>(() => {
@@ -632,6 +648,7 @@ function AssignLegsPageInner({
     const containers: Record<string, string[]> = {
       [CONTAINER_BACKLOG]: [],
       [CONTAINER_NEW_STRUCTURE]: [],
+      [CONTAINER_EXCLUDED]: [],
     }
 
     const sorted = [...rows].sort((a, b) => {
@@ -753,6 +770,9 @@ function AssignLegsPageInner({
   const newStructureItems = (board.containers[CONTAINER_NEW_STRUCTURE] ?? []).map(
     (id) => board.itemsById[id],
   )
+  const manuallyExcludedItems = (board.containers[CONTAINER_EXCLUDED] ?? []).map(
+    (id) => board.itemsById[id],
+  )
   const localStructureIds = board.structureOrder.filter((id) => board.containers[id])
   const backlogCount = backlogItems.length
   const newStructureCount = newStructureItems.length
@@ -829,6 +849,47 @@ function AssignLegsPageInner({
       })
     },
     [findContainer],
+  )
+
+  /* ── exclude item → excluded container ── */
+  const handleExcludeItem = useCallback(
+    (itemId: string) => {
+      setBoard((prev) => {
+        const next = { ...prev, containers: { ...prev.containers } }
+        for (const k of Object.keys(next.containers)) {
+          next.containers[k] = [...next.containers[k]]
+        }
+        const srcId = findContainer(itemId, next)
+        if (!srcId || srcId === CONTAINER_EXCLUDED) return prev
+        next.containers[srcId] = next.containers[srcId].filter((id) => id !== itemId)
+        next.containers[CONTAINER_EXCLUDED] = [...next.containers[CONTAINER_EXCLUDED], itemId]
+        return next
+      })
+    },
+    [findContainer],
+  )
+
+  /* ── restore item → back to backlog ── */
+  const handleRestoreItem = useCallback(
+    (itemId: string) => {
+      setBoard((prev) => {
+        const next = { ...prev, containers: { ...prev.containers } }
+        for (const k of Object.keys(next.containers)) {
+          next.containers[k] = [...next.containers[k]]
+        }
+        next.containers[CONTAINER_EXCLUDED] = next.containers[CONTAINER_EXCLUDED].filter(
+          (id) => id !== itemId,
+        )
+        next.containers[CONTAINER_BACKLOG] = [...next.containers[CONTAINER_BACKLOG], itemId]
+        next.containers[CONTAINER_BACKLOG].sort((a, b) => {
+          const ta = next.itemsById[a]?.row.timestamp ?? ''
+          const tb = next.itemsById[b]?.row.timestamp ?? ''
+          return ta < tb ? -1 : ta > tb ? 1 : 0
+        })
+        return next
+      })
+    },
+    [],
   )
 
   /* ── delete local structure → legs back to backlog ── */
@@ -949,7 +1010,7 @@ function AssignLegsPageInner({
             }`}
             onClick={() => setActiveTab('included')}
           >
-            Included ({rows.length})
+            Included ({rows.length - manuallyExcludedItems.length})
           </button>
           <button
             className={`px-3 py-1 rounded-lg border type-caption font-bold uppercase tracking-[0.1em] transition-colors ${
@@ -959,10 +1020,38 @@ function AssignLegsPageInner({
             }`}
             onClick={() => setActiveTab('excluded')}
           >
-            Excluded ({excludedRows.length})
+            Excluded ({excludedRows.length + manuallyExcludedItems.length})
           </button>
         </div>
         <div className="ml-auto flex items-center gap-3">
+          {/* Cancel button with confirmation popover */}
+          <div className="relative">
+            <button
+              onClick={() => setShowCancelConfirm(true)}
+              className="px-3 py-1 rounded-lg border border-zinc-700 text-zinc-400 type-caption font-bold hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+            >
+              Cancel
+            </button>
+            {showCancelConfirm && (
+              <div className="absolute right-0 top-full mt-2 z-50 w-68 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl p-4">
+                <p className="type-body text-zinc-200 mb-4">You have unsaved changes. Would you cancel?</p>
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => setShowCancelConfirm(false)}
+                    className="px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 type-caption font-bold hover:bg-zinc-800 transition-colors"
+                  >
+                    No
+                  </button>
+                  <button
+                    onClick={() => { clearAssignLegsContext(); onCancel(); onBack(); }}
+                    className="px-3 py-1.5 rounded-lg bg-red-600 text-white type-caption font-bold hover:bg-red-500 transition-colors"
+                  >
+                    Yes
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           {validationMsg && (
             <span className="type-caption font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-1">
               {validationMsg}
@@ -1036,7 +1125,7 @@ function AssignLegsPageInner({
                       </p>
                     ) : (
                       visibleBacklogItems.map((item) => (
-                        <DraggableLegChip key={item.id} legItem={item} exchange={exchange} className="w-full min-w-0 flex-none" />
+                        <DraggableLegChip key={item.id} legItem={item} exchange={exchange} onExclude={() => handleExcludeItem(item.id)} className="w-full min-w-0 flex-none" />
                       ))
                     )}
                   </div>
@@ -1132,12 +1221,60 @@ function AssignLegsPageInner({
         ) : (
           /* ──── Excluded tab ──── */
           <div className="h-full flex flex-col gap-3 overflow-hidden">
-            <p className="shrink-0 type-caption text-zinc-500">
-              These rows were auto-excluded (non-option instruments). Review only.
-            </p>
-            {excludedRows.length === 0 ? (
+            {manuallyExcludedItems.length > 0 && (
+              <div className="shrink-0">
+                <p className="type-caption font-semibold text-zinc-500 uppercase tracking-[0.12em] mb-2">
+                  Manually Excluded ({manuallyExcludedItems.length})
+                </p>
+                <div className="border border-zinc-800 rounded-xl overflow-auto max-h-48">
+                  <table className="min-w-full type-caption">
+                    <thead className="bg-zinc-900 text-zinc-500 sticky top-0">
+                      <tr>
+                        <th className="p-2 text-left font-medium">Instrument</th>
+                        <th className="p-2 text-left font-medium">Side</th>
+                        <th className="p-2 text-left font-medium">Amount</th>
+                        <th className="p-2 text-left font-medium">Price</th>
+                        <th className="p-2 text-left font-medium">Trade ID</th>
+                        <th className="p-2 text-left font-medium"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {manuallyExcludedItems.map((item) => {
+                        const r = item.row
+                        return (
+                          <tr key={item.id} className="border-t border-zinc-800 text-zinc-400">
+                            <td className="p-2">{r.instrument}</td>
+                            <td className="p-2 capitalize">{r.side}</td>
+                            <td className="p-2">{r.amount}</td>
+                            <td className="p-2">{r.price}</td>
+                            <td className="p-2">{r.trade_id || '—'}</td>
+                            <td className="p-2">
+                              <button
+                                onClick={() => handleRestoreItem(item.id)}
+                                className="flex items-center gap-1 text-zinc-500 hover:text-emerald-400 transition-colors"
+                                title="Restore to backlog"
+                              >
+                                <RotateCcw size={11} />
+                                <span className="type-caption">Restore</span>
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            <div className="shrink-0">
+              <p className="type-caption font-semibold text-zinc-500 uppercase tracking-[0.12em] mb-2">
+                Auto-Excluded ({excludedRows.length})
+              </p>
+              <p className="type-caption text-zinc-600 mb-2">Non-option instruments — review only.</p>
+            </div>
+            {excludedRows.length === 0 && manuallyExcludedItems.length === 0 ? (
               <p className="type-caption text-zinc-600 italic">No excluded rows.</p>
-            ) : (
+            ) : excludedRows.length > 0 ? (
               <div className="flex-1 min-h-0 overflow-auto border border-zinc-800 rounded-xl">
                 <table className="min-w-full type-caption">
                   <thead className="bg-zinc-900 text-zinc-500 sticky top-0">
@@ -1162,7 +1299,7 @@ function AssignLegsPageInner({
                   </tbody>
                 </table>
               </div>
-            )}
+            ) : null}
           </div>
         )}
       </div>

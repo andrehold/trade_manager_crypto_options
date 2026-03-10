@@ -1157,24 +1157,40 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
       }
     }
 
-    const linkedRows = rows.filter((row) => Boolean(row.linkedStructureId));
-    const localRows = rows.filter((row) => !row.linkedStructureId);
+    const enrichedRows = rows.map((row) => {
+      const parsed = parseInstrumentByExchange(selectedExchange, row.instrument);
+      if (!parsed) return row;
+      return {
+        ...row,
+        underlying: row.underlying ?? parsed.underlying,
+        expiry: row.expiry ?? parsed.expiryISO,
+        strike: row.strike ?? parsed.strike,
+        optionType: (row.optionType ?? parsed.optionType) as TxnRow['optionType'],
+        exchange: row.exchange ?? (selectedExchange as TxnRow['exchange']),
+      };
+    });
+
+    const linkedRows = enrichedRows.filter((row) => Boolean(row.linkedStructureId));
+    const localRows = enrichedRows.filter((row) => !row.linkedStructureId);
 
     if (!linkedRows.length && !localRows.length) {
       return;
     }
 
+    if (!supabase) {
+      alert('Supabase is not configured. Configure environment variables to save trades.');
+      return;
+    }
+
+    if (!user) {
+      alert('Sign in to Supabase to save trades.');
+      return;
+    }
+
+    const errors: string[] = [];
+
+    // — append to existing saved structures —
     if (linkedRows.length > 0) {
-      if (!supabase) {
-        alert('Supabase is not configured. Configure environment variables to link trades to saved structures.');
-        return;
-      }
-
-      if (!user) {
-        alert('Sign in to Supabase to link trades to saved structures.');
-        return;
-      }
-
       const byStructure = new Map<string, TxnRow[]>();
       for (const row of linkedRows) {
         const targetId = row.linkedStructureId!;
@@ -1196,25 +1212,13 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
         });
 
         if (!result.ok) {
-          alert(`Failed to update saved structure ${structureId}: ${result.error}`);
-          return;
+          errors.push(`Structure ${structureId}: ${result.error}`);
         }
       }
-
-      refreshSavedStructures();
     }
 
+    // — create new structures —
     if (localRows.length > 0) {
-      if (!supabase) {
-        alert('Supabase is not configured. Configure environment variables to save new structures.');
-        return;
-      }
-
-      if (!user) {
-        alert('Sign in to Supabase to save new structures.');
-        return;
-      }
-
       const byStructure = new Map<string, TxnRow[]>();
       for (const row of localRows) {
         const key = row.structureId ?? 'default';
@@ -1224,9 +1228,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
 
       for (const groupedRows of byStructure.values()) {
         const structureType = groupedRows[0]?.structureType;
-        const underlying = groupedRows[0]?.underlying
-          ?? parseInstrumentByExchange(selectedExchange, groupedRows[0]?.instrument)?.underlying
-          ?? '';
+        const underlying = groupedRows[0]?.underlying ?? '';
 
         console.log('[Import] Creating new structure in Supabase', {
           rows: groupedRows,
@@ -1244,12 +1246,15 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
         });
 
         if (!result.ok) {
-          alert(`Failed to save new structure: ${result.error}`);
-          return;
+          errors.push(`New structure (${underlying || 'unknown'}): ${result.error}`);
         }
       }
+    }
 
-      refreshSavedStructures();
+    refreshSavedStructures();
+
+    if (errors.length > 0) {
+      alert(`Import completed with ${errors.length} error${errors.length > 1 ? 's' : ''}:\n\n${errors.join('\n')}`);
     }
   }
 

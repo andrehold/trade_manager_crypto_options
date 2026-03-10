@@ -155,6 +155,7 @@ export async function createStructure(
     lifecycle: 'open',
     entry_ts: entryTs,
     created_by: params.createdBy ?? null,
+    archived: false,
   })
 
   if (positionError) {
