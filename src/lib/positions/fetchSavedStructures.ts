@@ -600,7 +600,10 @@ function mapPosition(
   };
 }
 
-export type FetchSavedStructuresOptions = SupabaseClientScope;
+export type FetchSavedStructuresOptions = SupabaseClientScope & {
+  page?: number;
+  pageSize?: number;
+};
 
 export async function fetchSavedStructures(
   client: SupabaseClient,
@@ -608,6 +611,9 @@ export async function fetchSavedStructures(
 ): Promise<FetchSavedStructuresResult> {
   const shouldFilterByClient = Boolean(options.clientName?.trim()) && !options.isAdmin;
   const clientName = options.clientName?.trim();
+  const page = options.page ?? 0;
+  const pageSize = options.pageSize ?? 200;
+  console.debug('[fetchSavedStructures] clientFilter:', shouldFilterByClient ? clientName : 'none (all clients)');
 
   let query = client
     .from("positions")
@@ -681,6 +687,8 @@ export async function fetchSavedStructures(
     query = query.eq("client_name", clientName);
   }
 
+  query = query.range(page * pageSize, (page + 1) * pageSize - 1);
+
   const { data, error } = await query;
 
   if (error) {
@@ -722,6 +730,14 @@ export async function fetchSavedStructures(
     map.set(targetId, closers);
     return map;
   }, new Map<string, RawPosition[]>());
+
+  for (const row of rows) {
+    const lifecycle = normalizeLifecycle(row.lifecycle);
+    const targetId = typeof row.close_target_structure_id === "string" ? row.close_target_structure_id : null;
+    if (lifecycle === "close" && targetId && !targetIdSet.has(targetId)) {
+      console.warn("[fetchSavedStructures] Orphaned closing position:", row.position_id, "→ target not found:", targetId);
+    }
+  }
 
   const positions = rows
     .filter((row) => {

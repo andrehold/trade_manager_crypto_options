@@ -42,6 +42,11 @@ export {
 } from "./createStructure";
 export { type SupabaseClientScope } from "./clientScope";
 export {
+  filterDuplicateRows,
+  type FilterDuplicateRowsOptions,
+  type FilterDuplicateRowsResult,
+} from "./filterDuplicateRows";
+export {
   fetchProgramPlaybooks,
   type FetchProgramPlaybooksResult,
   type ProgramPlaybook,

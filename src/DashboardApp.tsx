@@ -38,6 +38,7 @@ import {
   buildStructureChipSummary,
   buildStructureSummaryLines,
   fetchProgramPlaybooks,
+  filterDuplicateRows,
   type ProgramPlaybook,
 } from './lib/positions'
 import { resolveClientAccess } from './features/auth/access'
@@ -509,168 +510,13 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
   const filterRowsWithExistingTradeIds = React.useCallback(
     async (rows: TxnRow[], options: { allowAllocations?: boolean } = {}) => {
       if (!supabase) {
-        return {
-          filtered: rows,
-          duplicates: [] as TxnRow[],
-          duplicateTradeIds: [] as string[],
-          duplicateOrderIds: [] as string[],
-        };
+        return { filtered: rows, duplicates: [] as TxnRow[], duplicateTradeIds: [] as string[], duplicateOrderIds: [] as string[] };
       }
-
-      const uniqueTradeIds = Array.from(
-        new Set(
-          rows
-            .map((row) => row.trade_id?.trim())
-            .filter((id): id is string => Boolean(id)),
-        ),
-      );
-
-      const uniqueOrderIds = Array.from(
-        new Set(
-          rows
-            .map((row) => row.order_id?.trim())
-            .filter((id): id is string => Boolean(id)),
-        ),
-      );
-
-      if (uniqueTradeIds.length === 0 && uniqueOrderIds.length === 0) {
-        return {
-          filtered: rows,
-          duplicates: [] as TxnRow[],
-          duplicateTradeIds: [] as string[],
-          duplicateOrderIds: [] as string[],
-        };
-      }
-
-      const clientFilter = activeClientName?.trim();
-      const restrictByClient = Boolean(clientFilter) && !isAdmin;
-      const duplicateTradeIds = new Set<string>();
-      const duplicateOrderIds = new Set<string>();
-      const chunkSize = 99;
-
-      for (let start = 0; start < uniqueTradeIds.length; start += chunkSize) {
-        const chunk = uniqueTradeIds.slice(start, start + chunkSize);
-        let query = supabase
-          .from('fills')
-          .select(restrictByClient ? 'trade_id, positions!inner(client_name)' : 'trade_id')
-          .in('trade_id', chunk);
-
-        if (restrictByClient && clientFilter) {
-          query = query.eq('positions.client_name', clientFilter);
-        }
-
-        const { data, error } = await query;
-        if (error) {
-          console.warn('Failed to check existing trade IDs in fills table.', error);
-          return { filtered: rows, duplicates: [] as TxnRow[] };
-        }
-
-        for (const entry of (data as { trade_id?: string | null }[] | null) ?? []) {
-          const id = typeof entry.trade_id === 'string' ? entry.trade_id.trim() : '';
-          if (id) duplicateTradeIds.add(id);
-        }
-
-        const { data: unprocessed, error: unprocessedErr } = await supabase
-          .from('unprocessed_imports')
-          .select('trade_id, client_name')
-          .in('trade_id', chunk)
-          .match(restrictByClient && clientFilter ? { client_name: clientFilter } : {});
-
-        if (unprocessedErr) {
-          console.warn('Failed to check existing trade IDs in unprocessed_imports table.', unprocessedErr);
-        }
-
-        for (const entry of unprocessed ?? []) {
-          const id = typeof entry.trade_id === 'string' ? entry.trade_id.trim() : '';
-          const isSameClient = !restrictByClient || !clientFilter || entry.client_name === clientFilter;
-          if (id && isSameClient) duplicateTradeIds.add(id);
-        }
-      }
-
-      for (let start = 0; start < uniqueOrderIds.length; start += chunkSize) {
-        const chunk = uniqueOrderIds.slice(start, start + chunkSize);
-        let query = supabase
-          .from('fills')
-          .select(restrictByClient ? 'order_id, positions!inner(client_name)' : 'order_id')
-          .in('order_id', chunk);
-
-        if (restrictByClient && clientFilter) {
-          query = query.eq('positions.client_name', clientFilter);
-        }
-
-        const { data, error } = await query;
-        if (error) {
-          console.warn('Failed to check existing order IDs in fills table.', error);
-          return {
-            filtered: rows,
-            duplicates: [] as TxnRow[],
-            duplicateTradeIds: [] as string[],
-            duplicateOrderIds: [] as string[],
-          };
-        }
-
-        for (const entry of (data as { order_id?: string | null }[] | null) ?? []) {
-          const id = typeof entry.order_id === 'string' ? entry.order_id.trim() : '';
-          if (id) duplicateOrderIds.add(id);
-        }
-
-        const { data: unprocessed, error: unprocessedErr } = await supabase
-          .from('unprocessed_imports')
-          .select('order_id, client_name')
-          .in('order_id', chunk)
-          .match(restrictByClient && clientFilter ? { client_name: clientFilter } : {});
-
-        if (unprocessedErr) {
-          console.warn('Failed to check existing order IDs in unprocessed_imports table.', unprocessedErr);
-        }
-
-        for (const entry of unprocessed ?? []) {
-          const id = typeof entry.order_id === 'string' ? entry.order_id.trim() : '';
-          const isSameClient = !restrictByClient || !clientFilter || entry.client_name === clientFilter;
-          if (id && isSameClient) duplicateOrderIds.add(id);
-        }
-      }
-
-      if (!duplicateTradeIds.size && !duplicateOrderIds.size) {
-        return {
-          filtered: rows,
-          duplicates: [] as TxnRow[],
-          duplicateTradeIds: [] as string[],
-          duplicateOrderIds: [] as string[],
-        };
-      }
-
-      if (options.allowAllocations) {
-        return {
-          filtered: rows,
-          duplicates: [] as TxnRow[],
-          duplicateTradeIds: Array.from(duplicateTradeIds),
-          duplicateOrderIds: Array.from(duplicateOrderIds),
-        };
-      }
-
-      const filtered = rows.filter((row) => {
-        const id = row.trade_id?.trim();
-        const orderId = row.order_id?.trim();
-        const hasTrade = Boolean(id && duplicateTradeIds.has(id));
-        const hasOrder = Boolean(orderId && duplicateOrderIds.has(orderId));
-        return !hasTrade && !hasOrder;
+      return filterDuplicateRows(supabase, rows, {
+        clientName: activeClientName,
+        isAdmin,
+        allowAllocations: options.allowAllocations,
       });
-
-      const duplicateRows = rows.filter((row) => {
-        const id = row.trade_id?.trim();
-        const orderId = row.order_id?.trim();
-        const isTradeDuplicate = Boolean(id && duplicateTradeIds.has(id));
-        const isOrderDuplicate = Boolean(orderId && duplicateOrderIds.has(orderId));
-        return isTradeDuplicate || isOrderDuplicate;
-      });
-
-      return {
-        filtered,
-        duplicates: duplicateRows,
-        duplicateTradeIds: Array.from(duplicateTradeIds),
-        duplicateOrderIds: Array.from(duplicateOrderIds),
-      };
     },
     [supabase, activeClientName, isAdmin],
   );
@@ -1128,35 +974,6 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
       unprocessedRows: processedUnprocessedRows,
     });
 
-    if (processedUnprocessedRows.length > 0) {
-      if (!supabase) {
-        alert('Supabase is not configured. Configure environment variables to save unprocessed trades.');
-        return;
-      }
-
-      if (!user) {
-        alert('Sign in to Supabase to save unprocessed trades.');
-        return;
-      }
-
-      console.log('[Import] Saving unprocessed trades to Supabase', {
-        rows: processedUnprocessedRows,
-        clientScope: { clientName: activeClientName, isAdmin },
-        createdBy: user.id,
-      });
-
-      const saveResult = await saveUnprocessedTrades(supabase, {
-        rows: processedUnprocessedRows,
-        clientScope: { clientName: activeClientName, isAdmin },
-        createdBy: user.id,
-      });
-
-      if (!saveResult.ok) {
-        alert(`Failed to save unprocessed trades: ${saveResult.error}`);
-        return;
-      }
-    }
-
     const enrichedRows = rows.map((row) => {
       const parsed = parseInstrumentByExchange(selectedExchange, row.instrument);
       if (!parsed) return row;
@@ -1188,6 +1005,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
     }
 
     const errors: string[] = [];
+    let successCount = 0;
 
     // — append to existing saved structures —
     if (linkedRows.length > 0) {
@@ -1212,7 +1030,10 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
         });
 
         if (!result.ok) {
+          console.error('[Import] appendTradesToStructure failed:', structureId, result.error);
           errors.push(`Structure ${structureId}: ${result.error}`);
+        } else {
+          successCount++;
         }
       }
     }
@@ -1246,12 +1067,40 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
         });
 
         if (!result.ok) {
+          console.error('[Import] createStructure failed:', underlying || 'unknown', result.error);
           errors.push(`New structure (${underlying || 'unknown'}): ${result.error}`);
+        } else {
+          successCount++;
         }
       }
     }
 
-    refreshSavedStructures();
+    // Only refresh when at least one write committed — avoids a spurious empty-dashboard
+    // flash when every operation failed (structures were never saved).
+    if (successCount > 0) {
+      refreshSavedStructures();
+    }
+
+    // Save remaining backlog rows as unprocessed AFTER structures are created,
+    // so a failure here never blocks structure creation.
+    if (processedUnprocessedRows.length > 0 && supabase && user) {
+      console.log('[Import] Saving unprocessed trades to Supabase', {
+        rows: processedUnprocessedRows,
+        clientScope: { clientName: activeClientName, isAdmin },
+        createdBy: user.id,
+      });
+
+      const saveResult = await saveUnprocessedTrades(supabase, {
+        rows: processedUnprocessedRows,
+        clientScope: { clientName: activeClientName, isAdmin },
+        createdBy: user.id,
+      });
+
+      if (!saveResult.ok) {
+        console.warn('[Import] Failed to save unprocessed trades:', saveResult.error);
+        errors.push(`Unprocessed trades: ${saveResult.error}`);
+      }
+    }
 
     if (errors.length > 0) {
       alert(`Import completed with ${errors.length} error${errors.length > 1 ? 's' : ''}:\n\n${errors.join('\n')}`);

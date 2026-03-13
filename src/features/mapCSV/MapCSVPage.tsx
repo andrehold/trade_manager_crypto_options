@@ -15,7 +15,9 @@ import type { ColumnMapping } from '../../components/ColumnMapper'
 import { getColumnMapperContext, clearColumnMapperContext } from './columnMapperStore'
 import { setAssignLegsContext } from '../assignLegs/assignLegsStore'
 import { tryGetSupabaseClient } from '../../lib/supabase'
-import { fetchSavedStructures, appendTradesToStructure } from '../../lib/positions'
+import { fetchSavedStructures, appendTradesToStructure, filterDuplicateRows } from '../../lib/positions'
+import { createStructure } from '../../lib/positions/createStructure'
+import { saveUnprocessedTrades } from '../../lib/positions/saveUnprocessedTrades'
 import { deriveSyntheticDeliveryTradeId, sanitizeIdentifier } from '../../lib/positions/identifiers'
 
 type Props = {
@@ -99,7 +101,15 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
           Papa.parse(file, {
             ...common,
             delimiter: ';',
-            complete: (res2: any) => onParsed(res2.data as any[]),
+            complete: (res2: any) => {
+              const rows2 = res2.data as any[]
+              const fields2: string[] = res2.meta?.fields ?? Object.keys(rows2[0] || {})
+              if (!rows2.length || !fields2 || fields2.length <= 1) {
+                alert('Could not parse CSV: no columns detected. Check that the file uses comma or semicolon delimiters.')
+                return
+              }
+              onParsed(rows2)
+            },
             error: (e: any) => alert('CSV parse error: ' + (e?.message ?? String(e))),
           })
         } else {
@@ -169,6 +179,10 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
       const rawTradeId = mapping.trade_id ? sanitizeIdentifier(r[mapping.trade_id]) : null
       const rawOrderId = mapping.order_id ? sanitizeIdentifier(r[mapping.order_id]) : null
 
+      // Parse instrument early so derived fields (underlying, expiry, strike, optionType)
+      // flow through to the TxnRow and are available in AssignLegs + saved structures.
+      const parsed = parseInstrumentByExchange(exch, instrument)
+
       const provisionalRow: TxnRow = {
         instrument,
         side: side || '',
@@ -181,6 +195,10 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
         order_id: rawOrderId ?? undefined,
         info: mapping.info ? String(r[mapping.info]) : undefined,
         exchange: exch,
+        underlying: parsed?.underlying,
+        expiry: parsed?.expiryISO,
+        strike: parsed?.strike,
+        optionType: parsed?.optionType,
       }
 
       const syntheticTradeId =
@@ -189,7 +207,6 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
         undefined
 
       const baseRow: TxnRow = { ...provisionalRow, trade_id: syntheticTradeId }
-      const parsed = parseInstrumentByExchange(exch, instrument)
 
       if (!parsed) {
         excludedRows.push(baseRow)
@@ -223,13 +240,34 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
       }
     }
 
+    // Dedup: filter out trade_ids / order_ids already in fills or unprocessed_imports.
+    // Skip when the user explicitly opted into importing historical rows.
+    const dedupedRows =
+      supabase && !importHistoricalRows
+        ? (await filterDuplicateRows(supabase, rows, { allowAllocations })).filtered
+        : rows
+
     setAssignLegsContext({
-      rows,
+      rows: dedupedRows,
       excludedRows,
       exchange: exch,
       savedStructures,
-      onConfirm: async (selectedRows) => {
+      onConfirm: async (selectedRows, unprocessedRows) => {
         const sb = tryGetSupabaseClient()
+        if (!sb) {
+          alert('Supabase is not configured. Cannot save trades.')
+          window.location.hash = ''
+          return
+        }
+
+        const { data: authData } = await sb.auth.getUser()
+        if (!authData.user) {
+          alert('You must be signed in to save trades.')
+          window.location.hash = ''
+          return
+        }
+
+        const userId = authData.user.id
 
         // Normalize structure IDs
         const normalizedRows = selectedRows.map((r, index) => {
@@ -238,27 +276,60 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
           return { ...r, structureId: String(r.structureId ?? fallbackStructure) }
         })
 
+        const linkedRows = normalizedRows.filter((r) => Boolean(r.linkedStructureId))
+        const localRows = normalizedRows.filter((r) => !r.linkedStructureId)
+        const errors: string[] = []
+
         // Save rows linked to existing saved structures
-        if (sb) {
-          const linkedRows = normalizedRows.filter((r) => Boolean(r.linkedStructureId))
-          if (linkedRows.length > 0) {
-            const byStructure = new Map<string, TxnRow[]>()
-            for (const row of linkedRows) {
-              const targetId = row.linkedStructureId!
-              if (!byStructure.has(targetId)) byStructure.set(targetId, [])
-              byStructure.get(targetId)!.push(row)
-            }
-            for (const [structureId, groupedRows] of byStructure.entries()) {
-              const res = await appendTradesToStructure(sb, {
-                structureId,
-                rows: groupedRows,
-                clientScope: {},
-              })
-              if (!res.ok) {
-                alert(`Failed to save to structure ${structureId}: ${res.error}`)
-              }
-            }
+        if (linkedRows.length > 0) {
+          const byStructure = new Map<string, TxnRow[]>()
+          for (const row of linkedRows) {
+            const targetId = row.linkedStructureId!
+            if (!byStructure.has(targetId)) byStructure.set(targetId, [])
+            byStructure.get(targetId)!.push(row)
           }
+          for (const [structureId, groupedRows] of byStructure.entries()) {
+            const res = await appendTradesToStructure(sb, {
+              structureId,
+              rows: groupedRows,
+              clientScope: {},
+            })
+            if (!res.ok) errors.push(`Structure ${structureId}: ${res.error}`)
+          }
+        }
+
+        // Create new structures
+        if (localRows.length > 0) {
+          const byStructure = new Map<string, TxnRow[]>()
+          for (const row of localRows) {
+            const key = row.structureId ?? 'default'
+            if (!byStructure.has(key)) byStructure.set(key, [])
+            byStructure.get(key)!.push(row)
+          }
+          for (const groupedRows of byStructure.values()) {
+            const res = await createStructure(sb, {
+              rows: groupedRows,
+              structureType: groupedRows[0]?.structureType,
+              exchange: exch,
+              clientScope: {},
+              createdBy: userId,
+            })
+            if (!res.ok) errors.push(`New structure: ${res.error}`)
+          }
+        }
+
+        // Save backlog rows as unprocessed
+        if (unprocessedRows && unprocessedRows.length > 0) {
+          const res = await saveUnprocessedTrades(sb, {
+            rows: unprocessedRows,
+            clientScope: {},
+            createdBy: userId,
+          })
+          if (!res.ok) errors.push(`Unprocessed trades: ${res.error}`)
+        }
+
+        if (errors.length > 0) {
+          alert(`Import completed with ${errors.length} error${errors.length > 1 ? 's' : ''}:\n\n${errors.join('\n')}`)
         }
 
         window.location.hash = ''

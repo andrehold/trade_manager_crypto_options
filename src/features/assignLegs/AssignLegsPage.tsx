@@ -22,7 +22,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { TxnRow, Exchange, Position, parseInstrumentByExchange } from '../../utils'
+import { TxnRow, Exchange, Position, parseInstrumentByExchange, normalizeSecond } from '../../utils'
 import {
   LegItem,
   BoardState,
@@ -256,7 +256,7 @@ function DraggableLegChip({
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onExclude() }}
             className="shrink-0 text-zinc-600 hover:text-amber-400 leading-none ml-1 transition-colors"
-            title="Exclude from import"
+            title="Save as unprocessed"
           >
             <EyeOff size={11} />
           </button>
@@ -650,6 +650,8 @@ function AssignLegsPageInner({
       [CONTAINER_NEW_STRUCTURE]: [],
       [CONTAINER_EXCLUDED]: [],
     }
+    const structureOrder: string[] = []
+    const structureMeta: Record<string, { type: string }> = {}
 
     const sorted = [...rows].sort((a, b) => {
       const ta = a.timestamp ?? ''
@@ -657,23 +659,64 @@ function AssignLegsPageInner({
       return ta < tb ? -1 : ta > tb ? 1 : 0
     })
 
+    // Count how many rows share each normalized-second timestamp.
+    // For Deribit combo/spread orders every leg has the exact same timestamp,
+    // so groups of 2-4 sharing a second are very likely a single structure.
+    const tsCount = new Map<string, number>()
+    for (const row of sorted) {
+      const k = normalizeSecond(row.timestamp)
+      if (k !== 'NO_TS') tsCount.set(k, (tsCount.get(k) ?? 0) + 1)
+    }
+
+    // Build a draft structure container for each combo group (2–4 shared legs).
+    // Groups of 1 stay in backlog; groups > 4 are likely batch fills, not spreads.
+    const tsToStructureId = new Map<string, string>()
+    let autoSeq = 0
+    for (const [tsKey, count] of tsCount.entries()) {
+      if (count >= 2 && count <= 4) {
+        const structId = `structure:${Date.now() + autoSeq++}`
+        tsToStructureId.set(tsKey, structId)
+        containers[structId] = []
+        structureOrder.push(structId)
+        structureMeta[structId] = { type: 'IC' } // refined below
+      }
+    }
+
     sorted.forEach((row, idx) => {
       const id = generateLegId(row, idx)
       itemsById[id] = { id, row, included: true }
-      containers[CONTAINER_BACKLOG].push(id)
+      const tsKey = normalizeSecond(row.timestamp)
+      const structId = tsToStructureId.get(tsKey)
+      if (structId) {
+        containers[structId].push(id)
+      } else {
+        containers[CONTAINER_BACKLOG].push(id)
+      }
     })
+
+    // Refine suggested structure type now that all legs are assigned.
+    for (const [, structId] of tsToStructureId.entries()) {
+      const legs = (containers[structId] ?? [])
+        .map((id) => itemsById[id]?.row)
+        .filter((r): r is TxnRow => Boolean(r))
+      structureMeta[structId] = { type: suggestStructureType(legs) }
+    }
 
     for (const info of savedStructureInfos) {
       containers[`saved:${info.id}`] = []
     }
 
-    return { itemsById, containers, structureOrder: [], structureMeta: {} }
+    return { itemsById, containers, structureOrder, structureMeta }
   }, [rows, savedStructureInfos])
 
   const [board, setBoard] = useState(initialBoard)
 
   useEffect(() => {
-    setBoard(initialBoard)
+    setBoard((prev) => {
+      const hasContent = Object.values(prev.containers).some(ids => ids.length > 0)
+      if (hasContent) return prev  // Don't reset if user has already arranged legs
+      return initialBoard
+    })
   }, [initialBoard])
 
   /* ── sensors ── */
@@ -953,11 +996,19 @@ function AssignLegsPageInner({
       }
     }
 
-    if (payload.length === 0) return
+    const unprocessedRows: TxnRow[] = [
+      ...(board.containers[CONTAINER_EXCLUDED] ?? []),
+      ...(board.containers[CONTAINER_BACKLOG] ?? []),
+    ]
+      .map((itemId) => board.itemsById[itemId])
+      .filter((item): item is LegItem => item != null)
+      .map((item) => item.row)
+
+    if (payload.length === 0 && unprocessedRows.length === 0) return
 
     try {
       setImporting(true)
-      await onConfirm(payload)
+      await onConfirm(payload, unprocessedRows)
       clearAssignLegsContext()
       onBack()
     } catch (err) {
@@ -977,9 +1028,8 @@ function AssignLegsPageInner({
   /* ── validation message ── */
   const validationMsg = (() => {
     const parts: string[] = []
-    if (backlogCount > 0) parts.push(`${backlogCount} unassigned leg${backlogCount !== 1 ? 's' : ''}`)
     if (newStructureCount > 0)
-      parts.push(`${newStructureCount} leg${newStructureCount !== 1 ? 's' : ''} in unsaved new structure`)
+      parts.push(`Drag the ${newStructureCount} leg${newStructureCount !== 1 ? 's' : ''} out of 'New Structure' or click Save Structure before importing`)
     return parts.length > 0 ? parts.join(', ') : null
   })()
 
@@ -1020,7 +1070,7 @@ function AssignLegsPageInner({
             }`}
             onClick={() => setActiveTab('excluded')}
           >
-            Excluded ({excludedRows.length + manuallyExcludedItems.length})
+            Unprocessed ({excludedRows.length + manuallyExcludedItems.length})
           </button>
         </div>
         <div className="ml-auto flex items-center gap-3">
@@ -1224,7 +1274,7 @@ function AssignLegsPageInner({
             {manuallyExcludedItems.length > 0 && (
               <div className="shrink-0">
                 <p className="type-caption font-semibold text-zinc-500 uppercase tracking-[0.12em] mb-2">
-                  Manually Excluded ({manuallyExcludedItems.length})
+                  Unprocessed ({manuallyExcludedItems.length})
                 </p>
                 <div className="border border-zinc-800 rounded-xl overflow-auto max-h-48">
                   <table className="min-w-full type-caption">
@@ -1252,7 +1302,7 @@ function AssignLegsPageInner({
                               <button
                                 onClick={() => handleRestoreItem(item.id)}
                                 className="flex items-center gap-1 text-zinc-500 hover:text-emerald-400 transition-colors"
-                                title="Restore to backlog"
+                                title="Restore to new legs"
                               >
                                 <RotateCcw size={11} />
                                 <span className="type-caption">Restore</span>
@@ -1268,12 +1318,12 @@ function AssignLegsPageInner({
             )}
             <div className="shrink-0">
               <p className="type-caption font-semibold text-zinc-500 uppercase tracking-[0.12em] mb-2">
-                Auto-Excluded ({excludedRows.length})
+                Auto-Excluded — Non-option rows ({excludedRows.length})
               </p>
-              <p className="type-caption text-zinc-600 mb-2">Non-option instruments — review only.</p>
+              <p className="type-caption text-zinc-600 mb-2">Non-option instruments — not saved.</p>
             </div>
             {excludedRows.length === 0 && manuallyExcludedItems.length === 0 ? (
-              <p className="type-caption text-zinc-600 italic">No excluded rows.</p>
+              <p className="type-caption text-zinc-600 italic">No unprocessed rows.</p>
             ) : excludedRows.length > 0 ? (
               <div className="flex-1 min-h-0 overflow-auto border border-zinc-800 rounded-xl">
                 <table className="min-w-full type-caption">
