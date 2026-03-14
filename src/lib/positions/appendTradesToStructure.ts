@@ -75,8 +75,14 @@ export async function appendTradesToStructure(
     return { ok: false, error: seqError.message }
   }
 
-  const currentSeq = maxLeg?.leg_seq != null ? Number(maxLeg.leg_seq) : 0
-  let nextSeq = Number.isFinite(currentSeq) ? currentSeq + 1 : 1
+  const rawSeq = maxLeg?.leg_seq ?? null
+  if (rawSeq != null && !Number.isFinite(Number(rawSeq))) {
+    return {
+      ok: false,
+      error: `Cannot append: existing leg has non-numeric leg_seq value "${rawSeq}". Database may be in an inconsistent state.`,
+    }
+  }
+  let nextSeq = rawSeq != null ? Number(rawSeq) + 1 : 1
 
   const legRows = normalizedRows.map((row) => ({
     position_id: structureId,

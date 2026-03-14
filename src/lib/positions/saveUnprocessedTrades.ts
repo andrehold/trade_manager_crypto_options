@@ -36,7 +36,11 @@ export async function saveUnprocessedTrades(
   const payload = rows.map((row) => {
     const orderId = extractIdentifier(row, 'order')
     const tradeIdFromRow = extractIdentifier(row, 'trade')
-    const tradeId = tradeIdFromRow ?? deriveSyntheticDeliveryTradeId(row, row as unknown as Record<string, unknown>) ?? orderId
+    // row satisfies Record<string, unknown> at runtime; the double cast is
+    // required because TxnRow has a branded index signature that TypeScript
+    // won't widen directly to Record<string, unknown>.
+    const rowAsRecord = row as unknown as Record<string, unknown>
+    const tradeId = tradeIdFromRow ?? deriveSyntheticDeliveryTradeId(row, rowAsRecord) ?? orderId
 
     return nullifyUndefined({
       client_name: clientName,

@@ -407,7 +407,7 @@ function realizeLegTrades(leg: Leg, options: { assumeExpired?: boolean } = {}): 
   }
 
   const netOpenQty = inventory.reduce((sum, lot) => sum + lot.sign * lot.qty, 0);
-  if (Math.abs(netOpenQty) <= Number.EPSILON) {
+  if (Math.abs(netOpenQty) <= 1e-10) {
     inventory.length = 0;
   }
 
@@ -695,7 +695,15 @@ export async function fetchSavedStructures(
     return { ok: false, error: error.message };
   }
 
-  const rows = (data as RawPosition[] | null | undefined) ?? [];
+  const rawData: unknown[] = Array.isArray(data) ? data : [];
+  const rows = rawData.filter((row): row is RawPosition => {
+    return typeof row === 'object' && row !== null && typeof (row as Record<string, unknown>).position_id === 'string';
+  });
+  if (rows.length < rawData.length) {
+    console.warn(
+      `[fetchSavedStructures] Dropped ${rawData.length - rows.length} row(s) with invalid shape (missing position_id string).`,
+    );
+  }
 
   const programNameMap = new Map<string, string>();
   const programIds = Array.from(new Set(rows.map((row) => row.program_id).filter((id): id is string => Boolean(id))));

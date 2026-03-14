@@ -49,7 +49,7 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
   const isMapping = Boolean(ctx || localHeaders)
   React.useEffect(() => {
     onStepChange?.(isMapping ? 'mapping' : 'upload')
-  }, [isMapping]) // onStepChange intentionally omitted — setter is stable
+  }, [isMapping, onStepChange])
 
   React.useEffect(() => {
     if (!headers.length) return
@@ -233,10 +233,14 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
         const { data: authData } = await supabase.auth.getUser()
         if (authData.user) {
           const fetchResult = await fetchSavedStructures(supabase, {})
-          if (fetchResult.ok) savedStructures = fetchResult.positions ?? []
+          if (fetchResult.ok) {
+            savedStructures = fetchResult.positions ?? []
+          } else {
+            console.warn('[MapCSVPage] Could not load saved structures:', fetchResult.error)
+          }
         }
-      } catch {
-        // Continue without saved structures
+      } catch (err) {
+        console.warn('[MapCSVPage] Failed to fetch saved structures for linking suggestions:', err)
       }
     }
 
@@ -329,7 +333,11 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
         }
 
         if (errors.length > 0) {
-          alert(`Import completed with ${errors.length} error${errors.length > 1 ? 's' : ''}:\n\n${errors.join('\n')}`)
+          const MAX_SHOWN = 10
+          const shown = errors.slice(0, MAX_SHOWN)
+          const remaining = errors.length - shown.length
+          const tail = remaining > 0 ? `\n…and ${remaining} more error${remaining > 1 ? 's' : ''}.` : ''
+          alert(`Import completed with ${errors.length} error${errors.length > 1 ? 's' : ''}:\n\n${shown.join('\n')}${tail}`)
         }
 
         window.location.hash = ''

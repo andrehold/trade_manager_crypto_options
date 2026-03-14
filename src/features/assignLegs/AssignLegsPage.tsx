@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowDownLeft, ArrowUpRight, ArrowLeft, Blocks, Calendar, Clock, EyeOff, RotateCcw, TrendingDown, TrendingUp } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, ArrowLeft, Blocks, Calendar, Clock, EyeOff, RotateCcw } from 'lucide-react'
 import {
   DndContext,
   DragEndEvent,
@@ -22,7 +22,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { TxnRow, Exchange, Position, parseInstrumentByExchange, normalizeSecond } from '../../utils'
+import { TxnRow, Exchange, Position, Leg, parseInstrumentByExchange, normalizeSecond } from '../../utils'
 import {
   LegItem,
   BoardState,
@@ -431,7 +431,7 @@ function NewStructureDropZone({
 
 /* ──────── read-only chip for existing legs in saved structures ──────── */
 
-function ExistingLegChip({ leg }: { leg: import('../../utils').Leg }) {
+function ExistingLegChip({ leg }: { leg: Leg }) {
   const sign = leg.qtyNet >= 0 ? '+' : '-'
   const qty = Math.abs(leg.qtyNet)
   const qtyStr = qty % 1 === 0 ? String(qty) : qty.toFixed(2)

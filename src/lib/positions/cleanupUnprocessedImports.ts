@@ -1,6 +1,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { TxnRow } from '@/utils'
 
+const CHUNK_SIZE = 99
+
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size))
+  }
+  return chunks
+}
+
 /**
  * Remove rows from `unprocessed_imports` that have been promoted to a structure.
  *
@@ -28,16 +38,16 @@ export async function cleanupUnprocessedImports(
   const promotedTradeIds = tradeIds.filter((id): id is string => id !== null)
   const promotedOrderIds = orderIds.filter((id): id is string => id !== null)
 
-  // ── Delete by trade_id ────────────────────────────────────────────────
-  if (promotedTradeIds.length > 0) {
-    const q = client.from('unprocessed_imports').delete().in('trade_id', promotedTradeIds)
+  // ── Delete by trade_id (chunked to stay within PostgREST URL limits) ──
+  for (const chunk of chunkArray(promotedTradeIds, CHUNK_SIZE)) {
+    const q = client.from('unprocessed_imports').delete().in('trade_id', chunk)
     const { error } = await (restrictByClient && clientName ? q.eq('client_name', clientName) : q)
     if (error) console.warn(`[${logPrefix}] Failed to clean up unprocessed_imports by trade_id:`, error.message)
   }
 
-  // ── Delete by order_id ────────────────────────────────────────────────
-  if (promotedOrderIds.length > 0) {
-    const q = client.from('unprocessed_imports').delete().in('order_id', promotedOrderIds)
+  // ── Delete by order_id (chunked to stay within PostgREST URL limits) ──
+  for (const chunk of chunkArray(promotedOrderIds, CHUNK_SIZE)) {
+    const q = client.from('unprocessed_imports').delete().in('order_id', chunk)
     const { error } = await (restrictByClient && clientName ? q.eq('client_name', clientName) : q)
     if (error) console.warn(`[${logPrefix}] Failed to clean up unprocessed_imports by order_id:`, error.message)
   }
