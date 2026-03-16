@@ -246,14 +246,18 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
 
     // Dedup: filter out trade_ids / order_ids already in fills or unprocessed_imports.
     // Skip when the user explicitly opted into importing historical rows.
-    const dedupedRows =
-      supabase && !importHistoricalRows
-        ? (await filterDuplicateRows(supabase, rows, { allowAllocations })).filtered
-        : rows
+    let dedupedRows = rows
+    let duplicateRows: typeof rows = []
+    if (supabase && !importHistoricalRows) {
+      const dedupResult = await filterDuplicateRows(supabase, rows, { allowAllocations })
+      dedupedRows = dedupResult.filtered
+      duplicateRows = dedupResult.duplicates
+    }
 
     setAssignLegsContext({
       rows: dedupedRows,
       excludedRows,
+      duplicateRows,
       exchange: exch,
       savedStructures,
       onConfirm: async (selectedRows, unprocessedRows) => {

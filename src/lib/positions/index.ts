@@ -42,6 +42,11 @@ export {
 } from "./createStructure";
 export { type SupabaseClientScope } from "./clientScope";
 export {
+  fetchUnprocessedImports,
+  type FetchUnprocessedImportsOptions,
+  type FetchUnprocessedImportsResult,
+} from "./fetchUnprocessedImports";
+export {
   filterDuplicateRows,
   type FilterDuplicateRowsOptions,
   type FilterDuplicateRowsResult,

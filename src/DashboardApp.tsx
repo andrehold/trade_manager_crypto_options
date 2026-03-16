@@ -11,7 +11,7 @@ import { SupabaseLogin } from './features/auth/SupabaseLogin'
 import { useAuth } from './features/auth/useAuth'
 import { tryGetSupabaseClient } from './lib/supabase'
 import {
-  Position, TxnRow, Lot, Leg,
+  Position, TxnRow, Lot, Leg, MarksMap,
   useLocalStorage, devQuickTests,
   parseActionSide, toNumber, parseInstrumentByExchange, normalizeSecond,
   daysTo, daysSince, fifoMatchAndRealize, classifyStatus, calculatePnlPct,
@@ -26,7 +26,11 @@ import { DashboardHeader } from './components/DashboardHeader'
 import { ExpiryDatePicker } from './components/ExpiryDatePicker'
 import { ViewSelector, type ActiveView } from './components/ViewSelector'
 import { KanbanBoard } from './components/KanbanBoard'
-import { RefreshCw, TrendingUp, Upload, GanttChart } from 'lucide-react'
+import { Spinner } from './components/Spinner'
+import { ColumnPicker } from './components/ColumnPicker'
+import { PositionTableHead } from './components/PositionTableHead'
+import { SortHeader } from './components/SortHeader'
+import { RefreshCw, TrendingUp, Upload, GanttChart, Inbox } from 'lucide-react'
 import {
   archiveStructure,
   fetchSavedStructures,
@@ -39,6 +43,7 @@ import {
   buildStructureSummaryLines,
   fetchProgramPlaybooks,
   filterDuplicateRows,
+  fetchUnprocessedImports,
   type ProgramPlaybook,
 } from './lib/positions'
 import { resolveClientAccess } from './features/auth/access'
@@ -49,6 +54,14 @@ import {
 } from './lib/positions/identifiers'
 import { MapCSVPage } from './features/mapCSV/MapCSVPage'
 import { AssignLegsPage } from './features/assignLegs/AssignLegsPage'
+import { PlaybookIndexPage } from './features/playbooks/PlaybookIndexPage'
+import { StrategyPlaybookPage } from './features/playbooks/StrategyPlaybookPage'
+
+export type InnerView =
+  | 'mapCSV'
+  | 'assignLegs'
+  | 'playbookIndex'
+  | { type: 'playbookDetail'; slug: string }
 
 const CLIENT_LIST_STORAGE_KEY = 'tm_client_names_v1'
 const SELECTED_CLIENT_STORAGE_KEY = 'tm_selected_client_v1'
@@ -106,12 +119,13 @@ type ExchangePositionSnapshot = {
 
 type DashboardAppProps = {
   onOpenPlaybookIndex?: () => void
+  onOpenPlaybook?: (slug: string) => void
   onOpenAssignLegs?: () => void
   onOpenMapCSV?: () => void
-  innerView?: 'mapCSV' | 'assignLegs'
+  innerView?: InnerView
 }
 
-export default function DashboardApp({ onOpenPlaybookIndex, onOpenAssignLegs, onOpenMapCSV, innerView }: DashboardAppProps = {}) {
+export default function DashboardApp({ onOpenPlaybookIndex, onOpenPlaybook, onOpenAssignLegs, onOpenMapCSV, innerView }: DashboardAppProps = {}) {
   React.useEffect(() => { devQuickTests(); }, []);
 
   // Tracks which sub-step of the mapCSV flow is active (upload zone vs column mapping)
@@ -266,9 +280,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
   const [btcSpot, setBtcSpot] = React.useState<number | null>(null);
   const [btcSpotUpdatedAt, setBtcSpotUpdatedAt] = React.useState<Date | null>(null);
   // price per unique leg "exchange:symbol"
-  const [legMarks, setLegMarks] = React.useState<Record<string, {price: number|null, multiplier: number|null; greeks?: {
-    delta?: number; gamma?: number; theta?: number; vega?: number; rho?: number;
-    } }>>({});
+  const [legMarks, setLegMarks] = React.useState<MarksMap>({});
   const [markFetch, setMarkFetch] = React.useState({
     inProgress: false,
     total: 0,
@@ -372,63 +384,6 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
       alert(`Failed to add client to database: ${error.message}`);
     }
   }, [isAdmin, setClientOptions, setSelectedClient, supabase, user]);
-
-  function handleFiles(files: FileList, mode: 'import' | 'backfill' = 'import') {
-    const file = files[0];
-    const common: any = {
-      header: true,
-      skipEmptyLines: 'greedy',
-      transformHeader: (h: string) => h.replace(/^\ufeff/, '').trim(),
-    };
-
-    const onParsed = (rows: any[]) => {
-      if (!rows || !rows.length) {
-        alert('No rows found in CSV. Check the delimiter (comma vs semicolon) and header row.');
-        return;
-      }
-      setRawRows(rows);
-      const headers = Object.keys(rows[0] || {});
-      setColumnMapperContext({
-        headers,
-        mode,
-        onConfirm: (mapping) => {
-          if (mode === 'backfill') {
-            startBackfill(mapping as unknown as Record<string, string>);
-          } else {
-            startImport(mapping as unknown as Record<string, string>);
-          }
-        },
-        onCancel: () => {},
-      });
-      onOpenMapCSV?.();
-    };
-
-    Papa.parse(file, {
-      ...common,
-      complete: (res: any) => {
-        const rows = res.data as any[];
-        const fields: string[] = (res.meta && res.meta.fields) ? (res.meta.fields as string[]) : Object.keys(rows[0] || {});
-        if (!fields || fields.length <= 1) {
-          Papa.parse(file, {
-            ...common,
-            delimiter: ';',
-            complete: (res2: any) => onParsed(res2.data as any[]),
-            error: (e: any) => alert('CSV parse error (semicolon fallback): ' + (e && e.message ? e.message : String(e))),
-          });
-        } else {
-          onParsed(rows);
-        }
-      },
-      error: (e: any) => alert('CSV parse error: ' + (e && e.message ? e.message : String(e))),
-    });
-  }
-
-  const handleBackfillFiles = React.useCallback(
-    (files: FileList) => {
-      handleFiles(files, 'backfill');
-    },
-    [],
-  );
 
   const toOptionalNumber = React.useCallback((value: any) => {
     if (value === null || value === undefined) return null;
@@ -672,43 +627,8 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
         console.warn('Failed to save transaction logs.', result.error);
       }
     },
-    [activeClientName, isAdmin, rawRows, resolveIdentifierFromMapping, saveTransactionLogs, supabase, user],
+    [activeClientName, isAdmin, rawRows, resolveIdentifierFromMapping, supabase, user],
   );
-
-  async function startImport(mapping: Record<string, string>) {
-    const exchange = (mapping as any).__exchange || 'deribit';
-    const importHistorical = Boolean((mapping as any).__importHistorical);
-    const allowAllocations = Boolean((mapping as any).__allowAllocations);
-    setSelectedExchange(exchange as Exchange);
-    await saveRawTransactionLogs(mapping, exchange as Exchange);
-    const { rows, excludedRows } = mapRowsFromMapping(mapping, 'import');
-    if (importHistorical) {
-      setAssignLegsContext({
-        rows,
-        excludedRows,
-        exchange: exchange as Exchange,
-        savedStructures,
-        onConfirm: finalizeImport,
-        onCancel: () => {},
-      });
-      onOpenAssignLegs?.();
-      return;
-    }
-
-    const { filtered, duplicateTradeIds, duplicateOrderIds } = await filterRowsWithExistingTradeIds(rows, {
-      allowAllocations,
-    });
-
-    setAssignLegsContext({
-      rows: filtered,
-      excludedRows,
-      exchange: exchange as Exchange,
-      savedStructures,
-      onConfirm: finalizeImport,
-      onCancel: () => {},
-    });
-    onOpenAssignLegs?.();
-  }
 
   const loadImportedTransactions = React.useCallback(async () => {
     if (!supabase) {
@@ -943,7 +863,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
         setBackfillStatus({ type: 'error', message });
       }
     },
-    [activeClientName, backfillLegExpiries, isAdmin, loadImportedTransactions, mapRowsFromMapping, showImportedOverlay, supabase, user],
+    [activeClientName, isAdmin, loadImportedTransactions, mapRowsFromMapping, showImportedOverlay, supabase, user],
   );
 
   React.useEffect(() => {
@@ -951,7 +871,11 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
     void loadImportedTransactions();
   }, [loadImportedTransactions, showImportedOverlay]);
 
-  async function finalizeImport(selectedRows: TxnRow[], unprocessedRows?: TxnRow[]) {
+  const refreshSavedStructures = React.useCallback(() => {
+    setSavedStructuresVersion((prev) => prev + 1);
+  }, []);
+
+  const finalizeImport = React.useCallback(async (selectedRows: TxnRow[], unprocessedRows?: TxnRow[]) => {
     const processedUnprocessedRows = unprocessedRows ?? []
     const rows: TxnRow[] = selectedRows.map((r, index) => {
       const normalized = normalizeSecond(r.timestamp);
@@ -1105,11 +1029,138 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
     if (errors.length > 0) {
       alert(`Import completed with ${errors.length} error${errors.length > 1 ? 's' : ''}:\n\n${errors.join('\n')}`);
     }
-  }
+  }, [activeClientName, isAdmin, refreshSavedStructures, selectedExchange, supabase, user]);
 
-  const refreshSavedStructures = React.useCallback(() => {
-    setSavedStructuresVersion((prev) => prev + 1);
-  }, []);
+  const startImport = React.useCallback(async (mapping: Record<string, string>) => {
+    const exchange = (mapping as any).__exchange || 'deribit';
+    const importHistorical = Boolean((mapping as any).__importHistorical);
+    const allowAllocations = Boolean((mapping as any).__allowAllocations);
+    setSelectedExchange(exchange as Exchange);
+    await saveRawTransactionLogs(mapping, exchange as Exchange);
+    const { rows, excludedRows } = mapRowsFromMapping(mapping, 'import');
+    if (importHistorical) {
+      setAssignLegsContext({
+        rows,
+        excludedRows,
+        exchange: exchange as Exchange,
+        savedStructures,
+        onConfirm: finalizeImport,
+        onCancel: () => {},
+      });
+      onOpenAssignLegs?.();
+      return;
+    }
+
+    const { filtered, duplicateTradeIds, duplicateOrderIds } = await filterRowsWithExistingTradeIds(rows, {
+      allowAllocations,
+    });
+
+    setAssignLegsContext({
+      rows: filtered,
+      excludedRows,
+      exchange: exchange as Exchange,
+      savedStructures,
+      onConfirm: finalizeImport,
+      onCancel: () => {},
+    });
+    onOpenAssignLegs?.();
+  }, [filterRowsWithExistingTradeIds, finalizeImport, mapRowsFromMapping, onOpenAssignLegs, saveRawTransactionLogs, savedStructures]);
+
+  const [processBacklogLoading, setProcessBacklogLoading] = React.useState(false);
+
+  const handleProcessBacklog = React.useCallback(async () => {
+    if (!supabase || !user) {
+      alert('Sign in to process unprocessed imports.');
+      return;
+    }
+
+    setProcessBacklogLoading(true);
+    try {
+      const result = await fetchUnprocessedImports(supabase, {
+        clientName: activeClientName || undefined,
+        exchange: selectedExchange,
+      });
+
+      if (!result.ok) {
+        alert(`Failed to fetch unprocessed imports: ${result.error}`);
+        return;
+      }
+
+      if (result.rows.length === 0) {
+        alert(`No unprocessed imports found for ${selectedExchange}.`);
+        return;
+      }
+
+      setAssignLegsContext({
+        rows: result.rows,
+        excludedRows: [],
+        exchange: selectedExchange,
+        savedStructures,
+        onConfirm: finalizeImport,
+        onCancel: () => {},
+      });
+      onOpenAssignLegs?.();
+    } finally {
+      setProcessBacklogLoading(false);
+    }
+  }, [activeClientName, finalizeImport, onOpenAssignLegs, savedStructures, selectedExchange, supabase, user]);
+
+  const handleFiles = React.useCallback((files: FileList, mode: 'import' | 'backfill' = 'import') => {
+    const file = files[0];
+    const common: any = {
+      header: true,
+      skipEmptyLines: 'greedy',
+      transformHeader: (h: string) => h.replace(/^\ufeff/, '').trim(),
+    };
+
+    const onParsed = (rows: any[]) => {
+      if (!rows || !rows.length) {
+        alert('No rows found in CSV. Check the delimiter (comma vs semicolon) and header row.');
+        return;
+      }
+      setRawRows(rows);
+      const headers = Object.keys(rows[0] || {});
+      setColumnMapperContext({
+        headers,
+        mode,
+        onConfirm: (mapping) => {
+          if (mode === 'backfill') {
+            startBackfill(mapping as unknown as Record<string, string>);
+          } else {
+            startImport(mapping as unknown as Record<string, string>);
+          }
+        },
+        onCancel: () => {},
+      });
+      onOpenMapCSV?.();
+    };
+
+    Papa.parse(file, {
+      ...common,
+      complete: (res: any) => {
+        const rows = res.data as any[];
+        const fields: string[] = (res.meta && res.meta.fields) ? (res.meta.fields as string[]) : Object.keys(rows[0] || {});
+        if (!fields || fields.length <= 1) {
+          Papa.parse(file, {
+            ...common,
+            delimiter: ';',
+            complete: (res2: any) => onParsed(res2.data as any[]),
+            error: (e: any) => alert('CSV parse error (semicolon fallback): ' + (e && e.message ? e.message : String(e))),
+          });
+        } else {
+          onParsed(rows);
+        }
+      },
+      error: (e: any) => alert('CSV parse error: ' + (e && e.message ? e.message : String(e))),
+    });
+  }, [onOpenMapCSV, setRawRows, startBackfill, startImport]);
+
+  const handleBackfillFiles = React.useCallback(
+    (files: FileList) => {
+      handleFiles(files, 'backfill');
+    },
+    [handleFiles],
+  );
 
   const handleArchiveStructure = React.useCallback(
     async (positionId: string) => {
@@ -1412,7 +1463,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
     }
     out.sort((a, b) => a.dte - b.dte);
     return out;
-  }, [selectedClient]);
+  }, [activeClientName]);
 
   const normalizedQuery = query.toLowerCase().trim();
   const isActiveLeg = React.useCallback((leg: Leg) => {
@@ -1567,7 +1618,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
           }
           if (mark?.greeks) {
             for (const field of GREEK_SUMMARY_FIELDS) {
-              current.greeks[field.key] += legGreekExposure(leg, mark.greeks[field.key], multiplier);
+              current.greeks[field.key] += legGreekExposure(leg, mark.greeks[field.key] ?? undefined, multiplier);
             }
           }
         }
@@ -1879,191 +1930,18 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
       });
   }, [activeClientName, savedStructures]);
 
-  const tableHead = (
-    <thead className="bg-slate-50 text-slate-600">
-      <tr>
-        <th className="p-3 text-left w-10"> </th>
-        {visibleCols.includes("status") && <th className="p-3 text-left">Status</th>}
-        {visibleCols.includes("structure") && <th className="p-3 text-left">Structure</th>}
-        {visibleCols.includes("dte") && <th className="p-3 text-left">DTE/Since</th>}
-        {visibleCols.includes("legs") && <th className="p-3 text-left">Legs</th>}
-        {visibleCols.includes("strategy") && <th className="p-3 text-left">Strategy</th>}
-        {visibleCols.includes("pnl") && <th className="p-3 text-left">PnL</th>}
-        {visibleCols.includes("pnlpct") && <th className="p-3 text-left">PnL %</th>}
-        {visibleCols.includes("delta") && (
-          <th className="p-3 text-left">
-            <abbr title="Delta" className="cursor-help">Δ</abbr>
-          </th>
-        )}
-        {visibleCols.includes("gamma") && (
-          <th className="p-3 text-left">
-            <abbr title="Gamma" className="cursor-help">Γ</abbr>
-          </th>
-        )}
-        {visibleCols.includes("theta") && (
-          <th className="p-3 text-left">
-            <abbr title="Theta" className="cursor-help">Θ</abbr>
-          </th>
-        )}
-        {visibleCols.includes("vega") && (
-          <th className="p-3 text-left">
-            <abbr title="Vega" className="cursor-help">V</abbr>
-          </th>
-        )}
-        {visibleCols.includes("rho") && (
-          <th className="p-3 text-left">
-            <abbr title="Rho" className="cursor-help">ρ</abbr>
-          </th>
-        )}
-        {visibleCols.includes("playbook") && <th className="p-3 text-left">Playbook</th>}
-        <th className="p-3 text-right w-12">
-          <span className="sr-only">Save position</span>
-        </th>
-      </tr>
-    </thead>
-  );
+  const handleSavedSort = React.useCallback((key: SavedSortKey, direction: 'asc' | 'desc') => {
+    setSavedSort({ key, direction });
+  }, []);
 
-  const renderSavedSortHeader = (label: string, key: SavedSortKey) => {
-    const isAsc = savedSort.key === key && savedSort.direction === 'asc';
-    const isDesc = savedSort.key === key && savedSort.direction === 'desc';
-    return (
-      <div className="inline-flex items-center gap-2">
-        <span>{label}</span>
-        <span className="inline-flex flex-col -space-y-1">
-          <button
-            type="button"
-            className={`text-[10px] leading-none ${isAsc ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
-            aria-label={`Sort ${label} ascending`}
-            onClick={() => setSavedSort({ key, direction: 'asc' })}
-          >
-            ▲
-          </button>
-          <button
-            type="button"
-            className={`text-[10px] leading-none ${isDesc ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
-            aria-label={`Sort ${label} descending`}
-            onClick={() => setSavedSort({ key, direction: 'desc' })}
-          >
-            ▼
-          </button>
-        </span>
-      </div>
-    );
-  };
-
-  const renderOpenInstrumentSortHeader = (label: string, key: OpenInstrumentSortKey, align: 'left' | 'right' = 'right') => {
-    const isAsc = openInstrumentSort.key === key && openInstrumentSort.direction === 'asc';
-    const isDesc = openInstrumentSort.key === key && openInstrumentSort.direction === 'desc';
-    return (
-      <div className={`inline-flex items-center gap-2 ${align === 'right' ? 'justify-end' : ''}`}>
-        <span>{label}</span>
-        <span className="inline-flex flex-col -space-y-1">
-          <button
-            type="button"
-            className={`text-[10px] leading-none ${isAsc ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
-            aria-label={`Sort ${label} ascending`}
-            onClick={() => setOpenInstrumentSort({ key, direction: 'asc' })}
-          >
-            ▲
-          </button>
-          <button
-            type="button"
-            className={`text-[10px] leading-none ${isDesc ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
-            aria-label={`Sort ${label} descending`}
-            onClick={() => setOpenInstrumentSort({ key, direction: 'desc' })}
-          >
-            ▼
-          </button>
-        </span>
-      </div>
-    );
-  };
-
-  const savedTableHead = (
-    <thead className="bg-slate-50 text-slate-600">
-      <tr>
-        <th className="p-3 text-left w-10"> </th>
-        {visibleCols.includes("status") && <th className="p-3 text-left">{renderSavedSortHeader('Status', 'status')}</th>}
-        {visibleCols.includes("structure") && <th className="p-3 text-left">{renderSavedSortHeader('Structure', 'structure')}</th>}
-        {visibleCols.includes("dte") && <th className="p-3 text-left">{renderSavedSortHeader('DTE/Since', 'dte')}</th>}
-        {visibleCols.includes("legs") && <th className="p-3 text-left">{renderSavedSortHeader('Legs', 'legs')}</th>}
-        {visibleCols.includes("strategy") && <th className="p-3 text-left">{renderSavedSortHeader('Strategy', 'strategy')}</th>}
-        {visibleCols.includes("pnl") && <th className="p-3 text-left">{renderSavedSortHeader('PnL', 'pnl')}</th>}
-        {visibleCols.includes("pnlpct") && <th className="p-3 text-left">{renderSavedSortHeader('PnL %', 'pnlpct')}</th>}
-        {visibleCols.includes("delta") && (
-          <th className="p-3 text-left">
-            {renderSavedSortHeader('Δ', 'delta')}
-          </th>
-        )}
-        {visibleCols.includes("gamma") && (
-          <th className="p-3 text-left">
-            {renderSavedSortHeader('Γ', 'gamma')}
-          </th>
-        )}
-        {visibleCols.includes("theta") && (
-          <th className="p-3 text-left">
-            {renderSavedSortHeader('Θ', 'theta')}
-          </th>
-        )}
-        {visibleCols.includes("vega") && (
-          <th className="p-3 text-left">
-            {renderSavedSortHeader('V', 'vega')}
-          </th>
-        )}
-        {visibleCols.includes("rho") && (
-          <th className="p-3 text-left">
-            {renderSavedSortHeader('ρ', 'rho')}
-          </th>
-        )}
-        {visibleCols.includes("playbook") && <th className="p-3 text-left">{renderSavedSortHeader('Playbook', 'playbook')}</th>}
-        <th className="p-3 text-right w-12">
-          <span className="sr-only">Save position</span>
-        </th>
-      </tr>
-    </thead>
-  );
+  const handleOpenInstrumentSort = React.useCallback((key: OpenInstrumentSortKey, direction: 'asc' | 'desc') => {
+    setOpenInstrumentSort({ key, direction });
+  }, []);
 
   const updatePosition = React.useCallback((id: string, updates: Partial<Position>) => {
     setPositions((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
   }, [setPositions]);
 
-  function ColumnPicker() {
-    const all = [
-      { key: "status", label: "Status" },
-      { key: "structure", label: "Structure" },
-      { key: "dte", label: "DTE/Since" },
-      { key: "legs", label: "Legs" },
-      { key: "strategy", label: "Strategy" },
-      { key: "pnl", label: "PnL $" },
-      { key: "pnlpct", label: "PnL %" },
-      { key: "delta", label: "Δ" },
-      { key: "gamma", label: "Γ" },
-      { key: "theta", label: "Θ" },
-      { key: "vega", label: "V" },
-      { key: "rho", label: "ρ" },
-      { key: "playbook", label: "Playbook" },
-    ];
-    return (
-      <details className="ml-auto">
-        <summary className="type-subhead text-slate-600 cursor-pointer select-none">Columns</summary>
-        <div className="absolute mt-2 bg-white border rounded-xl shadow p-3 z-10">
-          {all.map((c) => (
-            <label key={c.key} className="flex items-center gap-2 type-subhead py-1">
-              <input
-                type="checkbox"
-                checked={visibleCols.includes(c.key)}
-                onChange={(e) => {
-                  const checked = e.target.checked;
-                  setVisibleCols((prev) => checked ? [...prev, c.key] : prev.filter((k) => k !== c.key));
-                }}
-              />
-              {c.label}
-            </label>
-          ))}
-        </div>
-      </details>
-    );
-  }
 
   const fetchAllMarksForPositions = React.useCallback(async (ps: Position[]) => {
     setMarkFetch({ inProgress: true, total: 0, done: 0, errors: 0 });
@@ -2136,16 +2014,6 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
     setMarkFetch(prev => ({ ...prev, inProgress: false }));
   }, [fetchBtcSpot, setLegMarks, setMarkFetch]);
 
-  function Spinner({ className = "h-4 w-4" }: { className?: string }) {
-    return (
-      <svg className={`animate-spin ${className} text-slate-600`} viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10"
-                stroke="currentColor" strokeWidth="4" fill="none" />
-        <path className="opacity-75" fill="currentColor"
-              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-      </svg>
-    );
-  }
 
   const handleSignOut = React.useCallback(() => {
     if (!supabase) return;
@@ -2265,7 +2133,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((c) => !c)}
-        activeNav={innerView === 'mapCSV' ? 'mapCSV' : innerView === 'assignLegs' ? 'assignLegs' : 'dashboard'}
+        activeNav={innerView === 'mapCSV' ? 'mapCSV' : innerView === 'assignLegs' ? 'assignLegs' : (innerView === 'playbookIndex' || (typeof innerView === 'object' && innerView?.type === 'playbookDetail')) ? 'playbooks' : 'dashboard'}
         onNavigatePlaybooks={onOpenPlaybookIndex}
         onNavigateAssignLegs={onOpenAssignLegs}
         onNavigateMapCSV={onOpenMapCSV}
@@ -2292,6 +2160,10 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
               ? (mapCsvStep === 'mapping' ? 'Mapping' : 'Import CSV')
               : innerView === 'assignLegs'
               ? 'Assign Legs'
+              : innerView === 'playbookIndex'
+              ? 'Playbooks'
+              : typeof innerView === 'object' && innerView?.type === 'playbookDetail'
+              ? 'Playbook'
               : 'Dashboard'
           }
           clientName={activeClientName}
@@ -2311,6 +2183,22 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
           <AssignLegsPage
             embedded
             onBack={() => window.history.back()}
+          />
+        )}
+        {innerView === 'playbookIndex' && (
+          <PlaybookIndexPage
+            embedded
+            onBack={() => window.history.back()}
+            onSelectPlaybook={onOpenPlaybook ?? (() => {})}
+          />
+        )}
+        {typeof innerView === 'object' && innerView?.type === 'playbookDetail' && (
+          <StrategyPlaybookPage
+            embedded
+            slug={innerView.slug}
+            onBackToIndex={onOpenPlaybookIndex ?? (() => {})}
+            onBackToDashboard={() => window.history.back()}
+            onOpenPlaybook={onOpenPlaybook ?? (() => {})}
           />
         )}
 
@@ -2357,6 +2245,20 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
             >
               <Upload className="h-3.5 w-3.5" />
               <span>Import</span>
+            </button>
+
+            {/* Process Backlog */}
+            <button
+              className="rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 type-subhead font-medium text-zinc-200 inline-flex items-center gap-2 hover:bg-zinc-800 hover:border-zinc-600 disabled:opacity-50 transition-colors"
+              onClick={handleProcessBacklog}
+              disabled={processBacklogLoading || !supabase || !user}
+              title="Process unprocessed imports from backlog"
+            >
+              {processBacklogLoading ? (
+                <><Spinner className="h-3.5 w-3.5" /><span>Loading…</span></>
+              ) : (
+                <><Inbox className="h-3.5 w-3.5" /><span>Process Backlog</span></>
+              )}
             </button>
           </div>
         </div>
@@ -2409,7 +2311,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                     <span className="type-subhead font-semibold text-zinc-300">Saved Structures</span>
                     <div className="flex items-center gap-2">
                       {savedStructuresLoading && <span className="type-caption text-zinc-500">Refreshing…</span>}
-                      <ColumnPicker />
+                      <ColumnPicker visibleCols={visibleCols} onVisibleColsChange={setVisibleCols} />
                     </div>
                   </div>
                   {savedStructuresError && (
@@ -2429,7 +2331,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="min-w-full type-subhead">
-                        {savedTableHead}
+                        <PositionTableHead<SavedSortKey> visibleCols={visibleCols} sort={{ sortKey: savedSort.key, direction: savedSort.direction, onSort: handleSavedSort }} />
                         <tbody>
                           {savedStructureGroups.open.map((p) => (
                             <PositionRow
@@ -2449,11 +2351,11 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                             />
                           ))}
                           {savedStructureGroups.closed.length > 0 && (
-                            <tr className="bg-slate-100/80 border-y border-slate-200 type-caption font-semibold uppercase tracking-wide text-slate-500">
+                            <tr className="bg-zinc-800/60 border-y border-zinc-800 type-caption font-semibold uppercase tracking-wide text-zinc-500">
                               <td colSpan={savedStructureColSpan} className="px-3 py-2 text-left">
                                 <div className="flex items-center gap-3">
                                   <span>Closed structures</span>
-                                  <span className="h-px flex-1 bg-slate-300" aria-hidden />
+                                  <span className="h-px flex-1 bg-zinc-700" aria-hidden />
                                 </div>
                               </td>
                             </tr>
@@ -2494,26 +2396,26 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="min-w-full type-subhead">
-                        <thead className="type-caption uppercase text-slate-500 border-t border-slate-100">
+                        <thead className="type-caption uppercase text-zinc-500 border-t border-zinc-800">
                           <tr className="text-left">
-                            <th className="p-3">{renderOpenInstrumentSortHeader('Instrument', 'instrument', 'left')}</th>
-                            <th className="p-3 text-right">{renderOpenInstrumentSortHeader('Net Qty', 'qtyNet')}</th>
-                            <th className="p-3 text-right">{renderOpenInstrumentSortHeader('Abs PnL', 'absPnl')}</th>
+                            <th className="p-3"><SortHeader<OpenInstrumentSortKey> label="Instrument" sortKey="instrument" currentKey={openInstrumentSort.key} direction={openInstrumentSort.direction} onSort={handleOpenInstrumentSort} /></th>
+                            <th className="p-3 text-right"><SortHeader<OpenInstrumentSortKey> label="Net Qty" sortKey="qtyNet" currentKey={openInstrumentSort.key} direction={openInstrumentSort.direction} onSort={handleOpenInstrumentSort} /></th>
+                            <th className="p-3 text-right"><SortHeader<OpenInstrumentSortKey> label="Abs PnL" sortKey="absPnl" currentKey={openInstrumentSort.key} direction={openInstrumentSort.direction} onSort={handleOpenInstrumentSort} /></th>
                             {GREEK_SUMMARY_FIELDS.map((field) => (
                               <th key={field.key} className="p-3 text-right">
-                                {renderOpenInstrumentSortHeader(field.symbol, field.key)}
+                                <SortHeader<OpenInstrumentSortKey> label={field.symbol} sortKey={field.key as OpenInstrumentSortKey} currentKey={openInstrumentSort.key} direction={openInstrumentSort.direction} onSort={handleOpenInstrumentSort} />
                               </th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {openInstrumentRows.map((row) => (
-                            <tr key={row.instrument} className="border-t border-slate-100">
-                              <td className="p-3 font-medium text-slate-800">{row.instrument}</td>
-                              <td className="p-3 text-right text-slate-700">{formatQuantity(row.qtyNet)}</td>
-                              <td className="p-3 text-right text-slate-700">{fmtPremium(row.absPnl)}</td>
+                            <tr key={row.instrument} className="border-t border-zinc-800">
+                              <td className="p-3 font-medium text-zinc-200">{row.instrument}</td>
+                              <td className="p-3 text-right text-zinc-400">{formatQuantity(row.qtyNet)}</td>
+                              <td className="p-3 text-right text-zinc-400">{fmtPremium(row.absPnl)}</td>
                               {GREEK_SUMMARY_FIELDS.map((field) => (
-                                <td key={field.key} className="p-3 text-right text-slate-700">
+                                <td key={field.key} className="p-3 text-right text-zinc-400">
                                   {fmtGreek(row.greeks[field.key])}
                                 </td>
                               ))}
@@ -2556,7 +2458,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="min-w-full type-subhead">
-                        <thead className="type-caption uppercase text-slate-500 border-t border-slate-100">
+                        <thead className="type-caption uppercase text-zinc-500 border-t border-zinc-800">
                           <tr className="text-left">
                             <th className="p-3">Exchange</th>
                             <th className="p-3">Instrument</th>
@@ -2571,11 +2473,11 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                         <tbody>
                           {exchangePositionGroups.map((group) => (
                             <React.Fragment key={group.label}>
-                              <tr className="bg-slate-100/80 border-t border-slate-200 type-caption font-semibold uppercase tracking-wide text-slate-500">
+                              <tr className="bg-zinc-800/60 border-t border-zinc-800 type-caption font-semibold uppercase tracking-wide text-zinc-500">
                                 <td colSpan={8} className="px-3 py-2 text-left">
                                   <div className="flex items-center gap-3">
                                     <span>Expiry: {group.label}</span>
-                                    <span className="h-px flex-1 bg-slate-300" aria-hidden />
+                                    <span className="h-px flex-1 bg-zinc-700" aria-hidden />
                                   </div>
                                 </td>
                               </tr>
@@ -2585,17 +2487,17 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                                   ? 'text-emerald-500'
                                   : sideLower === 'sell'
                                   ? 'text-rose-500'
-                                  : 'text-slate-600';
+                                  : 'text-zinc-500';
                                 return (
-                                  <tr key={position.id} className="border-t border-slate-100">
-                                    <td className="p-3 type-caption font-semibold uppercase text-slate-500">{position.exchange}</td>
-                                    <td className="p-3 font-medium text-slate-800">{position.instrument}</td>
-                                    <td className="p-3 text-slate-700">{position.expiryISO ?? '—'}</td>
-                                    <td className="p-3 text-slate-700">{formatQuantity(position.size)}</td>
+                                  <tr key={position.id} className="border-t border-zinc-800">
+                                    <td className="p-3 type-caption font-semibold uppercase text-zinc-500">{position.exchange}</td>
+                                    <td className="p-3 font-medium text-zinc-200">{position.instrument}</td>
+                                    <td className="p-3 text-zinc-400">{position.expiryISO ?? '—'}</td>
+                                    <td className="p-3 text-zinc-400">{formatQuantity(position.size)}</td>
                                     <td className={`p-3 font-semibold ${sideClass}`}>{position.side}</td>
-                                    <td className="p-3 text-slate-700">{formatPrice(position.avgPrice)}</td>
-                                    <td className="p-3 text-slate-700">{formatPrice(position.markPrice)}</td>
-                                    <td className="p-3 text-slate-700">{formatPrice(position.indexPrice)}</td>
+                                    <td className="p-3 text-zinc-400">{formatPrice(position.avgPrice)}</td>
+                                    <td className="p-3 text-zinc-400">{formatPrice(position.markPrice)}</td>
+                                    <td className="p-3 text-zinc-400">{formatPrice(position.indexPrice)}</td>
                                   </tr>
                                 );
                               })}
@@ -2615,22 +2517,22 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                     </div>
                     <div className="overflow-x-auto">
                       <table className="min-w-full type-subhead">
-                        {tableHead}
+                        <PositionTableHead visibleCols={visibleCols} />
                         <tbody>
                           {filteredLive.length === 0 && (
                             <tr>
-                              <td colSpan={livePositionColSpan} className="p-4 type-subhead text-slate-500">
+                              <td colSpan={livePositionColSpan} className="p-4 type-subhead text-zinc-500">
                                 No live positions match your filters.
                               </td>
                             </tr>
                           )}
                           {livePositionGroups.map((group) => (
                             <React.Fragment key={group.label}>
-                              <tr className="bg-slate-100/80 border-y border-slate-200 type-caption font-semibold uppercase tracking-wide text-slate-500">
+                              <tr className="bg-zinc-800/60 border-y border-zinc-800 type-caption font-semibold uppercase tracking-wide text-zinc-500">
                                 <td colSpan={livePositionColSpan} className="px-3 py-2 text-left">
                                   <div className="flex items-center gap-3">
                                     <span>Expiry: {group.label}</span>
-                                    <span className="h-px flex-1 bg-slate-300" aria-hidden />
+                                    <span className="h-px flex-1 bg-zinc-700" aria-hidden />
                                   </div>
                                 </td>
                               </tr>

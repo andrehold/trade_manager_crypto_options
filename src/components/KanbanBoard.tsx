@@ -1,5 +1,5 @@
 import React from 'react'
-import { type Position, positionUnrealizedPnL, fmtPremium, daysTo, getLegMarkRef } from '../utils'
+import { type Position, type MarksMap, positionUnrealizedPnL, fmtPremium, daysTo, getLegMarkRef } from '../utils'
 
 type LaneId = 'new' | 'nearProfit' | 'nearLoss' | 'nearDTE'
 
@@ -45,7 +45,6 @@ const LANES: {
   },
 ]
 
-type MarksMap = Record<string, { price: number | null; multiplier: number | null; greeks?: Record<string, number | null | undefined> }>
 
 function classifyPosition(p: Position, marks: MarksMap): LaneId {
   // Near DTE takes priority

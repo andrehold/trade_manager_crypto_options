@@ -1,7 +1,5 @@
 import React from 'react'
-import DashboardApp from './DashboardApp'
-import { PlaybookIndexPage } from './features/playbooks/PlaybookIndexPage'
-import { StrategyPlaybookPage } from './features/playbooks/StrategyPlaybookPage'
+import DashboardApp, { type InnerView } from './DashboardApp'
 
 type ViewState =
   | { type: 'dashboard' }
@@ -48,36 +46,23 @@ export default function App() {
   const view = useHashView()
   const navigate = useHashNavigation()
 
-  const goDashboard = React.useCallback(() => navigate(''), [navigate])
   const goPlaybookIndex = React.useCallback(() => navigate('#/playbooks'), [navigate])
   const goPlaybook = React.useCallback((slug: string) => navigate(`#/playbooks/${slug}`), [navigate])
   const goAssignLegs = React.useCallback(() => navigate('#/assign-legs'), [navigate])
   const goMapCSV = React.useCallback(() => navigate('#/map-csv'), [navigate])
 
-  if (view.type === 'playbookIndex') {
-    return <PlaybookIndexPage onBack={goDashboard} onSelectPlaybook={goPlaybook} />
-  }
-
-  if (view.type === 'playbookDetail') {
-    return (
-      <StrategyPlaybookPage
-        slug={view.slug}
-        onBackToIndex={goPlaybookIndex}
-        onBackToDashboard={goDashboard}
-        onOpenPlaybook={goPlaybook}
-      />
-    )
-  }
-
-  const dashboardInnerView =
-    view.type === 'mapCSV' ? 'mapCSV' as const :
-    view.type === 'assignLegs' ? 'assignLegs' as const :
+  const innerView: InnerView | undefined =
+    view.type === 'mapCSV' ? 'mapCSV' :
+    view.type === 'assignLegs' ? 'assignLegs' :
+    view.type === 'playbookIndex' ? 'playbookIndex' :
+    view.type === 'playbookDetail' ? { type: 'playbookDetail', slug: view.slug } :
     undefined
 
   return (
     <DashboardApp
-      innerView={dashboardInnerView}
+      innerView={innerView}
       onOpenPlaybookIndex={goPlaybookIndex}
+      onOpenPlaybook={goPlaybook}
       onOpenAssignLegs={goAssignLegs}
       onOpenMapCSV={goMapCSV}
     />

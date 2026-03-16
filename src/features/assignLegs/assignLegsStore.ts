@@ -3,6 +3,7 @@ import { TxnRow, Exchange, Position } from '../../utils'
 export type AssignLegsContext = {
   rows: TxnRow[]
   excludedRows: TxnRow[]
+  duplicateRows?: TxnRow[]
   exchange: Exchange
   savedStructures: Position[]
   onConfirm: (rows: TxnRow[], unprocessedRows?: TxnRow[]) => void | Promise<void>

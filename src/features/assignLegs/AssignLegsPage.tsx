@@ -22,7 +22,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { TxnRow, Exchange, Position, Leg, parseInstrumentByExchange, normalizeSecond } from '../../utils'
+import { TxnRow, Exchange, Position, Leg, parseInstrumentByExchange, normalizeSecond, daysTo } from '../../utils'
 import {
   LegItem,
   BoardState,
@@ -608,6 +608,7 @@ export function AssignLegsPage({ onBack, embedded }: { onBack: () => void; embed
 function AssignLegsPageInner({
   rows,
   excludedRows,
+  duplicateRows = [],
   exchange,
   savedStructures = [],
   onConfirm,
@@ -617,6 +618,7 @@ function AssignLegsPageInner({
 }: {
   rows: TxnRow[]
   excludedRows: TxnRow[]
+  duplicateRows?: TxnRow[]
   exchange: Exchange
   savedStructures?: Position[]
   onConfirm: (rows: TxnRow[], unprocessedRows?: TxnRow[]) => void | Promise<void>
@@ -630,6 +632,7 @@ function AssignLegsPageInner({
   const [newStructureType, setNewStructureType] = useState<string>('IC')
   const [backlogPage, setBacklogPage] = useState(0)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [filterFutureOnly, setFilterFutureOnly] = useState(false)
 
   /* ── build saved-structure info ── */
   const savedStructureInfos = useMemo<SavedStructureInfo[]>(() => {
@@ -697,8 +700,8 @@ function AssignLegsPageInner({
     // Refine suggested structure type now that all legs are assigned.
     for (const [, structId] of tsToStructureId.entries()) {
       const legs = (containers[structId] ?? [])
-        .map((id) => itemsById[id]?.row)
-        .filter((r): r is TxnRow => Boolean(r))
+        .map((id) => itemsById[id])
+        .filter((item): item is LegItem => Boolean(item))
       structureMeta[structId] = { type: suggestStructureType(legs) }
     }
 
@@ -817,7 +820,10 @@ function AssignLegsPageInner({
     (id) => board.itemsById[id],
   )
   const localStructureIds = board.structureOrder.filter((id) => board.containers[id])
-  const backlogCount = backlogItems.length
+  const filteredBacklogItems = filterFutureOnly
+    ? backlogItems.filter(item => item.row.expiry && daysTo(item.row.expiry) >= 0)
+    : backlogItems
+  const backlogCount = filteredBacklogItems.length
   const newStructureCount = newStructureItems.length
   const canImport = newStructureCount === 0
 
@@ -826,7 +832,7 @@ function AssignLegsPageInner({
   const currentPage = Math.min(backlogPage, totalBacklogPages - 1)
   const pageStart = currentPage * BACKLOG_PAGE_SIZE
   const pageEnd = Math.min(pageStart + BACKLOG_PAGE_SIZE, backlogCount)
-  const visibleBacklogItems = backlogItems.slice(pageStart, pageEnd)
+  const visibleBacklogItems = filteredBacklogItems.slice(pageStart, pageEnd)
 
   /* ── sort new-structure items ── */
   const handleSortNewStructure = useCallback(() => {
@@ -1124,6 +1130,15 @@ function AssignLegsPageInner({
         </div>
       </div>
 
+      {/* ── duplicate rows notice ── */}
+      {duplicateRows.length > 0 && (
+        <div className="shrink-0 mx-6 mt-3 px-3 py-2 rounded-lg bg-zinc-800/60 border border-zinc-700/60 flex items-center gap-2">
+          <span className="type-caption text-zinc-400">
+            <span className="font-semibold text-zinc-300">{duplicateRows.length} row{duplicateRows.length !== 1 ? 's' : ''}</span> skipped — already imported (matching trade IDs found in the database). Enable <span className="font-semibold text-zinc-300">Import Historical</span> on the mapping page to include them.
+          </span>
+        </div>
+      )}
+
       {/* ── body ── */}
       <div className="flex-1 min-h-0 overflow-hidden px-6 py-4">
         {activeTab === 'included' ? (
@@ -1139,9 +1154,21 @@ function AssignLegsPageInner({
               <div className="flex-1 min-w-0 flex flex-col">
                 {/* Header row: label + pagination controls */}
                 <div className="shrink-0 flex items-center justify-between mb-2">
-                  <p className="type-caption font-semibold text-zinc-500 uppercase tracking-[0.12em]">
-                    New Legs ({backlogCount})
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="type-caption font-semibold text-zinc-500 uppercase tracking-[0.12em]">
+                      New Legs ({backlogCount})
+                    </p>
+                    <button
+                      onClick={() => { setFilterFutureOnly(f => !f); setBacklogPage(0) }}
+                      className={`px-2 py-0.5 rounded-full type-caption font-medium transition-colors ${
+                        filterFutureOnly
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      Future only
+                    </button>
+                  </div>
                   {backlogCount > 0 && (
                     <div className="flex items-center gap-1.5">
                       <button

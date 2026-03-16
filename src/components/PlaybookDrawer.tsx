@@ -14,7 +14,7 @@ type PlaybookDrawerProps = {
 
 function InlineSpinner() {
   return (
-    <svg className="h-4 w-4 animate-spin text-slate-600" viewBox="0 0 24 24">
+    <svg className="h-4 w-4 animate-spin text-zinc-500" viewBox="0 0 24 24">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
     </svg>
@@ -78,20 +78,20 @@ function PlaybookDrawerComponent({ open, onClose, position, playbook, loading, e
       <button
         type="button"
         aria-label="Close playbook drawer"
-        className="absolute inset-0 transition-opacity"
+        className="absolute inset-0 bg-black/50 transition-opacity"
         onClick={onClose}
       />
-      <aside ref={drawerRef} className="relative h-full w-full max-w-xl overflow-y-auto border-l border-slate-200 bg-white">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
+      <aside ref={drawerRef} className="relative h-full w-full max-w-xl overflow-y-auto border-l border-zinc-800 bg-layer-card">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-800 bg-layer-card px-4 py-3">
           <div>
-            <div className="type-caption font-semibold uppercase tracking-[0.2em] text-slate-400">Program Playbook</div>
-            <div className="type-title-m font-semibold text-slate-900">{safeTitle}</div>
-            <div className="type-subhead text-slate-500">{position.structureId ? <>Structure {position.structureId}</> : position.underlying}</div>
+            <div className="type-caption font-semibold uppercase tracking-[0.2em] text-zinc-400">Program Playbook</div>
+            <div className="type-title-m font-semibold text-zinc-100">{safeTitle}</div>
+            <div className="type-subhead text-zinc-500">{position.structureId ? <>Structure {position.structureId}</> : position.underlying}</div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
+            className="inline-flex items-center justify-center rounded-full border border-zinc-700 bg-layer-chip p-2 text-zinc-400 shadow-sm hover:bg-zinc-700"
           >
             <CloseIcon className="h-4 w-4" />
             <span className="sr-only">Close playbook drawer</span>
@@ -100,19 +100,19 @@ function PlaybookDrawerComponent({ open, onClose, position, playbook, loading, e
 
         <div className="space-y-4 px-4 py-4">
           {loading ? (
-            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 type-subhead text-slate-600">
+            <div className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-layer-chip px-3 py-2 type-subhead text-zinc-400">
               <InlineSpinner />
               <span>Loading program resources…</span>
             </div>
           ) : null}
 
           {error ? (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 type-subhead text-rose-700">{error}</div>
+            <div className="rounded-lg border border-rose-800/50 bg-rose-950/40 px-3 py-2 type-subhead text-rose-300">{error}</div>
           ) : null}
 
           {hasPlaybook ? (
-            <article className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-              <table className="mt-3 w-full table-fixed border-separate border-spacing-y-2 type-subhead text-slate-700">
+            <article className="rounded-xl border border-zinc-800 bg-layer-chip p-4 shadow-sm">
+              <table className="mt-3 w-full table-fixed border-separate border-spacing-y-2 type-subhead text-zinc-300">
                 <colgroup>
                   <col className="w-1/3" />
                   <col className="w-2/3" />
@@ -128,40 +128,40 @@ function PlaybookDrawerComponent({ open, onClose, position, playbook, loading, e
                       <tr key={item.label}>
                         <th
                           scope="row"
-                          className="align-top text-left type-caption font-semibold uppercase tracking-[0.12em] text-slate-500"
+                          className="align-top text-left type-caption font-semibold uppercase tracking-[0.12em] text-zinc-500"
                         >
                           {item.label}
                         </th>
-                        <td className="align-top whitespace-pre-line leading-relaxed text-slate-800">{item.value}</td>
+                        <td className="align-top whitespace-pre-line leading-relaxed text-zinc-200">{item.value}</td>
                       </tr>
                     ))}
                 </tbody>
               </table>
 
               {playbook?.otherNotes ? (
-                <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 type-subhead text-slate-700 whitespace-pre-line">
+                <div className="mt-3 rounded-lg border border-zinc-800 bg-layer-card p-3 type-subhead text-zinc-300 whitespace-pre-line">
                   {playbook.otherNotes}
                 </div>
               ) : null}
 
               {hasSignals ? (
-                <div className="mt-4 rounded-lg border border-indigo-100 bg-white p-3 type-subhead text-slate-800 shadow-sm">
-                  <div className="flex items-center gap-2 type-caption font-semibold uppercase tracking-[0.15em] text-indigo-700">
+                <div className="mt-4 rounded-lg border border-indigo-800/50 bg-indigo-950/40 p-3 type-subhead text-zinc-200 shadow-sm">
+                  <div className="flex items-center gap-2 type-caption font-semibold uppercase tracking-[0.15em] text-indigo-300">
                     <SparklesIcon className="h-4 w-4" />
                     Market Signals
                   </div>
                   <ul className="mt-2 space-y-2">
                     {signals.map((signal) => (
-                      <li key={signal.id} className="rounded border border-slate-200 bg-slate-50 px-3 py-2">
-                        <div className="type-subhead font-semibold text-slate-900">{signal.label}</div>
+                      <li key={signal.id} className="rounded border border-zinc-800 bg-layer-chip px-3 py-2">
+                        <div className="type-subhead font-semibold text-zinc-100">{signal.label}</div>
                         {signal.trigger ? (
-                          <div className="mt-1 type-caption text-slate-700">
-                            <span className="font-semibold text-slate-600">Trigger:</span> {signal.trigger}
+                          <div className="mt-1 type-caption text-zinc-300">
+                            <span className="font-semibold text-zinc-400">Trigger:</span> {signal.trigger}
                           </div>
                         ) : null}
                         {signal.action ? (
-                          <div className="mt-1 type-caption text-slate-700">
-                            <span className="font-semibold text-slate-600">Action:</span> {signal.action}
+                          <div className="mt-1 type-caption text-zinc-300">
+                            <span className="font-semibold text-zinc-400">Action:</span> {signal.action}
                           </div>
                         ) : null}
                       </li>
@@ -173,14 +173,14 @@ function PlaybookDrawerComponent({ open, onClose, position, playbook, loading, e
           ) : null}
 
           {!loading && !hasPlaybook ? (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 type-subhead text-slate-700">
+            <div className="rounded-lg border border-zinc-800 bg-layer-chip px-3 py-2 type-subhead text-zinc-300">
               No program playbook found for this structure.
             </div>
           ) : null}
 
           {hasLinks ? (
-            <div className="rounded-lg border border-slate-200 bg-white p-4 type-subhead text-slate-800 shadow-sm">
-              <div className="type-caption font-semibold uppercase tracking-[0.2em] text-slate-500">Helpful Links</div>
+            <div className="rounded-lg border border-zinc-800 bg-layer-card p-4 type-subhead text-zinc-200 shadow-sm">
+              <div className="type-caption font-semibold uppercase tracking-[0.2em] text-zinc-500">Helpful Links</div>
               <ul className="mt-3 space-y-2">
                 {links.map((link) => {
                   const linkLabel = link.title && link.title !== safeTitle ? link.title : 'Resource'
@@ -188,12 +188,12 @@ function PlaybookDrawerComponent({ open, onClose, position, playbook, loading, e
                   return (
                     <li
                       key={link.id}
-                      className="flex items-start justify-between gap-3 rounded border border-slate-200 bg-slate-50 px-3 py-2"
+                      className="flex items-start justify-between gap-3 rounded border border-zinc-800 bg-layer-chip px-3 py-2"
                     >
                       <div>
-                        <div className="type-subhead font-semibold text-slate-900">{linkLabel}</div>
+                        <div className="type-subhead font-semibold text-zinc-100">{linkLabel}</div>
                         {link.notes ? (
-                          <div className="type-caption text-slate-600 whitespace-pre-line">{link.notes}</div>
+                          <div className="type-caption text-zinc-400 whitespace-pre-line">{link.notes}</div>
                         ) : null}
                       </div>
                     {link.url ? (
@@ -201,7 +201,7 @@ function PlaybookDrawerComponent({ open, onClose, position, playbook, loading, e
                         href={link.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 type-caption font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100"
+                        className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-layer-chip px-3 py-1 type-caption font-semibold text-zinc-300 shadow-sm transition hover:bg-zinc-700"
                       >
                         <LinkIcon className="h-3.5 w-3.5" />
                         <span>Open</span>
@@ -215,8 +215,8 @@ function PlaybookDrawerComponent({ open, onClose, position, playbook, loading, e
           ) : null}
 
           {position.playbook ? (
-            <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 type-subhead text-slate-800">
-              <div className="type-caption font-semibold uppercase tracking-[0.2em] text-indigo-700">Playbook notes</div>
+            <div className="rounded-lg border border-indigo-800/50 bg-indigo-950/40 px-4 py-3 type-subhead text-zinc-200">
+              <div className="type-caption font-semibold uppercase tracking-[0.2em] text-indigo-300">Playbook notes</div>
               <div className="mt-2 whitespace-pre-line leading-relaxed">{position.playbook}</div>
             </div>
           ) : null}

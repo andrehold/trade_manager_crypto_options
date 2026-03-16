@@ -18,14 +18,13 @@ import { StructureEntryOverlay } from './StructureEntryOverlay'
 import { StructureDetailOverlay } from './StructureDetailOverlay'
 import { TradeJsonExportOverlay } from './TradeJsonExportOverlay'
 
-type MarkInfo = { price: number | null; multiplier: number | null; greeks?: any }
-type MarkMap = Record<string, MarkInfo>
+import type { MarksMap } from '../utils'
 
 type PositionRowProps = {
   p: Position
   onUpdate: (id: string, updates: Partial<Position>) => void
   visibleCols: string[]
-  marks?: MarkMap
+  marks?: MarksMap
   markLoading?: boolean
   allPositions: Position[]
   readOnly?: boolean
@@ -113,7 +112,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   )
 
   const legMarkData = React.useMemo(() => {
-    const map = new Map<string, { ref: LegMarkRef | null; mark: MarkInfo | undefined }>()
+    const map = new Map<string, { ref: LegMarkRef | null; mark: MarksMap[string] | undefined }>()
     for (const leg of p.legs) {
       const ref = getLegMarkRef(p, leg)
       const mark = ref ? marks?.[ref.key] : undefined

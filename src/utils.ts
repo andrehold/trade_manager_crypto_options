@@ -1,5 +1,11 @@
 import React from 'react'
 
+export type MarksMap = Record<string, {
+  price: number | null
+  multiplier: number | null
+  greeks?: Record<string, number | null | undefined>
+}>
+
 export type Side = 'buy' | 'sell' | string;
 export type Action = 'open' | 'close' | string;
 // Exchange-aware instrument parsing
