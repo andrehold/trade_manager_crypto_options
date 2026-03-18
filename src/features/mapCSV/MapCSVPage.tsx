@@ -72,6 +72,7 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
       trade_id: exact('trade id') || exact('trade_id') || guess(['trade id', 'trade_id', 'tradeid', 'id', 'exec id', 'execution id']),
       order_id: exact('order id') || exact('order_id') || guess(['order id', 'order_id', 'orderid']),
       info: exact('info') || guess(['info', 'note', 'comment']),
+      type: exact('type') || guess(['type', 'trade_type', 'transaction_type']),
     })
   }, [headers.join(',')])
 
@@ -171,7 +172,17 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
 
     for (const r of localRawRows) {
       const instrument = String(r[mapping.instrument] ?? '').trim()
-      if (!instrument) continue
+      if (!instrument) {
+        excludedRows.push({
+          instrument: '',
+          side: '',
+          amount: 0,
+          price: 0,
+          exchange: exch,
+          excludeReason: 'no_instrument',
+        })
+        continue
+      }
 
       const rawSide = String(r[mapping.side] ?? '')
       const { action, side } = parseActionSide(rawSide)
@@ -206,19 +217,37 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
         deriveSyntheticDeliveryTradeId(provisionalRow, r as Record<string, unknown>) ??
         undefined
 
-      const baseRow: TxnRow = { ...provisionalRow, trade_id: syntheticTradeId }
+      const csvType = mapping.type ? String(r[mapping.type] ?? '').trim().toLowerCase() : undefined
+      const rawCsv = r as Record<string, unknown>
+      const baseRow: TxnRow = { ...provisionalRow, trade_id: syntheticTradeId, csvType }
 
-      if (!parsed) {
-        excludedRows.push(baseRow)
+      // Filter out non-option-trade rows (e.g. options_settlement_summary)
+      if (csvType === 'options_settlement_summary') {
+        excludedRows.push({ ...baseRow, rawCsv, excludeReason: 'not_option_trade' })
         continue
       }
 
+      if (!parsed) {
+        excludedRows.push({ ...baseRow, rawCsv, excludeReason: 'no_instrument' })
+        continue
+      }
+
+      const isDelivery = csvType === 'delivery'
       const hasSide = baseRow.side === 'buy' || baseRow.side === 'sell'
       const hasAmount = Number.isFinite(baseRow.amount) && Math.abs(baseRow.amount!) > 0
       const hasPrice = Number.isFinite(baseRow.price) && (baseRow.price ?? 0) > 0
 
-      if (!hasSide || !hasAmount || !hasPrice) {
-        excludedRows.push(baseRow)
+      if (!hasSide) {
+        excludedRows.push({ ...baseRow, rawCsv, excludeReason: 'no_side' })
+        continue
+      }
+      if (!hasAmount) {
+        excludedRows.push({ ...baseRow, rawCsv, excludeReason: 'no_amount' })
+        continue
+      }
+      // Delivery rows have price=0 (option expiry/settlement) — that's valid
+      if (!hasPrice && !isDelivery) {
+        excludedRows.push({ ...baseRow, rawCsv, excludeReason: 'no_price' })
         continue
       }
 
@@ -248,16 +277,26 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
     // Skip when the user explicitly opted into importing historical rows.
     let dedupedRows = rows
     let duplicateRows: typeof rows = []
+    let duplicatesInStructures: typeof rows = []
+    let duplicatesInBacklog: typeof rows = []
     if (supabase && !importHistoricalRows) {
       const dedupResult = await filterDuplicateRows(supabase, rows, { allowAllocations })
       dedupedRows = dedupResult.filtered
       duplicateRows = dedupResult.duplicates
+      duplicatesInStructures = dedupResult.duplicatesInStructures
+      duplicatesInBacklog = dedupResult.duplicatesInBacklog
     }
+
+    // Build processed rows from duplicates (already in DB)
+    const processedRows = [
+      ...duplicatesInStructures.map((row) => ({ row, source: 'structure' as const })),
+      ...duplicatesInBacklog.map((row) => ({ row, source: 'unprocessed_imports' as const })),
+    ]
 
     setAssignLegsContext({
       rows: dedupedRows,
-      excludedRows,
-      duplicateRows,
+      noImportRows: excludedRows,
+      processedRows,
       exchange: exch,
       savedStructures,
       onConfirm: async (selectedRows, unprocessedRows) => {
@@ -358,18 +397,18 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
   // ── Upload zone (no file yet, no pre-existing context) ──────────────────────
   if (!ctx && !localHeaders) {
     return (
-      <div className={embedded ? 'flex-1 flex flex-col' : 'min-h-screen bg-layer-page flex flex-col'}>
+      <div className={embedded ? 'flex-1 flex flex-col' : 'min-h-screen bg-surface-page flex flex-col'}>
         {/* Header — only shown when not embedded (standalone page) */}
         {!embedded && (
-          <div className="flex items-center gap-3 px-6 py-4 border-b border-zinc-800">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-default">
             <button
               onClick={onBack}
-              className="p-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors"
               aria-label="Back"
             >
-              <ArrowLeft size={18} className="text-zinc-400" />
+              <ArrowLeft size={18} className="text-subtle" />
             </button>
-            <h1 className="type-headline font-semibold text-zinc-100">Import CSV</h1>
+            <h1 className="type-headline font-semibold text-strong">Import CSV</h1>
           </div>
         )}
 
@@ -384,14 +423,14 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
             className={[
               'flex-1 flex flex-col rounded-2xl border p-5 transition-colors',
               isDragging
-                ? 'bg-layer-card border-zinc-600'
-                : 'bg-layer-container border-zinc-800',
+                ? 'bg-surface-card border-accent'
+                : 'bg-surface-section border-default',
             ].join(' ')}
           >
             {/* Section label — upper left */}
             <div className="flex items-center gap-1.5">
-              <FileText size={13} className="text-zinc-500" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+              <FileText size={13} className="text-muted" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted">
                 Import
               </span>
             </div>
@@ -403,8 +442,8 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
                 className={[
                   'w-full max-w-xs border border-dashed rounded-xl py-7 flex items-center justify-center gap-2 transition-colors',
                   isDragging
-                    ? 'border-zinc-500 text-zinc-200 bg-zinc-700/30'
-                    : 'border-zinc-700 text-zinc-500 hover:border-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50',
+                    ? 'border-accent text-strong bg-surface-chip/30'
+                    : 'border-strong text-muted hover:border-accent hover:text-body hover:bg-surface-card/50',
                 ].join(' ')}
               >
                 <FileText size={15} />
@@ -427,36 +466,36 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
 
   // ── Column mapping UI ────────────────────────────────────────────────────────
   return (
-    <div className={embedded ? 'flex-1 flex flex-col' : 'min-h-screen bg-layer-page flex flex-col'}>
+    <div className={embedded ? 'flex-1 flex flex-col' : 'min-h-screen bg-surface-page flex flex-col'}>
       {/* Header — only shown when not embedded (standalone page) */}
       {!embedded && (
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-zinc-800">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-default">
           <button
             onClick={handleCancel}
-            className="p-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors"
             aria-label="Back"
           >
-            <ArrowLeft size={18} className="text-zinc-400" />
+            <ArrowLeft size={18} className="text-subtle" />
           </button>
-          <h1 className="type-headline font-semibold text-zinc-100">Mapping</h1>
+          <h1 className="type-headline font-semibold text-strong">Mapping</h1>
           {localHeaders && (
-            <span className="type-caption text-zinc-500 ml-1">— {localRawRows?.length ?? 0} rows</span>
+            <span className="type-caption text-muted ml-1">— {localRawRows?.length ?? 0} rows</span>
           )}
         </div>
       )}
 
       {/* Card area — mirrors the upload zone layout */}
       <div className="flex-1 flex flex-col p-6 min-h-0">
-        <div className="flex-1 flex flex-col bg-layer-container rounded-2xl border border-zinc-800 overflow-hidden">
+        <div className="flex-1 flex flex-col bg-surface-section rounded-2xl border border-default overflow-hidden">
 
           {/* Card section label */}
           <div className="flex items-center gap-1.5 px-5 pt-5 pb-0">
-            <FileText size={13} className="text-zinc-500" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+            <FileText size={13} className="text-muted" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted">
               Mapping
             </span>
             {localHeaders && (
-              <span className="text-[10px] text-zinc-600 ml-1">— {localRawRows?.length ?? 0} rows</span>
+              <span className="text-[10px] text-faint ml-1">— {localRawRows?.length ?? 0} rows</span>
             )}
           </div>
 
@@ -465,20 +504,20 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
 
             {/* Exchange selector */}
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500 mb-2">
+              <label className="block text-[10px] font-semibold uppercase tracking-[0.15em] text-muted mb-2">
                 Exchange
               </label>
               <div className="relative">
                 <select
                   value={exchange}
                   onChange={(e) => setExchange(e.target.value as 'deribit' | 'coincall' | 'cme')}
-                  className="w-full appearance-none bg-layer-chip border border-zinc-600/30 rounded-2xl px-4 py-3 pr-9 type-subhead text-zinc-100 focus:outline-none focus:border-zinc-500 cursor-pointer transition-colors"
+                  className="w-full appearance-none bg-surface-chip border border-accent/30 rounded-2xl px-4 py-3 pr-9 type-subhead text-strong focus:outline-none focus:border-accent cursor-pointer transition-colors"
                 >
                   <option value="deribit">Deribit</option>
                   <option value="coincall">Coincall</option>
                   <option value="cme">CME</option>
                 </select>
-                <ChevronsUpDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                <ChevronsUpDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
               </div>
             </div>
 
@@ -486,21 +525,21 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {EXPECTED_FIELDS.map((f) => (
                 <div key={f.key}>
-                  <label className="block text-[10px] font-semibold uppercase tracking-[0.15em] text-zinc-500 mb-2">
+                  <label className="block text-[10px] font-semibold uppercase tracking-[0.15em] text-muted mb-2">
                     {f.label}
                   </label>
                   <div className="relative">
                     <select
                       value={mapping[f.key] || ''}
                       onChange={(e) => setMapping((m) => ({ ...m, [f.key]: e.target.value }))}
-                      className="w-full appearance-none bg-layer-chip border border-zinc-600/30 rounded-2xl px-4 py-3 pr-9 type-subhead text-zinc-100 focus:outline-none focus:border-zinc-500 cursor-pointer transition-colors"
+                      className="w-full appearance-none bg-surface-chip border border-accent/30 rounded-2xl px-4 py-3 pr-9 type-subhead text-strong focus:outline-none focus:border-accent cursor-pointer transition-colors"
                     >
                       <option value="">— select —</option>
                       {headers.map((h) => (
                         <option key={h} value={h}>{h}</option>
                       ))}
                     </select>
-                    <ChevronsUpDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                    <ChevronsUpDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
                   </div>
                 </div>
               ))}
@@ -509,7 +548,7 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
             {/* Import-only options */}
             {mode === 'import' && (
               <div className="space-y-2 pt-1">
-                <label className="inline-flex items-center gap-2.5 type-caption text-zinc-400 cursor-pointer">
+                <label className="inline-flex items-center gap-2.5 type-caption text-subtle cursor-pointer">
                   <input
                     type="checkbox"
                     checked={importHistoricalRows}
@@ -518,7 +557,7 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
                   />
                   <span>Import historical rows (skip duplicates)</span>
                 </label>
-                <label className="inline-flex items-center gap-2.5 type-caption text-zinc-400 cursor-pointer">
+                <label className="inline-flex items-center gap-2.5 type-caption text-subtle cursor-pointer">
                   <input
                     type="checkbox"
                     checked={allowAllocations}
@@ -532,10 +571,10 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
 
             {/* Re-upload option for local flow */}
             {localHeaders && (
-              <div className="pt-1 border-t border-zinc-800">
+              <div className="pt-1 border-t border-default">
                 <button
                   onClick={() => { setLocalHeaders(null); setLocalRawRows(null) }}
-                  className="type-caption text-zinc-500 hover:text-zinc-300 transition-colors"
+                  className="type-caption text-muted hover:text-body transition-colors"
                 >
                   ← Upload a different file
                 </button>
@@ -544,17 +583,17 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
           </div>
 
           {/* Footer actions */}
-          <div className="px-5 py-4 border-t border-zinc-800 flex justify-end gap-3">
+          <div className="px-5 py-4 border-t border-default flex justify-end gap-3">
             <button
               onClick={handleCancel}
-              className="px-4 py-2 rounded-xl border border-zinc-700 text-zinc-400 hover:bg-zinc-800 type-subhead transition-colors"
+              className="px-4 py-2 rounded-xl border border-strong text-subtle hover:bg-surface-hover type-subhead transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleConfirm}
               disabled={isProcessing}
-              className="px-4 py-2 rounded-xl bg-zinc-100 text-zinc-900 type-subhead font-medium hover:bg-white transition-colors disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-surface-primary-btn text-on-primary-btn type-subhead font-medium hover:bg-surface-hover transition-colors disabled:opacity-50"
             >
               {isProcessing ? 'Processing…' : mode === 'backfill' ? 'Start Backfill' : 'Start Import'}
             </button>

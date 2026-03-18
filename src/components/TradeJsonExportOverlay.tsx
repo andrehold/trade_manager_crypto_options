@@ -145,33 +145,33 @@ export function TradeJsonExportOverlay({ open, onClose, position, marks }: Trade
 
   return (
     <Overlay open={open} onClose={onClose}>
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700/60 max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/60 p-4">
+      <div className="bg-white dark:bg-surface-section rounded-2xl shadow-xl border border-default dark:border-strong/60 max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between border-b border-default dark:border-strong/60 p-4">
           <div>
-            <div className="type-subhead text-slate-500 dark:text-slate-400">Export trade JSON</div>
-            <div className="type-title-m font-semibold text-slate-800 dark:text-slate-100">
+            <div className="type-subhead text-muted dark:text-faint">Export trade JSON</div>
+            <div className="type-title-m font-semibold text-strong dark:text-heading">
               {position.underlying} · {position.expiryISO}
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="rounded-full p-2 text-muted dark:text-body hover:bg-surface-hover dark:hover:bg-surface-card"
             aria-label="Close trade export overlay"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
         <div className="p-4 overflow-auto">
-          <div className="type-subhead text-slate-600 dark:text-slate-300 mb-3">
+          <div className="type-subhead text-subtle dark:text-body mb-3">
             Review and edit legs before exporting the trade payload.
           </div>
           {rows.length === 0 ? (
-            <div className="type-subhead text-slate-500 dark:text-slate-400">No legs available to export.</div>
+            <div className="type-subhead text-muted dark:text-faint">No legs available to export.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full type-subhead">
-                <thead className="text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700/60">
+                <thead className="text-muted dark:text-faint border-b border-default dark:border-strong/60">
                   <tr>
                     <th className="p-2 text-left min-w-[220px]">Instrument</th>
                     <th className="p-2 text-right">Qty</th>
@@ -181,10 +181,10 @@ export function TradeJsonExportOverlay({ open, onClose, position, marks }: Trade
                 </thead>
                 <tbody>
                   {rows.map((row) => (
-                    <tr key={row.id} className="border-b border-slate-200 dark:border-slate-700/60 last:border-0">
+                    <tr key={row.id} className="border-b border-default dark:border-strong/60 last:border-0">
                       <td className="p-2">
                         <input
-                          className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 type-subhead text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-200"
+                          className="w-full rounded-lg border border-default dark:border-strong bg-white dark:bg-surface-card px-2 py-1 type-subhead text-heading dark:text-heading focus:outline-none focus:ring-2 focus:ring-border-accent dark:focus:ring-border-accent"
                           value={row.instrument}
                           onChange={(e) =>
                             setRows((prev) =>
@@ -200,7 +200,7 @@ export function TradeJsonExportOverlay({ open, onClose, position, marks }: Trade
                           type="number"
                           min={0}
                           step="0.1"
-                          className="w-24 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-right font-mono type-subhead text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-200"
+                          className="w-24 rounded-lg border border-default dark:border-strong bg-white dark:bg-surface-card px-2 py-1 text-right font-mono type-subhead text-heading dark:text-heading focus:outline-none focus:ring-2 focus:ring-border-accent dark:focus:ring-border-accent"
                           value={row.qty}
                           onChange={(e) =>
                             setRows((prev) =>
@@ -213,7 +213,7 @@ export function TradeJsonExportOverlay({ open, onClose, position, marks }: Trade
                       </td>
                       <td className="p-2">
                         <select
-                          className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 type-subhead text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-200"
+                          className="rounded-lg border border-default dark:border-strong bg-white dark:bg-surface-card px-2 py-1 type-subhead text-heading dark:text-heading focus:outline-none focus:ring-2 focus:ring-border-accent dark:focus:ring-border-accent"
                           value={row.side}
                           onChange={(e) =>
                             setRows((prev) =>
@@ -233,7 +233,7 @@ export function TradeJsonExportOverlay({ open, onClose, position, marks }: Trade
                       <td className="p-2 text-right">
                         <button
                           type="button"
-                          className="inline-flex items-center justify-center rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60"
+                          className="inline-flex items-center justify-center rounded-md border border-default dark:border-strong bg-white dark:bg-surface-card p-2 text-muted dark:text-body hover:bg-surface-hover dark:hover:bg-surface-hover/60"
                           onClick={() => setRows((prev) => prev.filter((item) => item.id !== row.id))}
                           title="Remove leg"
                         >
@@ -247,15 +247,15 @@ export function TradeJsonExportOverlay({ open, onClose, position, marks }: Trade
             </div>
           )}
         </div>
-        <div className="border-t border-slate-200 dark:border-slate-700/60 p-4 flex items-center justify-between gap-2">
-          <div className="type-caption text-slate-500 dark:text-slate-400">
+        <div className="border-t border-default dark:border-strong/60 p-4 flex items-center justify-between gap-2">
+          <div className="type-caption text-muted dark:text-faint">
             Download includes editable legs, current greeks, and metadata.
           </div>
           <button
             type="button"
             onClick={handleDownload}
             disabled={!hasValidRows}
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 dark:bg-slate-100 px-4 py-2 type-subhead font-medium text-white dark:text-slate-900 shadow disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-surface-primary-btn dark:bg-surface-primary-btn px-4 py-2 type-subhead font-medium text-on-primary-btn dark:text-on-primary-btn shadow disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Download className="h-4 w-4" />
             Download trade JSON

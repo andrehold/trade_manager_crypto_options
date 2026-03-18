@@ -24,10 +24,10 @@ const ALL_COLUMNS = [
 export function ColumnPicker({ visibleCols, onVisibleColsChange }: ColumnPickerProps) {
   return (
     <details className="ml-auto">
-      <summary className="type-subhead text-zinc-400 cursor-pointer select-none">Columns</summary>
-      <div className="absolute mt-2 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl p-3 z-10">
+      <summary className="type-subhead text-subtle cursor-pointer select-none">Columns</summary>
+      <div className="absolute mt-2 bg-surface-section border border-strong rounded-xl shadow-xl p-3 z-10">
         {ALL_COLUMNS.map((c) => (
-          <label key={c.key} className="flex items-center gap-2 type-subhead text-zinc-400 py-1">
+          <label key={c.key} className="flex items-center gap-2 type-subhead text-subtle py-1">
             <input
               type="checkbox"
               checked={visibleCols.includes(c.key)}

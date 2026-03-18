@@ -1,0 +1,47 @@
+{
+  "primitives": [
+    { "name": "Button", "variants": ["primary", "secondary", "ghost", "danger", "success", "link"], "sizes": ["sm", "md", "lg"] },
+    { "name": "IconButton", "variants": ["neutral", "accent", "ghost"], "sizes": ["32", "36", "40"] },
+    { "name": "Surface", "variants": ["base", "raised", "elevated", "interactive", "selected"] },
+    { "name": "Card", "variants": ["default", "interactive", "metric", "panel", "kanban", "sheetSection"] },
+    { "name": "Input", "states": ["default", "hover", "focus", "invalid", "disabled"] },
+    { "name": "SearchInput" },
+    { "name": "Select" },
+    { "name": "Combobox" },
+    { "name": "SegmentedControl" },
+    { "name": "Tabs" },
+    { "name": "Badge", "variants": ["neutral", "accent", "success", "warning", "danger", "info"] },
+    { "name": "StatusBadge", "variants": ["waiting", "approved", "active", "cancelled", "completed", "occupied", "available"] },
+    { "name": "Chip", "variants": ["filter", "tag", "date", "removable"] },
+    { "name": "Avatar" },
+    { "name": "SidebarItem" },
+    { "name": "Topbar" },
+    { "name": "Sheet" },
+    { "name": "Modal" },
+    { "name": "Tooltip" },
+    { "name": "EmptyState" },
+    { "name": "Skeleton" },
+    { "name": "Divider" },
+    { "name": "Kbd" }
+  ],
+  "patterns": [
+    { "name": "AppShell" },
+    { "name": "PageHeader" },
+    { "name": "FilterBar" },
+    { "name": "DataTable" },
+    { "name": "KanbanBoard" },
+    { "name": "GanttTimeline" },
+    { "name": "DetailPanel" },
+    { "name": "ObjectCanvas" },
+    { "name": "CalendarStrip" },
+    { "name": "MetricCard" },
+    { "name": "PlannerCard" }
+  ],
+  "layout": {
+    "leftRailWidth": 72,
+    "secondarySidebarWidth": [240, 280],
+    "topBarHeight": 64,
+    "panelWidths": [360, 420],
+    "contentPadding": { "desktop": 24, "tablet": 16, "mobile": 12 }
+  }
+}

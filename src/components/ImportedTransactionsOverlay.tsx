@@ -60,12 +60,12 @@ export function ImportedTransactionsOverlay({
       <div className="w-full max-w-6xl rounded-2xl bg-white p-6 shadow-xl">
         <div className="flex flex-wrap items-center gap-3">
           <h3 className="type-title-m font-semibold">Imported Transactions</h3>
-          <span className="type-caption text-slate-500">{rows.length} rows</span>
+          <span className="type-caption text-muted">{rows.length} rows</span>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={onRefresh}
-              className="rounded-xl border px-3 py-1.5 type-subhead font-medium text-slate-700"
+              className="rounded-xl border px-3 py-1.5 type-subhead font-medium text-body"
               disabled={loading}
             >
               {loading ? 'Refreshing…' : 'Refresh'}
@@ -73,14 +73,14 @@ export function ImportedTransactionsOverlay({
             <button
               type="button"
               onClick={onBackfill}
-              className="rounded-xl border px-3 py-1.5 type-subhead font-medium text-slate-700"
+              className="rounded-xl border px-3 py-1.5 type-subhead font-medium text-body"
             >
               Backfill from CSV
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border px-3 py-1.5 type-subhead font-medium text-slate-700"
+              className="rounded-xl border px-3 py-1.5 type-subhead font-medium text-body"
             >
               Close
             </button>
@@ -100,7 +100,7 @@ export function ImportedTransactionsOverlay({
                 ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                 : backfillStatus.type === 'error'
                 ? 'border-rose-200 bg-rose-50 text-rose-700'
-                : 'border-slate-200 bg-slate-50 text-slate-700'
+                : 'border-default bg-surface-page text-body'
             }`}
           >
             {backfillStatus.message}
@@ -109,7 +109,7 @@ export function ImportedTransactionsOverlay({
 
         <div className="mt-4 max-h-[60vh] overflow-auto rounded-xl border">
           <table className="min-w-full type-subhead">
-            <thead className="sticky top-0 bg-slate-50 type-caption uppercase text-slate-500">
+            <thead className="sticky top-0 bg-surface-page type-caption uppercase text-muted">
               <tr className="text-left">
                 <th className="p-2">Status</th>
                 <th className="p-2">Timestamp</th>
@@ -129,7 +129,7 @@ export function ImportedTransactionsOverlay({
                   <tr key={`skeleton-${i}`} className="border-t animate-pulse">
                     {Array.from({ length: 10 }).map((__, j) => (
                       <td key={j} className="p-2">
-                        <div className="h-4 rounded bg-slate-100" />
+                        <div className="h-4 rounded bg-surface-chip" />
                       </td>
                     ))}
                   </tr>
@@ -137,7 +137,7 @@ export function ImportedTransactionsOverlay({
               ) : null}
               {rows.length === 0 && !loading ? (
                 <tr>
-                  <td colSpan={10} className="p-4 text-center type-subhead text-slate-500">
+                  <td colSpan={10} className="p-4 text-center type-subhead text-muted">
                     No imported transactions found.
                   </td>
                 </tr>
@@ -148,10 +148,10 @@ export function ImportedTransactionsOverlay({
                 return (
                   <tr key={row.id} className="border-t">
                     <td className="p-2">{statusBadge(row.status, structureLabel)}</td>
-                    <td className="p-2 text-slate-700">{row.timestamp ?? '—'}</td>
+                    <td className="p-2 text-body">{row.timestamp ?? '—'}</td>
                     <td className="p-2">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-slate-800">{row.instrument}</span>
+                        <span className="font-medium text-strong">{row.instrument}</span>
                         {row.warning ? (
                           <span className="type-caption text-amber-600" title={row.warning}>
                             ⚠️
@@ -159,13 +159,13 @@ export function ImportedTransactionsOverlay({
                         ) : null}
                       </div>
                     </td>
-                    <td className="p-2 text-slate-700">{row.side}</td>
-                    <td className="p-2 text-slate-700">{row.amount ?? '—'}</td>
-                    <td className="p-2 text-slate-700">{row.price ?? '—'}</td>
-                    <td className="p-2 text-slate-700">{row.fee ?? '—'}</td>
-                    <td className="p-2 text-slate-700">{row.tradeId ?? '—'}</td>
-                    <td className="p-2 text-slate-700">{row.orderId ?? '—'}</td>
-                    <td className="p-2 text-slate-700">{structureLabel}</td>
+                    <td className="p-2 text-body">{row.side}</td>
+                    <td className="p-2 text-body">{row.amount ?? '—'}</td>
+                    <td className="p-2 text-body">{row.price ?? '—'}</td>
+                    <td className="p-2 text-body">{row.fee ?? '—'}</td>
+                    <td className="p-2 text-body">{row.tradeId ?? '—'}</td>
+                    <td className="p-2 text-body">{row.orderId ?? '—'}</td>
+                    <td className="p-2 text-body">{structureLabel}</td>
                   </tr>
                 );
               })}

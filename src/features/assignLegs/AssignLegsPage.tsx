@@ -22,7 +22,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { TxnRow, Exchange, Position, Leg, parseInstrumentByExchange, normalizeSecond, daysTo } from '../../utils'
+import { TxnRow, Exchange, Position, Leg, parseInstrumentByExchange, daysTo } from '../../utils'
 import {
   LegItem,
   BoardState,
@@ -112,20 +112,20 @@ function SortableLegChip({
       style={style}
       {...attributes}
       {...listeners}
-      className={`flex flex-col bg-layer-card border border-zinc-700/60 rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing touch-none select-none min-w-[160px] flex-1 max-w-[260px] transition-transform${extraClassName ? ' ' + extraClassName : ''}`}
+      className={`flex flex-col bg-surface-card border border-strong/60 rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing touch-none select-none min-w-[160px] flex-1 max-w-[260px] transition-transform${extraClassName ? ' ' + extraClassName : ''}`}
     >
       {/* Header: icon + qty+strike + remove */}
       <div className="flex items-center justify-between gap-1">
         <div className="flex items-center gap-1.5 min-w-0">
-          <Blocks size={13} className="shrink-0 text-zinc-500" />
-          <span className="type-caption font-bold text-zinc-100 truncate">
+          <Blocks size={13} className="shrink-0 text-muted" />
+          <span className="type-caption font-bold text-strong truncate">
             {sign}{qtyStr} {strikePart}
           </span>
         </div>
         {onRemove && (
           <button
             onClick={(e) => { e.stopPropagation(); onRemove() }}
-            className="shrink-0 text-zinc-600 hover:text-rose-400 type-caption leading-none ml-1 transition-colors"
+            className="shrink-0 text-faint hover:text-rose-400 type-caption leading-none ml-1 transition-colors"
             title="Remove from structure"
           >
             ✕
@@ -134,21 +134,21 @@ function SortableLegChip({
       </div>
 
       {/* Divider */}
-      <div className="border-t border-zinc-700/60 my-2" />
+      <div className="border-t border-strong/60 my-2" />
 
       {/* Expiry */}
       {expiryPart && (
         <div className="flex items-center gap-1.5 mb-1">
-          <Calendar size={11} className="shrink-0 text-zinc-500" />
-          <span className="type-caption text-zinc-400 whitespace-nowrap">{expiryPart}</span>
+          <Calendar size={11} className="shrink-0 text-muted" />
+          <span className="type-caption text-subtle whitespace-nowrap">{expiryPart}</span>
         </div>
       )}
 
       {/* Timestamp */}
       {(datePart || timePart) && (
         <div className="flex items-center gap-1.5 mb-2">
-          <Clock size={11} className="shrink-0 text-zinc-500" />
-          <span className="type-caption text-zinc-400 whitespace-nowrap" title={ts}>
+          <Clock size={11} className="shrink-0 text-muted" />
+          <span className="type-caption text-subtle whitespace-nowrap" title={ts}>
             {datePart}{timePart ? ` ${timePart}` : ''}
           </span>
         </div>
@@ -157,7 +157,7 @@ function SortableLegChip({
       {/* Open/close chip */}
       {action && (
         <div className="mb-1">
-          <span className="inline-flex items-center gap-1 bg-layer-chip rounded-md px-2 py-0.5 type-caption font-bold leading-tight text-zinc-100">
+          <span className="inline-flex items-center gap-1 bg-surface-chip rounded-md px-2 py-0.5 type-caption font-bold leading-tight text-strong">
             {action === 'open'
               ? <ArrowUpRight size={10} className="shrink-0 text-blue-400" />
               : <ArrowDownLeft size={10} className="shrink-0 text-orange-400" />
@@ -182,11 +182,11 @@ function SortableLegChip({
 function GhostChip({ legItem, exchange }: { legItem: LegItem; exchange: Exchange }) {
   return (
     <div
-      className="flex flex-col bg-layer-chip border border-zinc-600 rounded-xl px-2.5 py-2 shadow-2xl opacity-90 touch-none select-none min-w-[148px] max-w-[240px]"
+      className="flex flex-col bg-surface-chip border border-accent rounded-xl px-2.5 py-2 shadow-2xl opacity-90 touch-none select-none min-w-[148px] max-w-[240px]"
     >
       <div className="flex items-center gap-1.5">
-        <Blocks size={12} className="shrink-0 text-zinc-400" />
-        <span className="type-caption font-bold text-zinc-100 truncate">
+        <Blocks size={12} className="shrink-0 text-subtle" />
+        <span className="type-caption font-bold text-strong truncate">
           {formatLegLabel(legItem.row, exchange)}
         </span>
       </div>
@@ -242,12 +242,12 @@ function DraggableLegChip({
       style={style}
       {...attributes}
       {...listeners}
-      className={`flex flex-col bg-layer-card border border-zinc-700/60 rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing touch-none select-none min-w-[160px] flex-1 max-w-[260px]${extraClassName ? ' ' + extraClassName : ''}`}
+      className={`flex flex-col bg-surface-card border border-strong/60 rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing touch-none select-none min-w-[160px] flex-1 max-w-[260px]${extraClassName ? ' ' + extraClassName : ''}`}
     >
       <div className="flex items-center justify-between gap-1">
         <div className="flex items-center gap-1.5 min-w-0">
-          <Blocks size={13} className="shrink-0 text-zinc-500" />
-          <span className="type-caption font-bold text-zinc-100 truncate">
+          <Blocks size={13} className="shrink-0 text-muted" />
+          <span className="type-caption font-bold text-strong truncate">
             {sign}{qtyStr} {strikePart}
           </span>
         </div>
@@ -255,7 +255,7 @@ function DraggableLegChip({
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onExclude() }}
-            className="shrink-0 text-zinc-600 hover:text-amber-400 leading-none ml-1 transition-colors"
+            className="shrink-0 text-faint hover:text-amber-400 leading-none ml-1 transition-colors"
             title="Save as unprocessed"
           >
             <EyeOff size={11} />
@@ -263,19 +263,19 @@ function DraggableLegChip({
         )}
       </div>
 
-      <div className="border-t border-zinc-700/60 my-2" />
+      <div className="border-t border-strong/60 my-2" />
 
       {expiryPart && (
         <div className="flex items-center gap-1.5 mb-1">
-          <Calendar size={11} className="shrink-0 text-zinc-500" />
-          <span className="type-caption text-zinc-400 whitespace-nowrap">{expiryPart}</span>
+          <Calendar size={11} className="shrink-0 text-muted" />
+          <span className="type-caption text-subtle whitespace-nowrap">{expiryPart}</span>
         </div>
       )}
 
       {(datePart || timePart) && (
         <div className="flex items-center gap-1.5 mb-2">
-          <Clock size={11} className="shrink-0 text-zinc-500" />
-          <span className="type-caption text-zinc-400 whitespace-nowrap" title={ts}>
+          <Clock size={11} className="shrink-0 text-muted" />
+          <span className="type-caption text-subtle whitespace-nowrap" title={ts}>
             {datePart}{timePart ? ` ${timePart}` : ''}
           </span>
         </div>
@@ -283,7 +283,7 @@ function DraggableLegChip({
 
       {action && (
         <div className="mb-1">
-          <span className="inline-flex items-center gap-1 bg-layer-chip rounded-md px-2 py-0.5 type-caption font-bold leading-tight text-zinc-100">
+          <span className="inline-flex items-center gap-1 bg-surface-chip rounded-md px-2 py-0.5 type-caption font-bold leading-tight text-strong">
             {action === 'open'
               ? <ArrowUpRight size={10} className="shrink-0 text-blue-400" />
               : <ArrowDownLeft size={10} className="shrink-0 text-orange-400" />
@@ -363,7 +363,7 @@ function NewStructureDropZone({
           ? 'border-blue-500/60 bg-blue-500/5'
           : items.length > 0
           ? 'border-emerald-500/40 bg-emerald-500/5'
-          : 'border-zinc-700 bg-zinc-900/50'
+          : 'border-strong bg-surface-section/50'
       }`}
     >
       <div className="flex items-center justify-between mb-2.5">
@@ -371,7 +371,7 @@ function NewStructureDropZone({
           <select
             value={structureType}
             onChange={(e) => onStructureTypeChange(e.target.value)}
-            className="bg-zinc-800 border border-zinc-700 rounded-lg px-1.5 py-0.5 type-caption text-zinc-300 focus:outline-none focus:border-zinc-500"
+            className="bg-surface-card border border-strong rounded-lg px-1.5 py-0.5 type-caption text-body focus:outline-none focus:border-accent"
           >
             {STRUCTURE_TYPES.map((st) => (
               <option key={st.code} value={st.code}>
@@ -382,7 +382,7 @@ function NewStructureDropZone({
           {items.length > 0 && (
             <button
               onClick={handleAutoDetect}
-              className="px-2 py-0.5 type-caption font-medium rounded-lg border border-zinc-600 bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:border-zinc-500 transition-colors"
+              className="px-2 py-0.5 type-caption font-medium rounded-lg border border-accent bg-surface-card text-body hover:bg-surface-hover hover:border-accent transition-colors"
               title="Auto-detect structure type from legs"
             >
               Auto
@@ -394,7 +394,7 @@ function NewStructureDropZone({
           <div className="flex items-center gap-1.5">
             <button
               onClick={onSort}
-              className="px-2.5 py-0.5 type-caption font-medium rounded-lg bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors"
+              className="px-2.5 py-0.5 type-caption font-medium rounded-lg bg-surface-chip text-body hover:bg-surface-hover transition-colors"
             >
               Sort
             </button>
@@ -410,7 +410,7 @@ function NewStructureDropZone({
       <SortableContext items={items.map((i) => i.id)} strategy={rectSortingStrategy}>
         <div className="flex flex-wrap gap-2 min-h-[36px] content-start">
           {items.length === 0 ? (
-            <p className="type-caption text-zinc-600 italic py-1">
+            <p className="type-caption text-faint italic py-1">
               Drop legs here to create a new structure
             </p>
           ) : (
@@ -436,7 +436,7 @@ function ExistingLegChip({ leg }: { leg: Leg }) {
   const qty = Math.abs(leg.qtyNet)
   const qtyStr = qty % 1 === 0 ? String(qty) : qty.toFixed(2)
   return (
-    <span className="inline-flex items-center gap-1 bg-zinc-700/50 border border-zinc-600/50 rounded-lg px-2 py-1 type-caption text-zinc-300 select-none">
+    <span className="inline-flex items-center gap-1 bg-surface-chip/50 border border-accent/50 rounded-lg px-2 py-1 type-caption text-body select-none">
       <span className="font-medium">
         {sign}{qtyStr} / {leg.optionType}{leg.strike}
       </span>
@@ -468,11 +468,11 @@ function SavedStructureCard({
     <div
       ref={setNodeRef}
       className={`border rounded-xl px-3 py-2.5 transition-colors ${
-        isOver ? 'border-blue-500/50 bg-blue-500/5' : 'border-zinc-700 bg-zinc-800/50'
+        isOver ? 'border-blue-500/50 bg-blue-500/5' : 'border-strong bg-surface-card/50'
       }`}
     >
       <div className="flex items-center gap-2 mb-2">
-        <p className="type-caption font-semibold text-zinc-400 truncate flex-1" title={label}>
+        <p className="type-caption font-semibold text-subtle truncate flex-1" title={label}>
           {label}
         </p>
         {newLegsNetPremium !== null && <PremiumBadge value={newLegsNetPremium} />}
@@ -486,17 +486,17 @@ function SavedStructureCard({
               ))}
             </div>
           ) : (
-            <p className="type-caption text-zinc-600 italic">No legs</p>
+            <p className="type-caption text-faint italic">No legs</p>
           )}
         </div>
         <SortableContext items={newLegs.map((i) => i.id)} strategy={rectSortingStrategy}>
           <div
             className={`flex-1 min-w-0 border border-dashed rounded-xl p-2 min-h-[36px] transition-colors ${
-              isOver ? 'border-blue-500/50 bg-blue-500/5' : 'border-zinc-700 bg-zinc-900/50'
+              isOver ? 'border-blue-500/50 bg-blue-500/5' : 'border-strong bg-surface-section/50'
             }`}
           >
             {newLegs.length === 0 ? (
-              <p className="type-caption text-zinc-600 italic text-center py-0.5">Drop legs to add</p>
+              <p className="type-caption text-faint italic text-center py-0.5">Drop legs to add</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {newLegs.map((item) => (
@@ -542,11 +542,11 @@ function LocalStructureCard({
     <div
       ref={setNodeRef}
       className={`border rounded-xl p-3 transition-colors ${
-        isOver ? 'border-blue-500/50 bg-blue-500/5' : 'border-zinc-700 bg-zinc-800/50'
+        isOver ? 'border-blue-500/50 bg-blue-500/5' : 'border-strong bg-surface-card/50'
       }`}
     >
       <div className="flex items-center justify-between mb-2">
-        <p className="type-caption font-semibold text-zinc-400 truncate flex-1">
+        <p className="type-caption font-semibold text-subtle truncate flex-1">
           {formatStructureLabel(items, meta.type)}
         </p>
         <div className="flex items-center gap-1.5 ml-2 shrink-0">
@@ -554,7 +554,7 @@ function LocalStructureCard({
           <select
             value={meta.type}
             onChange={(e) => onTypeChange(e.target.value)}
-            className="bg-zinc-800 border border-zinc-700 rounded-lg px-1.5 py-0.5 type-caption text-zinc-300 focus:outline-none focus:border-zinc-500"
+            className="bg-surface-card border border-strong rounded-lg px-1.5 py-0.5 type-caption text-body focus:outline-none focus:border-accent"
           >
             {STRUCTURE_TYPES.map((st) => (
               <option key={st.code} value={st.code}>
@@ -564,7 +564,7 @@ function LocalStructureCard({
           </select>
           <button
             onClick={onRemove}
-            className="type-caption text-zinc-600 hover:text-rose-400 transition-colors"
+            className="type-caption text-faint hover:text-rose-400 transition-colors"
             title="Delete structure"
           >
             ✕
@@ -574,7 +574,7 @@ function LocalStructureCard({
       <SortableContext items={items.map((i) => i.id)} strategy={rectSortingStrategy}>
         <div className="flex flex-wrap gap-2 min-h-[28px] content-start">
           {items.length === 0 ? (
-            <p className="type-caption text-zinc-600 italic py-0.5">Drop legs here</p>
+            <p className="type-caption text-faint italic py-0.5">Drop legs here</p>
           ) : (
             items.map((item) => (
               <SortableLegChip
@@ -607,8 +607,8 @@ export function AssignLegsPage({ onBack, embedded }: { onBack: () => void; embed
 
 function AssignLegsPageInner({
   rows,
-  excludedRows,
-  duplicateRows = [],
+  noImportRows = [],
+  processedRows = [],
   exchange,
   savedStructures = [],
   onConfirm,
@@ -617,8 +617,8 @@ function AssignLegsPageInner({
   embedded,
 }: {
   rows: TxnRow[]
-  excludedRows: TxnRow[]
-  duplicateRows?: TxnRow[]
+  noImportRows?: TxnRow[]
+  processedRows?: { row: TxnRow; source: 'structure' | 'unprocessed_imports' }[]
   exchange: Exchange
   savedStructures?: Position[]
   onConfirm: (rows: TxnRow[], unprocessedRows?: TxnRow[]) => void | Promise<void>
@@ -626,13 +626,14 @@ function AssignLegsPageInner({
   onBack: () => void
   embedded?: boolean
 }) {
-  const [activeTab, setActiveTab] = useState<'included' | 'excluded'>('included')
+  const [activeTab, setActiveTab] = useState<'open' | 'no_import' | 'unprocessed' | 'processed'>('open')
   const [importing, setImporting] = useState(false)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [newStructureType, setNewStructureType] = useState<string>('IC')
   const [backlogPage, setBacklogPage] = useState(0)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [filterFutureOnly, setFilterFutureOnly] = useState(false)
+  const [filterAction, setFilterAction] = useState<'open' | 'close' | null>(null)
 
   /* ── build saved-structure info ── */
   const savedStructureInfos = useMemo<SavedStructureInfo[]>(() => {
@@ -662,48 +663,12 @@ function AssignLegsPageInner({
       return ta < tb ? -1 : ta > tb ? 1 : 0
     })
 
-    // Count how many rows share each normalized-second timestamp.
-    // For Deribit combo/spread orders every leg has the exact same timestamp,
-    // so groups of 2-4 sharing a second are very likely a single structure.
-    const tsCount = new Map<string, number>()
-    for (const row of sorted) {
-      const k = normalizeSecond(row.timestamp)
-      if (k !== 'NO_TS') tsCount.set(k, (tsCount.get(k) ?? 0) + 1)
-    }
-
-    // Build a draft structure container for each combo group (2–4 shared legs).
-    // Groups of 1 stay in backlog; groups > 4 are likely batch fills, not spreads.
-    const tsToStructureId = new Map<string, string>()
-    let autoSeq = 0
-    for (const [tsKey, count] of tsCount.entries()) {
-      if (count >= 2 && count <= 4) {
-        const structId = `structure:${Date.now() + autoSeq++}`
-        tsToStructureId.set(tsKey, structId)
-        containers[structId] = []
-        structureOrder.push(structId)
-        structureMeta[structId] = { type: 'IC' } // refined below
-      }
-    }
-
+    // All rows start in the backlog — user manually creates structures
     sorted.forEach((row, idx) => {
       const id = generateLegId(row, idx)
       itemsById[id] = { id, row, included: true }
-      const tsKey = normalizeSecond(row.timestamp)
-      const structId = tsToStructureId.get(tsKey)
-      if (structId) {
-        containers[structId].push(id)
-      } else {
-        containers[CONTAINER_BACKLOG].push(id)
-      }
+      containers[CONTAINER_BACKLOG].push(id)
     })
-
-    // Refine suggested structure type now that all legs are assigned.
-    for (const [, structId] of tsToStructureId.entries()) {
-      const legs = (containers[structId] ?? [])
-        .map((id) => itemsById[id])
-        .filter((item): item is LegItem => Boolean(item))
-      structureMeta[structId] = { type: suggestStructureType(legs) }
-    }
 
     for (const info of savedStructureInfos) {
       containers[`saved:${info.id}`] = []
@@ -820,9 +785,12 @@ function AssignLegsPageInner({
     (id) => board.itemsById[id],
   )
   const localStructureIds = board.structureOrder.filter((id) => board.containers[id])
-  const filteredBacklogItems = filterFutureOnly
-    ? backlogItems.filter(item => item.row.expiry && daysTo(item.row.expiry) >= 0)
-    : backlogItems
+  const filteredBacklogItems = useMemo(() => {
+    let items = backlogItems
+    if (filterFutureOnly) items = items.filter(item => item.row.expiry && daysTo(item.row.expiry) >= 0)
+    if (filterAction) items = items.filter(item => item.row.action === filterAction)
+    return items
+  }, [backlogItems, filterFutureOnly, filterAction])
   const backlogCount = filteredBacklogItems.length
   const newStructureCount = newStructureItems.length
   const canImport = newStructureCount === 0
@@ -1042,59 +1010,57 @@ function AssignLegsPageInner({
   /* ═════════════════════ RENDER ═════════════════════ */
 
   return (
-    <div className={embedded ? 'flex-1 min-h-0 flex flex-col bg-layer-page' : 'h-screen flex flex-col bg-layer-page'}>
+    <div className={embedded ? 'flex-1 min-h-0 flex flex-col bg-surface-page' : 'h-screen flex flex-col bg-surface-page'}>
       {/* ── header ── */}
-      <div className="shrink-0 flex items-center gap-3 px-6 pt-5 pb-3 border-b border-zinc-800">
+      <div className="shrink-0 flex items-center gap-3 px-6 pt-5 pb-3 border-b border-default">
         {!embedded && (
           <button
             onClick={handleCancel}
-            className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-surface-card text-subtle transition-colors"
             title="Back to dashboard"
           >
             <ArrowLeft size={18} />
           </button>
         )}
         {!embedded && (
-          <h3 className="type-subhead font-semibold text-zinc-100 tracking-tight">Assign Legs to Structures</h3>
+          <h3 className="type-subhead font-semibold text-heading tracking-tight">Assign Legs to Structures</h3>
         )}
         <div className="flex gap-2">
-          <button
-            className={`px-3 py-1 rounded-lg border type-caption font-bold uppercase tracking-[0.1em] transition-colors ${
-              activeTab === 'included'
-                ? 'bg-zinc-100 text-zinc-900 border-zinc-100'
-                : 'border-zinc-700 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'
-            }`}
-            onClick={() => setActiveTab('included')}
-          >
-            Included ({rows.length - manuallyExcludedItems.length})
-          </button>
-          <button
-            className={`px-3 py-1 rounded-lg border type-caption font-bold uppercase tracking-[0.1em] transition-colors ${
-              activeTab === 'excluded'
-                ? 'bg-zinc-100 text-zinc-900 border-zinc-100'
-                : 'border-zinc-700 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'
-            }`}
-            onClick={() => setActiveTab('excluded')}
-          >
-            Unprocessed ({excludedRows.length + manuallyExcludedItems.length})
-          </button>
+          {([
+            { key: 'open' as const, label: 'Open', count: backlogCount },
+            { key: 'no_import' as const, label: 'No Import', count: noImportRows.length },
+            { key: 'unprocessed' as const, label: 'Unprocessed', count: manuallyExcludedItems.length },
+            { key: 'processed' as const, label: 'Processed', count: processedRows.length },
+          ]).map(({ key, label, count }) => (
+            <button
+              key={key}
+              className={`px-3 py-1 rounded-lg border type-caption font-bold uppercase tracking-[0.1em] transition-colors ${
+                activeTab === key
+                  ? 'bg-surface-primary-btn text-on-primary-btn border-surface-primary-btn'
+                  : 'border-strong text-muted hover:bg-surface-card hover:text-body'
+              }`}
+              onClick={() => setActiveTab(key)}
+            >
+              {label} ({count})
+            </button>
+          ))}
         </div>
         <div className="ml-auto flex items-center gap-3">
           {/* Cancel button with confirmation popover */}
           <div className="relative">
             <button
               onClick={() => setShowCancelConfirm(true)}
-              className="px-3 py-1 rounded-lg border border-zinc-700 text-zinc-400 type-caption font-bold hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+              className="px-3 py-1 rounded-lg border border-strong text-subtle type-caption font-bold hover:bg-surface-card hover:text-body transition-colors"
             >
               Cancel
             </button>
             {showCancelConfirm && (
-              <div className="absolute right-0 top-full mt-2 z-50 w-68 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl p-4">
-                <p className="type-body text-zinc-200 mb-4">You have unsaved changes. Would you cancel?</p>
+              <div className="absolute right-0 top-full mt-2 z-50 w-68 bg-surface-section border border-strong rounded-xl shadow-2xl p-4">
+                <p className="type-body text-strong mb-4">You have unsaved changes. Would you cancel?</p>
                 <div className="flex gap-2 justify-end">
                   <button
                     onClick={() => setShowCancelConfirm(false)}
-                    className="px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 type-caption font-bold hover:bg-zinc-800 transition-colors"
+                    className="px-3 py-1.5 rounded-lg border border-strong text-subtle type-caption font-bold hover:bg-surface-card transition-colors"
                   >
                     No
                   </button>
@@ -1130,18 +1096,9 @@ function AssignLegsPageInner({
         </div>
       </div>
 
-      {/* ── duplicate rows notice ── */}
-      {duplicateRows.length > 0 && (
-        <div className="shrink-0 mx-6 mt-3 px-3 py-2 rounded-lg bg-zinc-800/60 border border-zinc-700/60 flex items-center gap-2">
-          <span className="type-caption text-zinc-400">
-            <span className="font-semibold text-zinc-300">{duplicateRows.length} row{duplicateRows.length !== 1 ? 's' : ''}</span> skipped — already imported (matching trade IDs found in the database). Enable <span className="font-semibold text-zinc-300">Import Historical</span> on the mapping page to include them.
-          </span>
-        </div>
-      )}
-
       {/* ── body ── */}
       <div className="flex-1 min-h-0 overflow-hidden px-6 py-4">
-        {activeTab === 'included' ? (
+        {activeTab === 'open' ? (
           <DndContext
             sensors={sensors}
             collisionDetection={collisionDetection}
@@ -1155,7 +1112,7 @@ function AssignLegsPageInner({
                 {/* Header row: label + pagination controls */}
                 <div className="shrink-0 flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <p className="type-caption font-semibold text-zinc-500 uppercase tracking-[0.12em]">
+                    <p className="type-caption font-semibold text-muted uppercase tracking-[0.12em]">
                       New Legs ({backlogCount})
                     </p>
                     <button
@@ -1163,10 +1120,30 @@ function AssignLegsPageInner({
                       className={`px-2 py-0.5 rounded-full type-caption font-medium transition-colors ${
                         filterFutureOnly
                           ? 'bg-indigo-600 text-white'
-                          : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+                          : 'bg-surface-card text-subtle hover:text-strong'
                       }`}
                     >
                       Future only
+                    </button>
+                    <button
+                      onClick={() => { setFilterAction(a => a === 'open' ? null : 'open'); setBacklogPage(0) }}
+                      className={`px-2 py-0.5 rounded-full type-caption font-medium transition-colors ${
+                        filterAction === 'open'
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-surface-card text-subtle hover:text-strong'
+                      }`}
+                    >
+                      Open
+                    </button>
+                    <button
+                      onClick={() => { setFilterAction(a => a === 'close' ? null : 'close'); setBacklogPage(0) }}
+                      className={`px-2 py-0.5 rounded-full type-caption font-medium transition-colors ${
+                        filterAction === 'close'
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-surface-card text-subtle hover:text-strong'
+                      }`}
+                    >
+                      Close
                     </button>
                   </div>
                   {backlogCount > 0 && (
@@ -1174,17 +1151,17 @@ function AssignLegsPageInner({
                       <button
                         onClick={() => setBacklogPage(p => Math.max(0, p - 1))}
                         disabled={currentPage === 0}
-                        className="w-5 h-5 flex items-center justify-center rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors type-caption"
+                        className="w-5 h-5 flex items-center justify-center rounded text-subtle hover:text-strong hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors type-caption"
                       >
                         ‹
                       </button>
-                      <span className="type-caption text-zinc-500 tabular-nums">
+                      <span className="type-caption text-muted tabular-nums">
                         {pageStart + 1}–{pageEnd} of {backlogCount}
                       </span>
                       <button
                         onClick={() => setBacklogPage(p => Math.min(totalBacklogPages - 1, p + 1))}
                         disabled={currentPage >= totalBacklogPages - 1}
-                        className="w-5 h-5 flex items-center justify-center rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors type-caption"
+                        className="w-5 h-5 flex items-center justify-center rounded text-subtle hover:text-strong hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors type-caption"
                       >
                         ›
                       </button>
@@ -1193,11 +1170,11 @@ function AssignLegsPageInner({
                 </div>
                 <Droppable
                   id={CONTAINER_BACKLOG}
-                  className="flex-1 min-h-0 rounded-xl p-3 bg-layer-container border border-zinc-800"
+                  className="flex-1 min-h-0 rounded-xl p-3 bg-surface-section border border-default"
                 >
                   <div className="grid grid-cols-2 gap-2">
                     {backlogCount === 0 ? (
-                      <p className="type-caption text-zinc-600 italic text-center py-4 col-span-2">
+                      <p className="type-caption text-faint italic text-center py-4 col-span-2">
                         All legs assigned
                       </p>
                     ) : (
@@ -1213,7 +1190,7 @@ function AssignLegsPageInner({
               <div className="flex-1 min-w-0 flex flex-col gap-3">
                 {/* Pinned: New structure drop zone */}
                 <div className="shrink-0">
-                  <p className="type-caption font-semibold text-zinc-500 uppercase tracking-[0.12em] mb-2">
+                  <p className="type-caption font-semibold text-muted uppercase tracking-[0.12em] mb-2">
                     New Structure
                   </p>
                   <NewStructureDropZone
@@ -1228,14 +1205,14 @@ function AssignLegsPageInner({
                 </div>
 
                 {/* Scrollable: structure cards */}
-                <p className="shrink-0 type-caption font-semibold text-zinc-500 uppercase tracking-[0.12em] mb-2">
+                <p className="shrink-0 type-caption font-semibold text-muted uppercase tracking-[0.12em] mb-2">
                   Saved Structures
                 </p>
-                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col gap-3 bg-layer-container border border-zinc-800 rounded-xl p-3">
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col gap-3 bg-surface-section border border-default rounded-xl p-3">
                   {/* Local (unsaved) structures */}
                   {localStructureIds.length > 0 && (
                     <div>
-                      <p className="type-caption font-semibold text-zinc-500 uppercase tracking-[0.12em] mb-2">
+                      <p className="type-caption font-semibold text-muted uppercase tracking-[0.12em] mb-2">
                         New Structures (overlay only)
                       </p>
                       <div className="space-y-2.5">
@@ -1281,7 +1258,7 @@ function AssignLegsPageInner({
                   )}
 
                   {savedStructureInfos.length === 0 && localStructureIds.length === 0 && (
-                    <p className="type-caption text-zinc-600 italic text-center py-6">
+                    <p className="type-caption text-faint italic text-center py-6">
                       No saved structures. Drop legs above to create one.
                     </p>
                   )}
@@ -1295,88 +1272,162 @@ function AssignLegsPageInner({
               ) : null}
             </DragOverlay>
           </DndContext>
-        ) : (
-          /* ──── Excluded tab ──── */
+        ) : activeTab === 'no_import' ? (
+          /* ──── No Import tab ──── */
           <div className="h-full flex flex-col gap-3 overflow-hidden">
-            {manuallyExcludedItems.length > 0 && (
-              <div className="shrink-0">
-                <p className="type-caption font-semibold text-zinc-500 uppercase tracking-[0.12em] mb-2">
-                  Unprocessed ({manuallyExcludedItems.length})
-                </p>
-                <div className="border border-zinc-800 rounded-xl overflow-auto max-h-48">
-                  <table className="min-w-full type-caption">
-                    <thead className="bg-zinc-900 text-zinc-500 sticky top-0">
-                      <tr>
-                        <th className="p-2 text-left font-medium">Instrument</th>
-                        <th className="p-2 text-left font-medium">Side</th>
-                        <th className="p-2 text-left font-medium">Amount</th>
-                        <th className="p-2 text-left font-medium">Price</th>
-                        <th className="p-2 text-left font-medium">Trade ID</th>
-                        <th className="p-2 text-left font-medium"></th>
+            {noImportRows.length > 0 && (
+              <p className="shrink-0 type-caption text-faint">
+                {(() => {
+                  const counts: Record<string, number> = {}
+                  for (const r of noImportRows) {
+                    const reason = r.excludeReason ?? 'unknown'
+                    counts[reason] = (counts[reason] ?? 0) + 1
+                  }
+                  const labels: Record<string, string> = {
+                    not_option_trade: 'not an option trade',
+                    no_instrument: 'no instrument',
+                    no_side: 'no side',
+                    no_amount: 'no amount',
+                    no_price: 'zero-price',
+                  }
+                  return Object.entries(counts)
+                    .map(([reason, count]) => `${count} ${labels[reason] ?? reason}`)
+                    .join(', ')
+                })()}
+                {' — not imported.'}
+              </p>
+            )}
+            {noImportRows.length === 0 ? (
+              <p className="type-caption text-faint italic">All CSV rows are option trades.</p>
+            ) : (
+              <div className="flex-1 min-h-0 overflow-auto border border-default rounded-xl">
+                <table className="min-w-full type-caption">
+                  <thead className="bg-surface-section text-muted sticky top-0">
+                    <tr>
+                      <th className="p-2 text-left font-medium">Instrument</th>
+                      <th className="p-2 text-left font-medium">Type</th>
+                      <th className="p-2 text-left font-medium">Side</th>
+                      <th className="p-2 text-left font-medium">Amount</th>
+                      <th className="p-2 text-left font-medium">Price</th>
+                      <th className="p-2 text-left font-medium">Reason</th>
+                      <th className="p-2 text-left font-medium">Raw CSV</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {noImportRows.map((r, i) => (
+                      <tr key={i} className="border-t border-default text-subtle">
+                        <td className="p-2">{r.instrument || '—'}</td>
+                        <td className="p-2">{r.csvType || '—'}</td>
+                        <td className="p-2 capitalize">{r.side || '—'}</td>
+                        <td className="p-2">{r.amount || '—'}</td>
+                        <td className="p-2">{r.price || '—'}</td>
+                        <td className="p-2 text-muted">
+                          {r.excludeReason ? ({ not_option_trade: 'Not option trade', no_instrument: 'No instrument', no_side: 'No side', no_amount: 'No amount', no_price: 'Zero price' } as Record<string, string>)[r.excludeReason] ?? r.excludeReason : '—'}
+                        </td>
+                        <td className="p-2">
+                          {r.rawCsv ? (
+                            <pre className="text-[10px] text-muted whitespace-pre-wrap max-w-[360px] overflow-auto max-h-[80px]">{JSON.stringify(r.rawCsv, null, 2)}</pre>
+                          ) : '—'}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {manuallyExcludedItems.map((item) => {
-                        const r = item.row
-                        return (
-                          <tr key={item.id} className="border-t border-zinc-800 text-zinc-400">
-                            <td className="p-2">{r.instrument}</td>
-                            <td className="p-2 capitalize">{r.side}</td>
-                            <td className="p-2">{r.amount}</td>
-                            <td className="p-2">{r.price}</td>
-                            <td className="p-2">{r.trade_id || '—'}</td>
-                            <td className="p-2">
-                              <button
-                                onClick={() => handleRestoreItem(item.id)}
-                                className="flex items-center gap-1 text-zinc-500 hover:text-emerald-400 transition-colors"
-                                title="Restore to new legs"
-                              >
-                                <RotateCcw size={11} />
-                                <span className="type-caption">Restore</span>
-                              </button>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
-            <div className="shrink-0">
-              <p className="type-caption font-semibold text-zinc-500 uppercase tracking-[0.12em] mb-2">
-                Auto-Excluded — Non-option rows ({excludedRows.length})
-              </p>
-              <p className="type-caption text-zinc-600 mb-2">Non-option instruments — not saved.</p>
-            </div>
-            {excludedRows.length === 0 && manuallyExcludedItems.length === 0 ? (
-              <p className="type-caption text-zinc-600 italic">No unprocessed rows.</p>
-            ) : excludedRows.length > 0 ? (
-              <div className="flex-1 min-h-0 overflow-auto border border-zinc-800 rounded-xl">
+          </div>
+        ) : activeTab === 'unprocessed' ? (
+          /* ──── Unprocessed tab (user-driven, starts empty) ──── */
+          <div className="h-full flex flex-col gap-3 overflow-hidden">
+            {manuallyExcludedItems.length === 0 ? (
+              <p className="type-caption text-faint italic">No unprocessed rows. Use the eye-off icon on legs in the Open tab to mark them as unprocessed.</p>
+            ) : (
+              <div className="flex-1 min-h-0 overflow-auto border border-default rounded-xl">
                 <table className="min-w-full type-caption">
-                  <thead className="bg-zinc-900 text-zinc-500 sticky top-0">
+                  <thead className="bg-surface-section text-muted sticky top-0">
                     <tr>
                       <th className="p-2 text-left font-medium">Instrument</th>
                       <th className="p-2 text-left font-medium">Side</th>
                       <th className="p-2 text-left font-medium">Amount</th>
                       <th className="p-2 text-left font-medium">Price</th>
                       <th className="p-2 text-left font-medium">Trade ID</th>
+                      <th className="p-2 text-left font-medium"></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {excludedRows.map((r, i) => (
-                      <tr key={i} className="border-t border-zinc-800 text-zinc-400">
-                        <td className="p-2">{r.instrument}</td>
-                        <td className="p-2 capitalize">{r.side}</td>
-                        <td className="p-2">{r.amount}</td>
-                        <td className="p-2">{r.price}</td>
-                        <td className="p-2">{r.trade_id || '—'}</td>
-                      </tr>
-                    ))}
+                    {manuallyExcludedItems.map((item) => {
+                      const r = item.row
+                      return (
+                        <tr key={item.id} className="border-t border-default text-subtle">
+                          <td className="p-2">{r.instrument}</td>
+                          <td className="p-2 capitalize">{r.side}</td>
+                          <td className="p-2">{r.amount}</td>
+                          <td className="p-2">{r.price}</td>
+                          <td className="p-2">{r.trade_id || '—'}</td>
+                          <td className="p-2">
+                            <button
+                              onClick={() => handleRestoreItem(item.id)}
+                              className="flex items-center gap-1 text-muted hover:text-emerald-400 transition-colors"
+                              title="Restore to new legs"
+                            >
+                              <RotateCcw size={11} />
+                              <span className="type-caption">Restore</span>
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
-            ) : null}
+            )}
+          </div>
+        ) : (
+          /* ──── Processed tab (already in DB) ──── */
+          <div className="h-full flex flex-col gap-3 overflow-hidden">
+            {processedRows.length === 0 ? (
+              <p className="type-caption text-faint italic">No previously imported rows found in this CSV.</p>
+            ) : (
+              <>
+                <p className="shrink-0 type-caption text-faint">
+                  {processedRows.length} row{processedRows.length !== 1 ? 's' : ''} already stored in database.
+                </p>
+                <div className="flex-1 min-h-0 overflow-auto border border-default rounded-xl">
+                  <table className="min-w-full type-caption">
+                    <thead className="bg-surface-section text-muted sticky top-0">
+                      <tr>
+                        <th className="p-2 text-left font-medium">Instrument</th>
+                        <th className="p-2 text-left font-medium">Side</th>
+                        <th className="p-2 text-left font-medium">Amount</th>
+                        <th className="p-2 text-left font-medium">Price</th>
+                        <th className="p-2 text-left font-medium">Trade ID</th>
+                        <th className="p-2 text-left font-medium">Stored In</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {processedRows.map((p, i) => (
+                        <tr key={i} className="border-t border-default text-subtle">
+                          <td className="p-2">{p.row.instrument}</td>
+                          <td className="p-2 capitalize">{p.row.side}</td>
+                          <td className="p-2">{p.row.amount}</td>
+                          <td className="p-2">{p.row.price}</td>
+                          <td className="p-2">{p.row.trade_id || '—'}</td>
+                          <td className="p-2">
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${
+                              p.source === 'structure'
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            }`}>
+                              {p.source === 'structure' ? 'Structure' : 'Unprocessed'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

@@ -9,7 +9,7 @@ function SideCell({ action, side }: { action?: TxnRow['action']; side: TxnRow['s
       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
       : action === 'close'
       ? 'bg-rose-50 text-rose-700 border-rose-200'
-      : 'bg-slate-50 text-slate-600 border-slate-200';
+      : 'bg-surface-page text-subtle border-default';
 
   return (
     <div className="flex items-center gap-2">
@@ -101,7 +101,7 @@ const ReviewRow = React.memo(function ReviewRow({
         />
       </td>
       <td className="p-2 align-top">
-        <label className="inline-flex items-center gap-2 type-caption text-slate-700">
+        <label className="inline-flex items-center gap-2 type-caption text-body">
           <input
             type="checkbox"
             checked={isUnprocessed}
@@ -115,7 +115,7 @@ const ReviewRow = React.memo(function ReviewRow({
       <td className="p-2 align-top">
         <div className="flex flex-col gap-1">
           <select
-            className="border rounded-lg px-2 py-1 type-subhead bg-white disabled:bg-slate-50"
+            className="border rounded-lg px-2 py-1 type-subhead bg-white disabled:bg-surface-page"
             value={hasAllocations ? '' : selectedStructureId ?? ''}
             onChange={(e) => onChangeLinkedStructure(i, e.target.value)}
             disabled={!hasSavedStructures || isUnprocessed || hasAllocations}
@@ -127,7 +127,7 @@ const ReviewRow = React.memo(function ReviewRow({
               </option>
             ))}
           </select>
-          <span className={`type-caption ${selectedStructureId ? 'text-emerald-600' : 'text-slate-500'}`}>
+          <span className={`type-caption ${selectedStructureId ? 'text-emerald-600' : 'text-muted'}`}>
             {isUnprocessed
               ? 'Will be saved as unprocessed and excluded from future imports.'
               : hasAllocations
@@ -143,12 +143,12 @@ const ReviewRow = React.memo(function ReviewRow({
               : 'No saved structures available for this client.'}
           </span>
           {allowAllocations && !isUnprocessed ? (
-            <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
-              <div className="flex items-center justify-between type-caption text-slate-600 mb-2">
+            <div className="mt-2 rounded-lg border border-default bg-surface-page p-2">
+              <div className="flex items-center justify-between type-caption text-subtle mb-2">
                 <span>Allocations (split qty across structures)</span>
                 <button
                   type="button"
-                  className="type-caption text-slate-700 hover:text-slate-900"
+                  className="type-caption text-body hover:text-heading"
                   onClick={() => onAddAllocation(i)}
                   disabled={!hasSavedStructures}
                 >
@@ -191,10 +191,10 @@ const ReviewRow = React.memo(function ReviewRow({
                     ))}
                   </div>
                 ) : (
-                  <div className="type-caption text-slate-500">No allocations added yet.</div>
+                  <div className="type-caption text-muted">No allocations added yet.</div>
                 )
               ) : (
-                <div className="type-caption text-slate-500">
+                <div className="type-caption text-muted">
                   No saved structures available for allocation.
                 </div>
               )}
@@ -217,7 +217,7 @@ const ReviewRow = React.memo(function ReviewRow({
         <input
           type="number"
           min={1}
-          className={`border rounded-lg px-2 py-1 type-subhead w-20 ${selectedStructureId || isUnprocessed ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : ''}`}
+          className={`border rounded-lg px-2 py-1 type-subhead w-20 ${selectedStructureId || isUnprocessed ? 'bg-surface-page text-faint cursor-not-allowed' : ''}`}
           value={structureNumber ?? 1}
           onChange={(e) => {
             const v = Number(e.target.value);
@@ -459,7 +459,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
   }, []);
 
   const TableHead = () => (
-    <thead className="bg-slate-50 text-slate-600 sticky top-0">
+    <thead className="bg-surface-page text-subtle sticky top-0">
       <tr>
         <th className="p-2">Import</th>
         <th className="p-2 text-left">Unprocessed</th>
@@ -484,8 +484,8 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
         <div className="flex items-center gap-3 mb-3">
           <h3 className="type-title-m font-semibold">Review & Select Lines</h3>
           <div className="ml-auto flex gap-2 type-subhead">
-            <button className={`px-3 py-1 rounded-lg border ${activeTab==='included' ? 'bg-slate-900 text-white' : ''}`} onClick={() => setActiveTab('included')}>Included ({rows.length})</button>
-            <button className={`px-3 py-1 rounded-lg border ${activeTab==='excluded' ? 'bg-slate-900 text-white' : ''}`} onClick={() => setActiveTab('excluded')}>Excluded ({excludedRows.length})</button>
+            <button className={`px-3 py-1 rounded-lg border ${activeTab==='included' ? 'bg-surface-primary-btn text-on-primary-btn' : ''}`} onClick={() => setActiveTab('included')}>Included ({rows.length})</button>
+            <button className={`px-3 py-1 rounded-lg border ${activeTab==='excluded' ? 'bg-surface-primary-btn text-on-primary-btn' : ''}`} onClick={() => setActiveTab('excluded')}>Excluded ({excludedRows.length})</button>
           </div>
         </div>
         {importHistorical ? (
@@ -520,11 +520,11 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
         ) : null}
         {activeTab==='included' && (
           <>
-            <p className="type-subhead text-slate-600 mb-3">Uncheck any rows you don’t want to import. Lines with the same second form one “trade structure”.</p>
+            <p className="type-subhead text-subtle mb-3">Uncheck any rows you don’t want to import. Lines with the same second form one “trade structure”.</p>
             <div className="flex gap-2 mb-3 items-center">
               <button className="px-3 py-1 border rounded-lg" onClick={() => toggleAll(true)}>Select all</button>
               <button className="px-3 py-1 border rounded-lg" onClick={() => toggleAll(false)}>Select none</button>
-              <div className="mx-2 w-px h-5 bg-slate-200" />
+              <div className="mx-2 w-px h-5 bg-surface-hover" />
               <button
                 className="px-3 py-1 border rounded-lg"
                 onClick={() => setStructureNumbers(prev => prev.map(() => 1))}
@@ -597,7 +597,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
               <button onClick={onCancel} className="px-4 py-2 rounded-xl border">Back</button>
               <button
                 onClick={handleImport}
-                className="px-4 py-2 rounded-xl bg-slate-900 text-white disabled:opacity-50"
+                className="px-4 py-2 rounded-xl bg-surface-primary-btn text-on-primary-btn disabled:opacity-50"
                 disabled={importing || selectedCount === 0}
               >
                 {importing
@@ -609,7 +609,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
         )}
         {activeTab==='excluded' && (
           <>
-            <p className="type-subhead text-slate-600 mb-3">These rows were auto-excluded because their instruments aren’t recognized as options (format: UNDERLYING-DDMONYY-STRIKE-C|P). Review-only.</p>
+            <p className="type-subhead text-subtle mb-3">These rows were auto-excluded because their instruments aren’t recognized as options (format: UNDERLYING-DDMONYY-STRIKE-C|P). Review-only.</p>
             <div className="max-h-[60vh] overflow-auto border rounded-xl">
               <table className="min-w-full type-subhead">
                 <TableHead />
@@ -619,7 +619,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
                     return (
                       <tr key={i} className="border-t opacity-70">
                         <td className="p-2"><input type="checkbox" disabled checked={false} readOnly /></td>
-                        <td className="p-2 type-caption text-slate-500">—</td>
+                        <td className="p-2 type-caption text-muted">—</td>
                         <td className="p-2">{r.timestamp || '—'}</td>
                         <td className="p-2">{structure}</td>
                         <td className="p-2">—</td>

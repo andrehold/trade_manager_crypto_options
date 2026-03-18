@@ -14,10 +14,10 @@ const LANES: {
   {
     id: 'new',
     label: 'New',
-    accent: 'text-zinc-200',
-    headerBg: 'bg-zinc-800/60',
-    border: 'border-zinc-700',
-    countBg: 'bg-zinc-700 text-zinc-300',
+    accent: 'text-strong',
+    headerBg: 'bg-surface-card/60',
+    border: 'border-strong',
+    countBg: 'bg-surface-chip text-body',
   },
   {
     id: 'nearProfit',
@@ -75,13 +75,13 @@ function KanbanCard({ p, marks }: { p: Position; marks: MarksMap }) {
   }, null)
 
   return (
-    <div className="bg-zinc-800 border border-zinc-700/80 rounded-xl p-3 flex flex-col gap-2 hover:border-zinc-600 transition-colors">
+    <div className="bg-surface-card border border-strong/80 rounded-xl p-3 flex flex-col gap-2 hover:border-accent transition-colors">
       <div className="flex items-start justify-between gap-2">
-        <span className="type-subhead font-semibold text-zinc-100 truncate leading-snug">
+        <span className="type-subhead font-semibold text-strong truncate leading-snug">
           {p.structureId ?? p.id}
         </span>
         {p.strategy ? (
-          <span className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-zinc-700 text-zinc-300 uppercase tracking-wide">
+          <span className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-surface-chip text-body uppercase tracking-wide">
             {p.strategy}
           </span>
         ) : null}
@@ -93,16 +93,16 @@ function KanbanCard({ p, marks }: { p: Position; marks: MarksMap }) {
             {pnl >= 0 ? '+' : ''}{fmtPremium(pnl)}
           </span>
         ) : (
-          <span className="text-zinc-600">no marks</span>
+          <span className="text-faint">no marks</span>
         )}
 
         {minDte !== null ? (
-          <span className={`font-medium tabular-nums ${minDte <= 7 ? 'text-amber-400' : 'text-zinc-500'}`}>
+          <span className={`font-medium tabular-nums ${minDte <= 7 ? 'text-amber-400' : 'text-muted'}`}>
             {minDte}d
           </span>
         ) : null}
 
-        <span className="text-zinc-600 ml-auto">
+        <span className="text-faint ml-auto">
           {p.legs.length} leg{p.legs.length !== 1 ? 's' : ''}
         </span>
       </div>
@@ -148,7 +148,7 @@ export function KanbanBoard({ positions, marks }: Props) {
           {/* Cards */}
           <div className="flex flex-col gap-2 p-2 overflow-y-auto flex-1">
             {lanes[id].length === 0 ? (
-              <p className="type-caption text-zinc-700 text-center py-6">No structures</p>
+              <p className="type-caption text-faint text-center py-6">No structures</p>
             ) : (
               lanes[id].map((p) => <KanbanCard key={p.id} p={p} marks={marks} />)
             )}

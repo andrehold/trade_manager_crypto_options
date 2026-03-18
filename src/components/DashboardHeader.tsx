@@ -22,36 +22,36 @@ type Props = {
 
 export function DashboardHeader({ title, clientName, portfolioGreeks }: Props) {
   return (
-    <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-800 bg-zinc-950">
+    <div className="flex items-center justify-between px-6 py-3 border-b border-default bg-surface-page">
       {/* Left: nav arrows + page title */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => window.history.back()}
-            className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+            className="p-1.5 rounded-lg text-muted hover:text-strong hover:bg-surface-card transition-colors"
             aria-label="Go back"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button
             onClick={() => window.history.forward()}
-            className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+            className="p-1.5 rounded-lg text-muted hover:text-strong hover:bg-surface-card transition-colors"
             aria-label="Go forward"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
-        <h1 className="type-headline font-semibold text-zinc-100 tracking-tight">{title}</h1>
+        <h1 className="type-headline font-semibold text-heading tracking-tight">{title}</h1>
       </div>
 
       {/* Right: client name + portfolio greeks (4 chips) */}
       <div className="flex items-center gap-1.5">
         {clientName && (
           <>
-            <div className="flex items-center px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800">
-              <span className="text-[11px] font-semibold text-zinc-200 tracking-wide">{clientName}</span>
+            <div className="flex items-center px-2.5 py-1.5 rounded-lg bg-surface-section border border-default">
+              <span className="text-[11px] font-semibold text-strong tracking-wide">{clientName}</span>
             </div>
-            <div className="w-px h-4 bg-zinc-800 mx-1" />
+            <div className="w-px h-4 bg-border-default mx-1" />
           </>
         )}
         {HEADER_GREEKS.map(({ key, symbol, label }) => {
@@ -62,10 +62,10 @@ export function DashboardHeader({ title, clientName, portfolioGreeks }: Props) {
             <div
               key={key}
               title={label}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-section border border-default"
             >
-              <span className="text-[11px] font-medium text-zinc-500">{symbol}</span>
-              <span className="text-[11px] font-semibold text-zinc-200 tabular-nums">{value}</span>
+              <span className="text-[11px] font-medium text-muted">{symbol}</span>
+              <span className="text-[11px] font-semibold text-strong tabular-nums">{value}</span>
             </div>
           )
         })}

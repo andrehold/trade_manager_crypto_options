@@ -81,7 +81,7 @@ export function Sidebar({
     <aside
       className={[
         'scheme-light',
-        'flex flex-col bg-zinc-950 text-white',
+        'flex flex-col bg-surface-page text-white',
         'sticky top-0 h-screen overflow-y-auto overflow-x-hidden shrink-0',
         'transition-[width] duration-200 ease-in-out',
         collapsed ? 'w-16' : 'w-60',
@@ -90,7 +90,7 @@ export function Sidebar({
       {/* ── Logo + collapse toggle ── */}
       <div
         className={[
-          'flex items-center gap-3 px-3 py-4 border-b border-zinc-800',
+          'flex items-center gap-3 px-3 py-4 border-b border-default',
           collapsed ? 'justify-center' : '',
         ].join(' ')}
       >
@@ -112,7 +112,7 @@ export function Sidebar({
             <p className="type-subhead font-semibold leading-tight truncate tracking-tight">
               Trade Desk
             </p>
-            <p className="text-[10px] text-slate-400 leading-tight truncate">
+            <p className="text-[10px] text-faint leading-tight truncate">
               Demo · Frontend Only
             </p>
           </div>
@@ -120,7 +120,7 @@ export function Sidebar({
         {!collapsed && (
           <button
             onClick={onToggle}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-zinc-800 transition ml-auto shrink-0"
+            className="p-1 rounded-lg text-faint hover:text-white hover:bg-surface-card transition ml-auto shrink-0"
             title="Collapse sidebar"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -143,7 +143,7 @@ export function Sidebar({
                 collapsed ? 'justify-center' : '',
                 isActive
                   ? 'bg-emerald-500/15 text-emerald-400'
-                  : 'text-slate-400 hover:bg-zinc-900 hover:text-slate-100',
+                  : 'text-faint hover:bg-surface-section hover:text-heading',
               ].join(' ')}
             >
               <Icon
@@ -156,7 +156,7 @@ export function Sidebar({
       </nav>
 
       {/* ── Divider ── */}
-      <div className="mx-3 border-t border-zinc-800" />
+      <div className="mx-3 border-t border-default" />
 
       {/* ── BTC Spot ── */}
       <div
@@ -173,7 +173,7 @@ export function Sidebar({
         <Bitcoin className="w-4 h-4 text-amber-400 shrink-0" />
         {!collapsed && (
           <div className="flex flex-col leading-tight">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-faint">
               BTC Spot
             </span>
             <span className="type-subhead font-semibold text-white tabular-nums">{btcFormatted}</span>
@@ -200,7 +200,7 @@ export function Sidebar({
       <div className="flex-1" />
 
       {/* ── Divider ── */}
-      <div className="mx-3 border-t border-zinc-800" />
+      <div className="mx-3 border-t border-default" />
 
       {/* ── Alerts only ── */}
       <div
@@ -217,29 +217,29 @@ export function Sidebar({
           <Bell
             className={[
               'w-4 h-4 shrink-0',
-              alertsOnly ? 'text-amber-400' : 'text-slate-400',
+              alertsOnly ? 'text-amber-400' : 'text-faint',
             ].join(' ')}
           />
         </button>
         {!collapsed && (
           <>
-            <span className="flex-1 type-subhead text-slate-300">Alerts only</span>
+            <span className="flex-1 type-subhead text-body">Alerts only</span>
             <Toggle checked={alertsOnly} onChange={onToggleAlertsOnly} label="Alerts only" />
           </>
         )}
       </div>
 
       {/* ── Client selector ── */}
-      <div className="border-t border-zinc-800">
+      <div className="border-t border-default">
         {collapsed ? (
           <div className="flex justify-center px-4 py-3" title={selectedClient}>
-            <Users className="w-4 h-4 text-slate-400" />
+            <Users className="w-4 h-4 text-faint" />
           </div>
         ) : (
           <div className="flex items-center gap-2 px-4 py-3">
-            <Users className="w-4 h-4 text-slate-400 shrink-0" />
+            <Users className="w-4 h-4 text-faint shrink-0" />
             <div className="flex-1 min-w-0 flex flex-col leading-tight">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-faint">
                 Client
               </span>
               <select
@@ -249,7 +249,7 @@ export function Sidebar({
                 disabled={!isAdmin}
               >
                 {clientOptions.map((c) => (
-                  <option key={c} value={c} className="bg-zinc-950 text-white">
+                  <option key={c} value={c} className="bg-surface-page text-white">
                     {c}
                   </option>
                 ))}
@@ -258,14 +258,14 @@ export function Sidebar({
             {isAdmin && (
               <button
                 onClick={onAddClient}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-zinc-800 transition shrink-0"
+                className="p-1 rounded-lg text-faint hover:text-white hover:bg-surface-card transition shrink-0"
                 title="Add client"
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
             )}
             {!isAdmin && (
-              <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted">
                 Locked
               </span>
             )}
@@ -276,19 +276,19 @@ export function Sidebar({
       {/* ── User + sign out ── */}
       <div
         className={[
-          'flex items-center gap-2 px-4 py-3 border-t border-zinc-800',
+          'flex items-center gap-2 px-4 py-3 border-t border-default',
           collapsed ? 'justify-center' : '',
         ].join(' ')}
       >
-        <UserCircle className="w-4 h-4 text-slate-400 shrink-0" />
+        <UserCircle className="w-4 h-4 text-faint shrink-0" />
         {!collapsed && (
-          <span className="flex-1 type-caption text-slate-400 truncate min-w-0">
+          <span className="flex-1 type-caption text-faint truncate min-w-0">
             {user?.email ?? 'Signed in'}
           </span>
         )}
         <button
           onClick={onSignOut}
-          className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-zinc-800 transition shrink-0"
+          className="p-1 rounded-lg text-faint hover:text-rose-400 hover:bg-surface-card transition shrink-0"
           title="Sign out"
         >
           <LogOut className="w-4 h-4" />

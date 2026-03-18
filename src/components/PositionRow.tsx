@@ -38,7 +38,7 @@ type PositionRowProps = {
 
 function CellSpinner() {
   return (
-    <svg className="animate-spin h-4 w-4 inline-block text-slate-400" viewBox="0 0 24 24">
+    <svg className="animate-spin h-4 w-4 inline-block text-faint" viewBox="0 0 24 24">
       <circle
         className="opacity-25"
         cx="12"
@@ -172,9 +172,9 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
 
   return (
     <>
-      <tr className="border-b last:border-0 hover:bg-slate-50">
+      <tr className="border-b last:border-0 hover:bg-surface-hover">
         <td className="p-3 align-top">
-          <button onClick={() => setOpen((v) => !v)} className="text-slate-500">
+          <button onClick={() => setOpen((v) => !v)} className="text-muted">
             {open ? '▾' : '▸'}
           </button>
         </td>
@@ -189,10 +189,10 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                     ? 'bg-amber-500'
                     : statusTone === 'destructive'
                     ? 'bg-rose-500'
-                    : 'bg-slate-400'
+                    : 'bg-faint'
                 }`}
               />
-              <span className="text-slate-700 type-subhead">{p.status}</span>
+              <span className="text-body type-subhead">{p.status}</span>
             </div>
           </td>
         )}
@@ -201,7 +201,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           <td className="p-3 align-top">
             <div className="flex flex-col leading-tight">
               <span>{p.dte}</span>
-              <span className="type-caption text-slate-500">
+              <span className="type-caption text-muted">
                 ({p.openSinceDays != null ? p.openSinceDays : '—'})
               </span>
             </div>
@@ -213,36 +213,36 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
             {readOnly ? (
               structureSummaryLines ? (
                 <div className="flex flex-col gap-1">
-                  <span className="type-subhead font-medium text-slate-800">{structureSummaryLines.header}</span>
+                  <span className="type-subhead font-medium text-strong">{structureSummaryLines.header}</span>
                   {structureSummaryLines.legs ? (
-                    <span className="type-caption text-slate-500">{structureSummaryLines.legs}</span>
+                    <span className="type-caption text-muted">{structureSummaryLines.legs}</span>
                   ) : null}
                 </div>
               ) : (
-                <span className="inline-flex min-h-[2.25rem] items-center rounded-lg border border-slate-200 bg-slate-50 px-3 type-subhead text-slate-400">
+                <span className="inline-flex min-h-[2.25rem] items-center rounded-lg border border-default bg-surface-page px-3 type-subhead text-faint">
                   —
                 </span>
               )
             ) : programLabel || strategyLabel || showStructureChip ? (
               <div className="flex flex-col gap-1">
                 {programLabel && (
-                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 type-caption font-medium text-slate-700 shadow-sm">
+                  <span className="inline-flex items-center rounded-full border border-default bg-white px-2 py-1 type-caption font-medium text-body shadow-sm">
                     {programLabel}
                   </span>
                 )}
                 {showStructureChip && structureChipSummary && (
-                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 type-caption font-medium text-slate-700 shadow-sm">
+                  <span className="inline-flex items-center rounded-full border border-default bg-white px-3 py-1 type-caption font-medium text-body shadow-sm">
                     {structureChipSummary}
                   </span>
                 )}
                 {strategyLabel && (
-                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-1 type-caption font-medium text-slate-700 shadow-sm">
+                  <span className="inline-flex items-center rounded-full border border-default bg-white px-2 py-1 type-caption font-medium text-body shadow-sm">
                     {strategyLabel}
                   </span>
                 )}
               </div>
             ) : (
-              <span className="inline-flex min-h-[2.25rem] items-center rounded-lg border border-slate-200 bg-slate-50 px-3 type-subhead text-slate-400">
+              <span className="inline-flex min-h-[2.25rem] items-center rounded-lg border border-default bg-surface-page px-3 type-subhead text-faint">
                 —
               </span>
             )}
@@ -251,7 +251,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
         {visibleCols.includes('pnl') && (
           <td className={`p-3 align-top ${posTotalPnl < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
             {fmtPremium(posTotalPnl, p.underlying)}
-            <div className="type-caption text-slate-500">
+            <div className="type-caption text-muted">
               <span title="Realized">{fmtPremium(p.realizedPnl, p.underlying)}</span>
               {' + '}
               <span title="Unrealized (from Marks)">{fmtPremium(posUnrealized, p.underlying)}</span>
@@ -272,8 +272,8 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           <td className="p-3 align-top">
             <button
               type="button"
-              className={`inline-flex items-center justify-center rounded-md border px-2 py-1 text-slate-600 shadow-sm ${
-                hasPlaybookValue ? 'border-slate-200 bg-white hover:bg-slate-100' : 'border-slate-200 bg-slate-50 opacity-60'
+              className={`inline-flex items-center justify-center rounded-md border px-2 py-1 text-subtle shadow-sm ${
+                hasPlaybookValue ? 'border-default bg-white hover:bg-surface-hover' : 'border-default bg-surface-page opacity-60'
               }`}
               disabled={!hasPlaybookValue}
               onClick={() => (hasPlaybookValue && onPlaybookOpen ? onPlaybookOpen(p) : null)}
@@ -286,14 +286,14 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
         <td className="p-3 align-top text-right">
           {isUpdateMode ? (
             <div className="inline-flex flex-wrap items-center gap-2 justify-end">
-              <span className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-500">
+              <span className="inline-flex items-center justify-center rounded-md border border-default bg-surface-page px-2 py-1 text-[11px] text-muted">
                 Saved
               </span>
               {onArchive ? (
                 <button
                   type="button"
                   onClick={() => onArchive(p.id)}
-                  className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-1 type-caption font-medium text-slate-600 shadow-sm hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center justify-center rounded-md border border-default bg-white px-2 py-1 type-caption font-medium text-subtle shadow-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
                   title="Archive this saved structure"
                   disabled={archiving}
                 >
@@ -312,7 +312,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowDetailOverlay(true)}
-                    className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
+                    className="inline-flex items-center justify-center rounded-md border border-default bg-white p-2 text-subtle shadow-sm hover:bg-surface-hover"
                     title="View transaction details"
                   >
                     <Plus className="h-4 w-4" />
@@ -321,7 +321,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowSaveOverlay(true)}
-                    className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
+                    className="inline-flex items-center justify-center rounded-md border border-default bg-white p-2 text-subtle shadow-sm hover:bg-surface-hover"
                     title="Update saved structure"
                   >
                     <Pencil className="h-4 w-4" />
@@ -330,7 +330,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowExportOverlay(true)}
-                    className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
+                    className="inline-flex items-center justify-center rounded-md border border-default bg-white p-2 text-subtle shadow-sm hover:bg-surface-hover"
                     title="Export trade JSON"
                   >
                     <Download className="h-4 w-4" />
@@ -343,32 +343,32 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
             <button
               type="button"
               onClick={() => setShowSaveOverlay(true)}
-              className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100"
+              className="inline-flex items-center justify-center rounded-md border border-default bg-white p-2 text-subtle shadow-sm hover:bg-surface-hover"
               title="Open save overlay"
             >
               <Save className="h-4 w-4" />
               <span className="sr-only">Open save overlay</span>
             </button>
           ) : (
-            <span className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-500">
+            <span className="inline-flex items-center justify-center rounded-md border border-default bg-surface-page px-2 py-1 text-[11px] text-muted">
               Save disabled
             </span>
           )}
         </td>
       </tr>
       {open && (
-        <tr className="bg-slate-50/60">
+        <tr className="bg-surface-page/60">
           <td />
           <td colSpan={20} className="p-3">
             <div className="grid md:grid-cols-3 gap-3">
               <div className="bg-white border rounded-xl p-3">
-                <div className="type-caption text-slate-500">Underlying</div>
+                <div className="type-caption text-muted">Underlying</div>
                 <div className="type-subhead font-medium">{p.underlying}</div>
-                <div className="mt-2 type-caption text-slate-500">Expiry</div>
+                <div className="mt-2 type-caption text-muted">Expiry</div>
                 <div className="type-subhead font-medium">{expirySummary} ({p.dte} DTE)</div>
-                <div className="mt-2 type-caption text-slate-500">Exchange</div>
+                <div className="mt-2 type-caption text-muted">Exchange</div>
                 <div className="type-subhead font-medium capitalize">{p.exchange ?? '—'}</div>
-                <div className="mt-2 type-caption text-slate-500">Net Premium</div>
+                <div className="mt-2 type-caption text-muted">Net Premium</div>
                 <div className="type-subhead font-medium flex items-center gap-2">
                   <span>{fmtPremium(p.netPremium, p.underlying)}</span>
                   {isClosed ? (
@@ -379,10 +379,10 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                 </div>
               </div>
               <div className="bg-white border rounded-xl p-3 md:col-span-2">
-                <div className="type-caption text-slate-500 mb-2">Legs</div>
+                <div className="type-caption text-muted mb-2">Legs</div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full type-caption">
-                    <thead className="text-slate-500">
+                    <thead className="text-muted">
                       <tr>
                         <th className="text-left p-2">Leg</th>
                         <th className="text-right p-2">Net Qty</th>
@@ -452,7 +452,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                     </tbody>
                   </table>
                 </div>
-                <div className="mt-2 text-[11px] text-slate-500 leading-snug">
+                <div className="mt-2 text-[11px] text-muted leading-snug">
                   uPnL sums each open lot as (mark − entry price) × signed qty × multiplier. Fully offset legs report 0 to avoid
                   mark noise when net size is flat.
                 </div>

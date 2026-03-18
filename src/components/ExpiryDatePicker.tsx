@@ -27,8 +27,8 @@ export function ExpiryDatePicker({ expiries, selected, onSelect }: Props) {
         onClick={() => onSelect(null)}
         className={`flex-shrink-0 px-3 py-1 rounded-full type-caption font-medium tracking-wide transition-all ${
           selected === null
-            ? 'bg-zinc-100 text-zinc-900 shadow-sm'
-            : 'bg-transparent text-zinc-500 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-300'
+            ? 'bg-surface-primary-btn text-on-primary-btn shadow-sm'
+            : 'bg-transparent text-muted border border-strong hover:border-accent hover:text-body'
         }`}
       >
         All
@@ -39,8 +39,8 @@ export function ExpiryDatePicker({ expiries, selected, onSelect }: Props) {
           onClick={() => onSelect(exp === selected ? null : exp)}
           className={`flex-shrink-0 px-3 py-1 rounded-full type-caption font-medium tracking-wide transition-all ${
             exp === selected
-              ? 'bg-zinc-100 text-zinc-900 shadow-sm'
-              : 'bg-transparent text-zinc-500 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-300'
+              ? 'bg-surface-primary-btn text-on-primary-btn shadow-sm'
+              : 'bg-transparent text-muted border border-strong hover:border-accent hover:text-body'
           }`}
         >
           {formatExpiry(exp)}

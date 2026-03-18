@@ -132,7 +132,7 @@ function SortableHeader({
           direction: isActive && sort.direction === 'asc' ? 'desc' : 'asc',
         })
       }
-      className={`w-full text-left ${isActive ? 'text-slate-700' : 'text-slate-500'} hover:text-slate-700`}
+      className={`w-full text-left ${isActive ? 'text-body' : 'text-muted'} hover:text-body`}
     >
       <span>{label}</span>
       <span className="sr-only">Sort {directionLabel}</span>
@@ -154,30 +154,30 @@ export function StructureDetailOverlay({ open, onClose, position }: StructureDet
       <div className="bg-white rounded-2xl shadow-xl max-w-5xl w-full max-h-[80vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between border-b p-4">
           <div>
-            <div className="type-subhead text-slate-500">Structure details</div>
-            <div className="type-title-m font-semibold text-slate-800">
+            <div className="type-subhead text-muted">Structure details</div>
+            <div className="type-title-m font-semibold text-strong">
               {position.underlying} · {position.expiryISO}
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-2 text-slate-500 hover:bg-slate-100"
+            className="rounded-full p-2 text-muted hover:bg-surface-hover"
             aria-label="Close detail overlay"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
         <div className="p-4 overflow-auto">
-          <div className="type-subhead text-slate-600 mb-3">
+          <div className="type-subhead text-subtle mb-3">
             Transaction log for this structure. Click any column header to sort ascending/descending.
           </div>
           {sortedTransactions.length === 0 ? (
-            <div className="type-subhead text-slate-500">No transactions available for this structure.</div>
+            <div className="type-subhead text-muted">No transactions available for this structure.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full type-subhead">
-                <thead className="text-slate-500 border-b">
+                <thead className="text-muted border-b">
                   <tr>
                     <th className="p-2 text-left min-w-[160px]">
                       <SortableHeader label="Timestamp" column="timestamp" sort={sort} onChange={setSort} />
@@ -208,14 +208,14 @@ export function StructureDetailOverlay({ open, onClose, position }: StructureDet
                 <tbody>
                   {sortedTransactions.map((txn) => (
                     <tr key={txn.id} className="border-b last:border-0">
-                      <td className="p-2 font-mono type-caption text-slate-700">{formatTimestamp(txn.timestamp)}</td>
-                      <td className="p-2 text-slate-800">{txn.instrument}</td>
-                      <td className="p-2 text-right font-mono text-slate-800">{txn.qty}</td>
-                      <td className="p-2 text-right font-mono text-slate-800">{txn.price}</td>
-                      <td className="p-2 text-right font-mono text-slate-800">{txn.fee ?? '—'}</td>
-                      <td className="p-2 text-slate-800 capitalize">{txn.action ?? '—'}</td>
-                      <td className="p-2 text-slate-800 capitalize">{txn.side}</td>
-                      <td className="p-2 text-slate-800">{txn.tradeId ?? '—'}</td>
+                      <td className="p-2 font-mono type-caption text-body">{formatTimestamp(txn.timestamp)}</td>
+                      <td className="p-2 text-strong">{txn.instrument}</td>
+                      <td className="p-2 text-right font-mono text-strong">{txn.qty}</td>
+                      <td className="p-2 text-right font-mono text-strong">{txn.price}</td>
+                      <td className="p-2 text-right font-mono text-strong">{txn.fee ?? '—'}</td>
+                      <td className="p-2 text-strong capitalize">{txn.action ?? '—'}</td>
+                      <td className="p-2 text-strong capitalize">{txn.side}</td>
+                      <td className="p-2 text-strong">{txn.tradeId ?? '—'}</td>
                     </tr>
                   ))}
                 </tbody>

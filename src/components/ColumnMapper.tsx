@@ -47,18 +47,18 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6">
         <h3 className="type-title-m font-semibold">Map CSV Columns</h3>
-        <p className="type-subhead text-slate-600 mb-4">
+        <p className="type-subhead text-subtle mb-4">
           {mode === 'backfill'
             ? 'Select the instrument column plus trade_id or order_id to backfill legs. Other fields are optional.'
             : 'Tell the importer which CSV columns correspond to the required fields.'}
         </p>
         {/* NEW: Exchange selector */}
         <div className="mb-4">
-          <label className="type-subhead block text-slate-600 mb-1">Exchange</label>
+          <label className="type-subhead block text-subtle mb-1">Exchange</label>
           <select
             value={exchange}
             onChange={(e) => setExchange(e.target.value as 'deribit' | 'coincall' | 'cme')}
-            className="w-full border rounded-xl p-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
+            className="w-full border rounded-xl p-2 focus:outline-none focus:ring-2 focus:ring-border-accent"
           >
             <option value="deribit">Deribit</option>
             <option value="coincall">Coincall</option>
@@ -68,11 +68,11 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {EXPECTED_FIELDS.map((f) => (
             <label key={f.key} className="type-subhead">
-              <span className="block text-slate-600 mb-1">{f.label}</span>
+              <span className="block text-subtle mb-1">{f.label}</span>
               <select
                 value={mapping[f.key] || ""}
                 onChange={(e) => setMapping((m) => ({ ...m, [f.key]: e.target.value }))}
-                className="w-full border rounded-xl p-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="w-full border rounded-xl p-2 focus:outline-none focus:ring-2 focus:ring-border-accent"
               >
                 <option value="">— Select column —</option>
                 {headers.map((h) => (
@@ -84,7 +84,7 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
         </div>
         {mode === 'import' ? (
           <div className="mt-4 space-y-2">
-            <label className="inline-flex items-center gap-2 type-subhead text-slate-700">
+            <label className="inline-flex items-center gap-2 type-subhead text-body">
               <input
                 type="checkbox"
                 checked={importHistoricalRows}
@@ -92,7 +92,7 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
               />
               <span>Import historical rows (skip duplicates)</span>
             </label>
-            <label className="inline-flex items-center gap-2 type-subhead text-slate-700">
+            <label className="inline-flex items-center gap-2 type-subhead text-body">
               <input
                 type="checkbox"
                 checked={allowAllocations}
@@ -111,7 +111,7 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
               __importHistorical: importHistoricalRows,
               __allowAllocations: allowAllocations,
             })}
-            className="px-4 py-2 rounded-xl bg-slate-900 text-white">
+            className="px-4 py-2 rounded-xl bg-surface-primary-btn text-on-primary-btn">
             {mode === 'backfill' ? 'Start Backfill' : 'Start Import'}
           </button>
         </div>

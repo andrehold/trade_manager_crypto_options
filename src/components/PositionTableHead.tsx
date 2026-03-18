@@ -39,7 +39,7 @@ export function PositionTableHead<K extends string>({
   sort,
 }: PositionTableHeadProps<K>) {
   return (
-    <thead className="bg-zinc-800/60 text-zinc-400">
+    <thead className="bg-surface-card/60 text-subtle">
       <tr>
         <th className="p-3 text-left w-10"> </th>
         {COLUMNS.map((col) => {

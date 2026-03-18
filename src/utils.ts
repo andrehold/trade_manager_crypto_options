@@ -30,6 +30,9 @@ export interface TxnRow {
   linkedStructureId?: string;
   structureType?: string;
   exchange?: Exchange;
+  csvType?: string;
+  excludeReason?: 'no_instrument' | 'no_side' | 'no_amount' | 'no_price' | 'not_option_trade';
+  rawCsv?: Record<string, unknown>;
 }
 
 export interface Lot { qty: number; price: number; sign: 1 | -1; }
@@ -155,6 +158,7 @@ export const EXPECTED_FIELDS = [
   { key: "trade_id", label: "Trade ID (optional)" },
   { key: "order_id", label: "Order ID (optional)" },
   { key: "info", label: "Info (optional)" },
+  { key: "type", label: "Type (optional, e.g. trade, delivery)" },
 ] as const;
 
 const MONTHS_MAP: Record<string, number> = {

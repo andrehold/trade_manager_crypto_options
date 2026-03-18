@@ -10,6 +10,8 @@ export type FilterDuplicateRowsOptions = {
 export type FilterDuplicateRowsResult = {
   filtered: TxnRow[]
   duplicates: TxnRow[]
+  duplicatesInStructures: TxnRow[]
+  duplicatesInBacklog: TxnRow[]
   duplicateTradeIds: string[]
   duplicateOrderIds: string[]
 }
@@ -78,6 +80,8 @@ export async function filterDuplicateRows(
   const noOp = (): FilterDuplicateRowsResult => ({
     filtered: rows,
     duplicates: [],
+    duplicatesInStructures: [],
+    duplicatesInBacklog: [],
     duplicateTradeIds: [],
     duplicateOrderIds: [],
   })
@@ -96,6 +100,12 @@ export async function filterDuplicateRows(
 
   const duplicateTradeIds = new Set<string>()
   const duplicateOrderIds = new Set<string>()
+
+  // Track which source each duplicate ID was found in
+  const fillsTradeIds = new Set<string>()
+  const backlogTradeIds = new Set<string>()
+  const fillsOrderIds = new Set<string>()
+  const backlogOrderIds = new Set<string>()
 
   // ── trade_id chunks ──────────────────────────────────────────────────────
   for (let start = 0; start < uniqueTradeIds.length; start += CHUNK_SIZE) {
@@ -116,7 +126,7 @@ export async function filterDuplicateRows(
     }
     for (const entry of (fills as { trade_id?: string | null }[] | null) ?? []) {
       const id = typeof entry.trade_id === 'string' ? entry.trade_id.trim() : ''
-      if (id) duplicateTradeIds.add(id)
+      if (id) { duplicateTradeIds.add(id); fillsTradeIds.add(id) }
     }
 
     // unprocessed_imports table
@@ -131,7 +141,7 @@ export async function filterDuplicateRows(
     for (const entry of unproc ?? []) {
       const id = typeof entry.trade_id === 'string' ? entry.trade_id.trim() : ''
       const sameClient = !restrictByClient || !clientFilter || entry.client_name === clientFilter
-      if (id && sameClient) duplicateTradeIds.add(id)
+      if (id && sameClient) { duplicateTradeIds.add(id); backlogTradeIds.add(id) }
     }
   }
 
@@ -153,7 +163,7 @@ export async function filterDuplicateRows(
     }
     for (const entry of (fills as { order_id?: string | null }[] | null) ?? []) {
       const id = typeof entry.order_id === 'string' ? entry.order_id.trim() : ''
-      if (id) duplicateOrderIds.add(id)
+      if (id) { duplicateOrderIds.add(id); fillsOrderIds.add(id) }
     }
 
     const { data: unproc, error: unprocErr } = await supabase
@@ -167,7 +177,7 @@ export async function filterDuplicateRows(
     for (const entry of unproc ?? []) {
       const id = typeof entry.order_id === 'string' ? entry.order_id.trim() : ''
       const sameClient = !restrictByClient || !clientFilter || entry.client_name === clientFilter
-      if (id && sameClient) duplicateOrderIds.add(id)
+      if (id && sameClient) { duplicateOrderIds.add(id); backlogOrderIds.add(id) }
     }
   }
 
@@ -183,6 +193,8 @@ export async function filterDuplicateRows(
   }
 
   const naturalKeyDups = new Set<number>() // indices into `rows`
+  const naturalKeyFillsDups = new Set<number>()
+  const naturalKeyBacklogDups = new Set<number>()
 
   if (idLessIndices.length > 0) {
     const idLessRows = idLessIndices.map((i) => rows[i])
@@ -237,11 +249,13 @@ export async function filterDuplicateRows(
       const nk = naturalKey(row.instrument, row.timestamp, row.side, row.amount, row.price)
       if (existingNaturalKeys.has(nk)) {
         naturalKeyDups.add(idx)
+        naturalKeyBacklogDups.add(idx)
         continue
       }
       const fk = fillsKey(row.instrument, row.timestamp, row.side, row.amount, row.price)
       if (existingFillsKeys.has(fk)) {
         naturalKeyDups.add(idx)
+        naturalKeyFillsDups.add(idx)
       }
     }
   }
@@ -253,6 +267,8 @@ export async function filterDuplicateRows(
     return {
       filtered: rows,
       duplicates: [],
+      duplicatesInStructures: [],
+      duplicatesInBacklog: [],
       duplicateTradeIds: Array.from(duplicateTradeIds),
       duplicateOrderIds: Array.from(duplicateOrderIds),
     }
@@ -261,6 +277,8 @@ export async function filterDuplicateRows(
   // ── split into filtered / duplicates ───────────────────────────────────
   const filtered: TxnRow[] = []
   const duplicates: TxnRow[] = []
+  const duplicatesInStructures: TxnRow[] = []
+  const duplicatesInBacklog: TxnRow[] = []
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
@@ -271,6 +289,15 @@ export async function filterDuplicateRows(
 
     if (isDupById || isDupByKey) {
       duplicates.push(row)
+
+      // Determine source: fills (structures) takes priority over backlog
+      const inFillsById = (Boolean(tid) && fillsTradeIds.has(tid!)) || (Boolean(oid) && fillsOrderIds.has(oid!))
+      const inFillsByKey = naturalKeyFillsDups.has(i)
+      if (inFillsById || inFillsByKey) {
+        duplicatesInStructures.push(row)
+      } else {
+        duplicatesInBacklog.push(row)
+      }
     } else {
       filtered.push(row)
     }
@@ -279,6 +306,8 @@ export async function filterDuplicateRows(
   return {
     filtered,
     duplicates,
+    duplicatesInStructures,
+    duplicatesInBacklog,
     duplicateTradeIds: Array.from(duplicateTradeIds),
     duplicateOrderIds: Array.from(duplicateOrderIds),
   }

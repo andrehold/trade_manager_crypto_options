@@ -100,9 +100,10 @@ export function aggregateStructureLegs(items: LegItem[]) {
     if (!expiry) continue
 
     const legKey = `${expiry}|${strike}|${optionType}`
-    const qty = row.amount ?? 0
+    const rawQty = row.amount ?? 0
+    const qty = row.side === 'sell' ? -Math.abs(rawQty) : Math.abs(rawQty)
     const price = row.price ?? 0
-    const premium = price * Math.abs(qty) * (row.side === 'sell' ? 1 : -1)
+    const premium = price * Math.abs(rawQty) * (row.side === 'sell' ? 1 : -1)
 
     const existing = legMap.get(legKey)
     if (existing) {
