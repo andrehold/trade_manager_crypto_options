@@ -45,7 +45,7 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6">
+      <div className="bg-surface-card rounded-2xl shadow-xl w-full max-w-2xl p-6">
         <h3 className="type-title-m font-semibold">Map CSV Columns</h3>
         <p className="type-subhead text-subtle mb-4">
           {mode === 'backfill'

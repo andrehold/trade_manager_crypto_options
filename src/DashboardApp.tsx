@@ -2029,7 +2029,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
   if (!supabaseConfigured || !supabase) {
     return (
       <div className="min-h-screen bg-surface-page flex items-center justify-center p-6">
-        <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-default bg-white p-8 text-center type-subhead text-subtle shadow-sm">
+        <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-default bg-surface-card p-8 text-center type-subhead text-subtle shadow-sm">
           <p className="type-headline font-semibold text-body">Supabase configuration required</p>
           <p>
             Set <code className="rounded bg-surface-chip px-1 py-0.5">VITE_SUPABASE_URL</code> and{' '}
@@ -2044,7 +2044,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
   if (authLoading) {
     return (
       <div className="min-h-screen bg-surface-page flex items-center justify-center p-6">
-        <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-default bg-white p-8 text-center type-subhead text-subtle shadow-sm">
+        <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-default bg-surface-card p-8 text-center type-subhead text-subtle shadow-sm">
           <p className="type-headline font-semibold text-body">Checking Supabase session…</p>
           <p>Hold tight while we verify your saved Supabase credentials.</p>
         </div>
@@ -2156,8 +2156,8 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
         onSignOut={handleSignOut}
       />
 
-      {/* Main content — dark-dashboard applies inverted slate tokens to all children */}
-      <div className="dark-dashboard flex-1 min-w-0 flex flex-col bg-surface-page">
+      {/* Main content */}
+      <div className="flex-1 min-w-0 flex flex-col bg-surface-page">
 
         {/* ── Header: arrows + title + portfolio greeks ── */}
         <DashboardHeader

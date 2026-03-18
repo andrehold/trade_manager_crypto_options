@@ -1,65 +1,50 @@
 @import "tailwindcss";
 
 @theme {
-  /* ── Slate scale (custom, not standard Tailwind slate) ── */
-  --color-slate-50:      #F7F9FC;
-  --color-slate-100:     #EEF2F7;
-  --color-slate-200:     #E2E8F0;
-  --color-slate-300:     #CBD5E1;
-  --color-slate-400:     #94A3B8;
-  --color-slate-500:     #64748B;
-  --color-slate-600:     #475569;
-  --color-slate-700:     #334155;
-  --color-slate-800:     #1E293B;
-  --color-slate-900:     #0B1220;
+/* ── Emerald / teal accent (dark-first) ── */
+  --color-emerald-50:    #0B3B3A;
+  --color-emerald-200:   #134E4A;
+  --color-emerald-500:   #2DD4BF;
+  --color-emerald-600:   #14B8A6;
 
-  /* ── Emerald / teal accent ── */
-  --color-emerald-50:    #D1FAF5;
-  --color-emerald-200:   #99EDE3;
-  --color-emerald-500:   #0E9384;
-  --color-emerald-600:   #0B7A6E;
+  /* ── Rose / error (dark-first) ── */
+  --color-rose-50:       #2E0F12;
+  --color-rose-400:      #FCA5A5;
+  --color-rose-500:      #F87171;
+  --color-rose-600:      #EF4444;
 
-  /* ── Rose / error ── */
-  --color-rose-50:       #FEECEE;
-  --color-rose-400:      #F87171;
-  --color-rose-500:      #DC2626;
-  --color-rose-600:      #B91C1C;
+  /* ── Amber / warning (dark-first) ── */
+  --color-amber-500:     #F59E0B;
 
-  /* ── Amber / warning ── */
-  --color-amber-500:     #D97706;
-
-  /* ── Blue / info ── */
+  /* ── Blue / info (dark-first) ── */
   --color-blue-300:      #93C5FD;
   --color-blue-400:      #60A5FA;
-  --color-blue-600:      #2563EB;
+  --color-blue-600:      #60A5FA;
 
-  /* ── Semantic surface tokens (light defaults) ── */
-  --color-surface-page:        #F7F9FC;   /* page background                     */
-  --color-surface-section:     #FFFFFF;   /* section containers                  */
-  --color-surface-card:        #FFFFFF;   /* cards, panels                       */
-  --color-surface-chip:        #EEF2F7;   /* chips, tags, input backgrounds      */
-  --color-surface-hover:       #E2E8F0;   /* hover state backgrounds             */
-  --color-surface-active:      #CBD5E1;   /* pressed / active state              */
-  --color-surface-primary-btn: #0B1220;   /* primary button background           */
+  /* ── Semantic surface tokens (dark-first) ── */
+  --color-surface-page:        #070B14;   /* page background                     */
+  --color-surface-section:     #0D1525;   /* section containers                  */
+  --color-surface-card:        #0D1525;   /* cards, panels                       */
+  --color-surface-chip:        #1F2A3A;   /* chips, tags, input backgrounds      */
+  --color-surface-hover:       #2D3D52;   /* hover state backgrounds             */
+  --color-surface-active:      #4A5A70;   /* pressed / active state              */
+  --color-surface-primary-btn: #E2E8F0;   /* primary button background           */
 
-  /* ── Semantic text tokens (light defaults) ── */
-  --color-text-heading:        #0B1220;   /* headings, titles                    */
-  --color-text-strong:         #1E293B;   /* emphasized body, sub-headings       */
-  --color-text-body:           #334155;   /* normal body text                    */
-  --color-text-subtle:         #475569;   /* secondary body text                 */
+  /* ── Semantic text tokens (dark-first) ── */
+  --color-text-heading:        #E5E7EB;   /* headings, titles                    */
+  --color-text-strong:         #E2E8F0;   /* emphasized body, sub-headings       */
+  --color-text-body:           #CBD5E1;   /* normal body text                    */
+  --color-text-subtle:         #94A3B8;   /* secondary body text                 */
   --color-text-muted:          #64748B;   /* labels, hints, placeholders         */
-  --color-text-faint:          #94A3B8;   /* disabled, very subtle text          */
-  --color-text-on-primary-btn: #FFFFFF;   /* text on primary buttons             */
+  --color-text-faint:          #4A5A70;   /* disabled, very subtle text          */
+  --color-text-on-primary-btn: #070B14;   /* text on primary buttons             */
 
-  /* ── Semantic border tokens (light defaults) ── */
-  --color-border-default:      #E2E8F0;   /* standard borders                    */
-  --color-border-strong:       #CBD5E1;   /* stronger / emphasized borders       */
-  --color-border-accent:       #94A3B8;   /* accent / interactive borders        */
+  /* ── Semantic border tokens (dark-first) ── */
+  --color-border-default:      #1F2A3A;   /* standard borders                    */
+  --color-border-strong:       #2D3D52;   /* stronger / emphasized borders       */
+  --color-border-accent:       #4A5A70;   /* accent / interactive borders        */
 
-  /* ── Surface alias (legacy, used by .bg-white override) ── */
-  --color-surface-0:     #FFFFFF;
-
-  /* ── Font family ── */
+/* ── Font family ── */
   /* SF Pro on Apple platforms; Inter everywhere else */
   --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
                'Inter', 'Helvetica Neue', Arial, sans-serif;
@@ -94,143 +79,39 @@
   --text-caption--letter-spacing: 0em;
 }
 
-/* ── Dark mode: override the theme tokens ── */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-surface-0:   #0B1220;
-    --color-slate-50:    #070B14;
-    --color-slate-100:   #0D1525;
-    --color-slate-200:   #1F2A3A;
-    --color-slate-300:   #2D3D52;
-    --color-slate-400:   #4A5A70;
-    --color-slate-500:   #64748B;
-    --color-slate-600:   #94A3B8;
-    --color-slate-700:   #CBD5E1;
-    --color-slate-800:   #E2E8F0;
-    --color-slate-900:   #E5E7EB;
-
-    --color-emerald-50:  #0B3B3A;
-    --color-emerald-200: #134E4A;
-    --color-emerald-500: #2DD4BF;
-    --color-emerald-600: #14B8A6;
-
-    --color-rose-50:     #2E0F12;
-    --color-rose-400:    #FCA5A5;
-    --color-rose-500:    #F87171;
-    --color-rose-600:    #EF4444;
-
-    --color-amber-500:   #F59E0B;
-    --color-blue-600:    #60A5FA;
-
-    /* ── Semantic tokens (dark OS) ── */
-    --color-surface-page:        #070B14;
-    --color-surface-section:     #0D1525;
-    --color-surface-card:        #0D1525;
-    --color-surface-chip:        #1F2A3A;
-    --color-surface-hover:       #2D3D52;
-    --color-surface-active:      #4A5A70;
-    --color-surface-primary-btn: #E2E8F0;
-    --color-text-heading:        #E5E7EB;
-    --color-text-strong:         #E2E8F0;
-    --color-text-body:           #CBD5E1;
-    --color-text-subtle:         #94A3B8;
-    --color-text-muted:          #64748B;
-    --color-text-faint:          #4A5A70;
-    --color-text-on-primary-btn: #070B14;
-    --color-border-default:      #1F2A3A;
-    --color-border-strong:       #2D3D52;
-    --color-border-accent:       #4A5A70;
-  }
-}
-
-/* ── scheme-light: pins light-mode tokens even in dark OS preference ──
+/* ── scheme-light: pins light-mode tokens on elements that must stay light ──
    Apply to panels that must always use the light-mode palette
-   (e.g. always-dark sidebar, light login card on dark background).
-   Has no effect in light mode (the @media block doesn't fire). */
-@media (prefers-color-scheme: dark) {
-  .scheme-light {
-    --color-slate-50:      #F7F9FC;
-    --color-slate-100:     #EEF2F7;
-    --color-slate-200:     #E2E8F0;
-    --color-slate-300:     #CBD5E1;
-    --color-slate-400:     #94A3B8;
-    --color-slate-500:     #64748B;
-    --color-slate-600:     #475569;
-    --color-slate-700:     #334155;
-    --color-slate-800:     #1E293B;
-    --color-slate-900:     #0B1220;
-    --color-surface-0:     #FFFFFF;
-    --color-emerald-50:    #D1FAF5;
-    --color-emerald-200:   #99EDE3;
-    --color-emerald-500:   #0E9384;
-    --color-emerald-600:   #0B7A6E;
-    --color-rose-50:       #FEECEE;
-    --color-rose-400:      #F87171;
-    --color-rose-500:      #DC2626;
-    --color-rose-600:      #B91C1C;
-    --color-amber-500:     #D97706;
-    --color-blue-600:      #2563EB;
+   (e.g. login card, sidebar). */
+.scheme-light {
+  --color-emerald-50:    #D1FAF5;
+  --color-emerald-200:   #99EDE3;
+  --color-emerald-500:   #0E9384;
+  --color-emerald-600:   #0B7A6E;
+  --color-rose-50:       #FEECEE;
+  --color-rose-400:      #F87171;
+  --color-rose-500:      #DC2626;
+  --color-rose-600:      #B91C1C;
+  --color-amber-500:     #D97706;
+  --color-blue-600:      #2563EB;
 
-    /* ── Semantic tokens reset to light ── */
-    --color-surface-page:        #F7F9FC;
-    --color-surface-section:     #FFFFFF;
-    --color-surface-card:        #FFFFFF;
-    --color-surface-chip:        #EEF2F7;
-    --color-surface-hover:       #E2E8F0;
-    --color-surface-active:      #CBD5E1;
-    --color-surface-primary-btn: #0B1220;
-    --color-text-heading:        #0B1220;
-    --color-text-strong:         #1E293B;
-    --color-text-body:           #334155;
-    --color-text-subtle:         #475569;
-    --color-text-muted:          #64748B;
-    --color-text-faint:          #94A3B8;
-    --color-text-on-primary-btn: #FFFFFF;
-    --color-border-default:      #E2E8F0;
-    --color-border-strong:       #CBD5E1;
-    --color-border-accent:       #94A3B8;
-  }
-}
-
-/* ── Dark dashboard surface overrides ───────────────────────────────────────
-   Apply .dark-dashboard to the dashboard container to flip all slate/surface
-   tokens to dark zinc equivalents. All children inherit via CSS custom props.
-   ────────────────────────────────────────────────────────────────────────── */
-.dark-dashboard {
-  --color-slate-50:      #18181b;   /* zinc-900  — hover rows, subtle bg */
-  --color-slate-100:     #27272a;   /* zinc-800  — table header, section bg */
-  --color-slate-200:     #3f3f46;   /* zinc-700  — borders */
-  --color-slate-300:     #52525b;   /* zinc-600  */
-  --color-slate-400:     #71717a;   /* zinc-500  — muted text */
-  --color-slate-500:     #a1a1aa;   /* zinc-400  — secondary text */
-  --color-slate-600:     #d4d4d8;   /* zinc-300  */
-  --color-slate-700:     #e4e4e7;   /* zinc-200  — body text */
-  --color-slate-800:     #f4f4f5;   /* zinc-100  — strong text */
-  --color-slate-900:     #fafafa;   /* zinc-50   — headings */
-  --color-surface-0:     #27272a;   /* zinc-800  — bg-white → dark card */
-
-  /* ── Semantic surface overrides (dark) ── */
-  --color-surface-page:        #0a0a0a;   /* rgb(10,10,10)  */
-  --color-surface-section:     #0f0f0f;   /* rgb(15,15,15)  */
-  --color-surface-card:        #181818;   /* rgb(24,24,24)  */
-  --color-surface-chip:        #262626;   /* rgb(38,38,38)  */
-  --color-surface-hover:       #3f3f46;   /* zinc-700       */
-  --color-surface-active:      #52525b;   /* zinc-600       */
-  --color-surface-primary-btn: #f4f4f5;   /* zinc-100       */
-
-  /* ── Semantic text overrides (dark) ── */
-  --color-text-heading:        #fafafa;   /* zinc-50        */
-  --color-text-strong:         #f4f4f5;   /* zinc-100       */
-  --color-text-body:           #e4e4e7;   /* zinc-200       */
-  --color-text-subtle:         #d4d4d8;   /* zinc-300       */
-  --color-text-muted:          #a1a1aa;   /* zinc-400       */
-  --color-text-faint:          #71717a;   /* zinc-500       */
-  --color-text-on-primary-btn: #18181b;   /* zinc-900       */
-
-  /* ── Semantic border overrides (dark) ── */
-  --color-border-default:      #27272a;   /* zinc-800       */
-  --color-border-strong:       #3f3f46;   /* zinc-700       */
-  --color-border-accent:       #52525b;   /* zinc-600       */
+  /* ── Semantic tokens pinned to light ── */
+  --color-surface-page:        #F7F9FC;
+  --color-surface-section:     #FFFFFF;
+  --color-surface-card:        #FFFFFF;
+  --color-surface-chip:        #EEF2F7;
+  --color-surface-hover:       #E2E8F0;
+  --color-surface-active:      #CBD5E1;
+  --color-surface-primary-btn: #0B1220;
+  --color-text-heading:        #0B1220;
+  --color-text-strong:         #1E293B;
+  --color-text-body:           #334155;
+  --color-text-subtle:         #475569;
+  --color-text-muted:          #64748B;
+  --color-text-faint:          #94A3B8;
+  --color-text-on-primary-btn: #FFFFFF;
+  --color-border-default:      #E2E8F0;
+  --color-border-strong:       #CBD5E1;
+  --color-border-accent:       #94A3B8;
 }
 
 /* ── Base resets (kept from old utilities.css) ──
@@ -239,8 +120,8 @@
 @layer base {
   body {
     font-family: var(--font-sans);
-    background-color: var(--color-slate-50);
-    color: var(--color-slate-900);
+    background-color: var(--color-surface-page);
+    color: var(--color-text-heading);
   }
 
   button,
@@ -268,10 +149,6 @@
   }
 }
 
-/* ── bg-white maps to surface-0 (theme-aware) ── */
-.bg-white {
-  background-color: var(--color-surface-0) !important;
-}
 
 /* ── Semantic type utilities (SF Pro scale) ── */
 /* Usage: <h1 class="type-display-l"> — size + tracking + weight in one class */
@@ -279,12 +156,6 @@
   font-size: var(--text-display-l);
   line-height: var(--text-display-l--line-height);
   letter-spacing: var(--text-display-l--letter-spacing);
-  font-weight: 700;
-}
-.type-display-m {
-  font-size: var(--text-display-m);
-  line-height: var(--text-display-m--line-height);
-  letter-spacing: var(--text-display-m--letter-spacing);
   font-weight: 700;
 }
 .type-title-l {

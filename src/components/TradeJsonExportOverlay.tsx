@@ -145,7 +145,7 @@ export function TradeJsonExportOverlay({ open, onClose, position, marks }: Trade
 
   return (
     <Overlay open={open} onClose={onClose}>
-      <div className="bg-white dark:bg-surface-section rounded-2xl shadow-xl border border-default dark:border-strong/60 max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+      <div className="bg-surface-section rounded-2xl shadow-xl border border-default dark:border-strong/60 max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between border-b border-default dark:border-strong/60 p-4">
           <div>
             <div className="type-subhead text-muted dark:text-faint">Export trade JSON</div>
@@ -184,7 +184,7 @@ export function TradeJsonExportOverlay({ open, onClose, position, marks }: Trade
                     <tr key={row.id} className="border-b border-default dark:border-strong/60 last:border-0">
                       <td className="p-2">
                         <input
-                          className="w-full rounded-lg border border-default dark:border-strong bg-white dark:bg-surface-card px-2 py-1 type-subhead text-heading dark:text-heading focus:outline-none focus:ring-2 focus:ring-border-accent dark:focus:ring-border-accent"
+                          className="w-full rounded-lg border border-default dark:border-strong bg-surface-card px-2 py-1 type-subhead text-heading dark:text-heading focus:outline-none focus:ring-2 focus:ring-border-accent dark:focus:ring-border-accent"
                           value={row.instrument}
                           onChange={(e) =>
                             setRows((prev) =>
@@ -200,7 +200,7 @@ export function TradeJsonExportOverlay({ open, onClose, position, marks }: Trade
                           type="number"
                           min={0}
                           step="0.1"
-                          className="w-24 rounded-lg border border-default dark:border-strong bg-white dark:bg-surface-card px-2 py-1 text-right font-mono type-subhead text-heading dark:text-heading focus:outline-none focus:ring-2 focus:ring-border-accent dark:focus:ring-border-accent"
+                          className="w-24 rounded-lg border border-default dark:border-strong bg-surface-card px-2 py-1 text-right font-mono type-subhead text-heading dark:text-heading focus:outline-none focus:ring-2 focus:ring-border-accent dark:focus:ring-border-accent"
                           value={row.qty}
                           onChange={(e) =>
                             setRows((prev) =>
@@ -213,7 +213,7 @@ export function TradeJsonExportOverlay({ open, onClose, position, marks }: Trade
                       </td>
                       <td className="p-2">
                         <select
-                          className="rounded-lg border border-default dark:border-strong bg-white dark:bg-surface-card px-2 py-1 type-subhead text-heading dark:text-heading focus:outline-none focus:ring-2 focus:ring-border-accent dark:focus:ring-border-accent"
+                          className="rounded-lg border border-default dark:border-strong bg-surface-card px-2 py-1 type-subhead text-heading dark:text-heading focus:outline-none focus:ring-2 focus:ring-border-accent dark:focus:ring-border-accent"
                           value={row.side}
                           onChange={(e) =>
                             setRows((prev) =>
@@ -233,7 +233,7 @@ export function TradeJsonExportOverlay({ open, onClose, position, marks }: Trade
                       <td className="p-2 text-right">
                         <button
                           type="button"
-                          className="inline-flex items-center justify-center rounded-md border border-default dark:border-strong bg-white dark:bg-surface-card p-2 text-muted dark:text-body hover:bg-surface-hover dark:hover:bg-surface-hover/60"
+                          className="inline-flex items-center justify-center rounded-md border border-default dark:border-strong bg-surface-card p-2 text-muted dark:text-body hover:bg-surface-hover dark:hover:bg-surface-hover/60"
                           onClick={() => setRows((prev) => prev.filter((item) => item.id !== row.id))}
                           title="Remove leg"
                         >

@@ -226,17 +226,17 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
             ) : programLabel || strategyLabel || showStructureChip ? (
               <div className="flex flex-col gap-1">
                 {programLabel && (
-                  <span className="inline-flex items-center rounded-full border border-default bg-white px-2 py-1 type-caption font-medium text-body shadow-sm">
+                  <span className="inline-flex items-center rounded-full border border-default bg-surface-card px-2 py-1 type-caption font-medium text-body shadow-sm">
                     {programLabel}
                   </span>
                 )}
                 {showStructureChip && structureChipSummary && (
-                  <span className="inline-flex items-center rounded-full border border-default bg-white px-3 py-1 type-caption font-medium text-body shadow-sm">
+                  <span className="inline-flex items-center rounded-full border border-default bg-surface-card px-3 py-1 type-caption font-medium text-body shadow-sm">
                     {structureChipSummary}
                   </span>
                 )}
                 {strategyLabel && (
-                  <span className="inline-flex items-center rounded-full border border-default bg-white px-2 py-1 type-caption font-medium text-body shadow-sm">
+                  <span className="inline-flex items-center rounded-full border border-default bg-surface-card px-2 py-1 type-caption font-medium text-body shadow-sm">
                     {strategyLabel}
                   </span>
                 )}
@@ -273,7 +273,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
             <button
               type="button"
               className={`inline-flex items-center justify-center rounded-md border px-2 py-1 text-subtle shadow-sm ${
-                hasPlaybookValue ? 'border-default bg-white hover:bg-surface-hover' : 'border-default bg-surface-page opacity-60'
+                hasPlaybookValue ? 'border-default bg-surface-card hover:bg-surface-hover' : 'border-default bg-surface-page opacity-60'
               }`}
               disabled={!hasPlaybookValue}
               onClick={() => (hasPlaybookValue && onPlaybookOpen ? onPlaybookOpen(p) : null)}
@@ -293,7 +293,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                 <button
                   type="button"
                   onClick={() => onArchive(p.id)}
-                  className="inline-flex items-center justify-center rounded-md border border-default bg-white px-2 py-1 type-caption font-medium text-subtle shadow-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center justify-center rounded-md border border-default bg-surface-card px-2 py-1 type-caption font-medium text-subtle shadow-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
                   title="Archive this saved structure"
                   disabled={archiving}
                 >
@@ -312,7 +312,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowDetailOverlay(true)}
-                    className="inline-flex items-center justify-center rounded-md border border-default bg-white p-2 text-subtle shadow-sm hover:bg-surface-hover"
+                    className="inline-flex items-center justify-center rounded-md border border-default bg-surface-card p-2 text-subtle shadow-sm hover:bg-surface-hover"
                     title="View transaction details"
                   >
                     <Plus className="h-4 w-4" />
@@ -321,7 +321,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowSaveOverlay(true)}
-                    className="inline-flex items-center justify-center rounded-md border border-default bg-white p-2 text-subtle shadow-sm hover:bg-surface-hover"
+                    className="inline-flex items-center justify-center rounded-md border border-default bg-surface-card p-2 text-subtle shadow-sm hover:bg-surface-hover"
                     title="Update saved structure"
                   >
                     <Pencil className="h-4 w-4" />
@@ -330,7 +330,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowExportOverlay(true)}
-                    className="inline-flex items-center justify-center rounded-md border border-default bg-white p-2 text-subtle shadow-sm hover:bg-surface-hover"
+                    className="inline-flex items-center justify-center rounded-md border border-default bg-surface-card p-2 text-subtle shadow-sm hover:bg-surface-hover"
                     title="Export trade JSON"
                   >
                     <Download className="h-4 w-4" />
@@ -343,7 +343,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
             <button
               type="button"
               onClick={() => setShowSaveOverlay(true)}
-              className="inline-flex items-center justify-center rounded-md border border-default bg-white p-2 text-subtle shadow-sm hover:bg-surface-hover"
+              className="inline-flex items-center justify-center rounded-md border border-default bg-surface-card p-2 text-subtle shadow-sm hover:bg-surface-hover"
               title="Open save overlay"
             >
               <Save className="h-4 w-4" />
@@ -361,7 +361,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           <td />
           <td colSpan={20} className="p-3">
             <div className="grid md:grid-cols-3 gap-3">
-              <div className="bg-white border rounded-xl p-3">
+              <div className="bg-surface-card border rounded-xl p-3">
                 <div className="type-caption text-muted">Underlying</div>
                 <div className="type-subhead font-medium">{p.underlying}</div>
                 <div className="mt-2 type-caption text-muted">Expiry</div>
@@ -378,7 +378,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                   ) : null}
                 </div>
               </div>
-              <div className="bg-white border rounded-xl p-3 md:col-span-2">
+              <div className="bg-surface-card border rounded-xl p-3 md:col-span-2">
                 <div className="type-caption text-muted mb-2">Legs</div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full type-caption">

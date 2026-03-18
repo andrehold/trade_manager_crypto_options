@@ -611,7 +611,7 @@ function Field({
 }) {
   const { label, type = 'text', options, placeholder, helperText, required, step, inputMode, disabled } = meta;
   const displayValue = value ?? '';
-  const baseClass = `mt-1 block w-full rounded-lg border bg-white px-3 py-2 type-subhead text-heading placeholder:text-faint focus:outline-none focus:ring-2 ${
+  const baseClass = `mt-1 block w-full rounded-lg border bg-surface-card px-3 py-2 type-subhead text-heading placeholder:text-faint focus:outline-none focus:ring-2 ${
     missing ? 'border-rose-500 focus:ring-rose-400' : 'border-default focus:ring-border-accent'
   } ${disabled ? 'cursor-not-allowed bg-surface-page text-muted' : ''}`;
 
@@ -723,14 +723,14 @@ function CheckboxField({
       className={`flex items-center gap-2 rounded-lg border px-3 py-2 type-subhead ${
         missing
           ? 'border-rose-500 bg-rose-50 text-rose-600'
-          : 'border-default bg-white text-body'
+          : 'border-default bg-surface-card text-body'
       }`}
     >
       <input
         type="checkbox"
         checked={Boolean(value)}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-strong bg-white text-subtle focus:ring-border-accent"
+        className="h-4 w-4 rounded border-strong bg-surface-card text-subtle focus:ring-border-accent"
       />
       <span className="font-medium">{meta.label}</span>
       {meta.required ? (
@@ -754,7 +754,7 @@ type SectionProps = {
 
 function Section({ title, description, children }: SectionProps) {
   return (
-    <section className="space-y-3 rounded-2xl border border-default bg-white p-5 shadow-sm">
+    <section className="space-y-3 rounded-2xl border border-default bg-surface-card p-5 shadow-sm">
       <header className="space-y-1">
         <h3 className="type-subhead font-semibold uppercase tracking-wide text-body">{title}</h3>
         {description ? <p className="type-caption text-muted">{description}</p> : null}
@@ -1594,10 +1594,10 @@ export function StructureEntryOverlay({
   return (
     <Overlay open={open} onClose={onClose} title={overlayTitle}>
       <div
-        className="flex max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white"
+        className="flex max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-surface-card"
         style={{ width: 'min(960px, calc(100vw - 3rem))' }}
       >
-        <header className="flex items-center gap-3 border-b border-default bg-white px-6 py-4">
+        <header className="flex items-center gap-3 border-b border-default bg-surface-card px-6 py-4">
           <div>
             <h2 className="type-headline font-semibold text-heading">
               {isUpdateMode
@@ -1657,7 +1657,7 @@ export function StructureEntryOverlay({
           <div className="flex-1 overflow-y-auto bg-surface-page px-6 py-6">
             <div className="space-y-6">
               {loadingExisting ? (
-                <div className="rounded-xl border border-default bg-white px-4 py-3 type-subhead text-subtle">
+                <div className="rounded-xl border border-default bg-surface-card px-4 py-3 type-subhead text-subtle">
                   Loading saved structure details…
                 </div>
               ) : null}
@@ -1684,7 +1684,7 @@ export function StructureEntryOverlay({
                 </div>
               ) : null}
               {(supabaseUnavailable || supabaseChecking || supabaseSignedOut) && (
-                <div className="space-y-2 rounded-2xl border border-dashed border-strong bg-white p-4 type-subhead text-subtle">
+                <div className="space-y-2 rounded-2xl border border-dashed border-strong bg-surface-card p-4 type-subhead text-subtle">
                   {supabaseUnavailable ? (
                     <>
                       <p className="font-semibold text-body">Supabase unavailable</p>
@@ -1803,7 +1803,7 @@ export function StructureEntryOverlay({
                   type="button"
                   onClick={handleToggleIncludeVenue}
                   className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 type-caption font-semibold ${
-                    includeVenue ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-default bg-white text-subtle'
+                    includeVenue ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-default bg-surface-card text-subtle'
                   }`}
                 >
                   {includeVenue ? 'Included' : 'Excluded'}
@@ -1836,7 +1836,7 @@ export function StructureEntryOverlay({
                 {(form.legs ?? []).map((leg, index) => (
                   <div
                     key={index}
-                    className="space-y-4 rounded-2xl border border-default bg-white p-4"
+                    className="space-y-4 rounded-2xl border border-default bg-surface-card p-4"
                   >
                     <h4 className="type-caption font-semibold uppercase tracking-wide text-subtle">
                       Leg {index + 1}
@@ -1930,7 +1930,7 @@ export function StructureEntryOverlay({
                   {(form.fills ?? []).map((fill, index) => (
                     <div
                       key={index}
-                      className="space-y-4 rounded-2xl border border-default bg-white p-4"
+                      className="space-y-4 rounded-2xl border border-default bg-surface-card p-4"
                     >
                       <h4 className="type-caption font-semibold uppercase tracking-wide text-subtle">
                         Fill {index + 1}

@@ -151,7 +151,7 @@ export function StructureDetailOverlay({ open, onClose, position }: StructureDet
 
   return (
     <Overlay open={open} onClose={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl max-w-5xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+      <div className="bg-surface-card rounded-2xl shadow-xl max-w-5xl w-full max-h-[80vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between border-b p-4">
           <div>
             <div className="type-subhead text-muted">Structure details</div>

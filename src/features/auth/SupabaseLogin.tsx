@@ -67,7 +67,7 @@ export function SupabaseLogin() {
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="w-full rounded-xl border border-default/80 bg-white px-3 py-3 type-subhead font-medium text-heading shadow-sm transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-400/70"
+          className="w-full rounded-xl border border-default/80 bg-surface-card px-3 py-3 type-subhead font-medium text-heading shadow-sm transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-400/70"
           placeholder="name@company.com"
         />
       </div>
@@ -84,7 +84,7 @@ export function SupabaseLogin() {
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded-xl border border-default/80 bg-white px-3 py-3 pr-12 type-subhead font-medium text-heading shadow-sm transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-400/70"
+            className="w-full rounded-xl border border-default/80 bg-surface-card px-3 py-3 pr-12 type-subhead font-medium text-heading shadow-sm transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sky-400/70"
             placeholder="Enter your password"
           />
           <button

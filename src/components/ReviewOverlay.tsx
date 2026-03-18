@@ -115,7 +115,7 @@ const ReviewRow = React.memo(function ReviewRow({
       <td className="p-2 align-top">
         <div className="flex flex-col gap-1">
           <select
-            className="border rounded-lg px-2 py-1 type-subhead bg-white disabled:bg-surface-page"
+            className="border rounded-lg px-2 py-1 type-subhead bg-surface-card disabled:bg-surface-page"
             value={hasAllocations ? '' : selectedStructureId ?? ''}
             onChange={(e) => onChangeLinkedStructure(i, e.target.value)}
             disabled={!hasSavedStructures || isUnprocessed || hasAllocations}
@@ -161,7 +161,7 @@ const ReviewRow = React.memo(function ReviewRow({
                     {rowAllocations.map((entry, allocIndex) => (
                       <div key={`${i}-alloc-${allocIndex}`} className="flex items-center gap-2">
                         <select
-                          className="border rounded-lg px-2 py-1 type-caption bg-white flex-1"
+                          className="border rounded-lg px-2 py-1 type-caption bg-surface-card flex-1"
                           value={entry.structureId ?? ''}
                           onChange={(e) => onChangeAllocationStructure(i, allocIndex, e.target.value)}
                         >
@@ -480,7 +480,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-6xl p-6">
+      <div className="bg-surface-card rounded-2xl shadow-xl w-full max-w-6xl p-6">
         <div className="flex items-center gap-3 mb-3">
           <h3 className="type-title-m font-semibold">Review & Select Lines</h3>
           <div className="ml-auto flex gap-2 type-subhead">
