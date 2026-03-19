@@ -3,7 +3,7 @@ import React from 'react'
 export function UploadBox({ onFiles }: { onFiles: (files: FileList) => void }) {
   const ref = React.useRef<HTMLInputElement | null>(null);
   return (
-    <div className="border-2 border-dashed border-strong rounded-2xl p-6 text-center">
+    <div className="border-2 border-dashed border-border-strong rounded-2xl p-6 text-center">
       <p className="type-subhead text-subtle">Drop your Deribit CSV here, or</p>
       <button
         onClick={() => ref.current?.click()}

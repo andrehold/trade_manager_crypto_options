@@ -42,14 +42,14 @@ export function ImportedTransactionsOverlay({
   const statusBadge = (status: ImportedRow['status'], label?: string | null) => {
     if (status === 'unprocessed') {
       return (
-        <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+        <span className="inline-flex items-center rounded-full border banner-warning px-2 py-0.5 type-micro font-semibold uppercase tracking-wide">
           Unprocessed
         </span>
       );
     }
 
     return (
-      <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+      <span className="inline-flex items-center rounded-full border banner-success px-2 py-0.5 type-micro font-semibold uppercase tracking-wide">
         {label ?? 'Linked'}
       </span>
     );
@@ -88,7 +88,7 @@ export function ImportedTransactionsOverlay({
         </div>
 
         {error ? (
-          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 type-subhead text-rose-700">
+          <div className="mt-3 rounded-xl border banner-danger px-3 py-2 type-subhead">
             {error}
           </div>
         ) : null}
@@ -97,10 +97,10 @@ export function ImportedTransactionsOverlay({
           <div
             className={`mt-3 rounded-xl border px-3 py-2 type-subhead ${
               backfillStatus.type === 'success'
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                ? 'banner-success'
                 : backfillStatus.type === 'error'
-                ? 'border-rose-200 bg-rose-50 text-rose-700'
-                : 'border-default bg-surface-page text-body'
+                ? 'banner-danger'
+                : 'border-border-default bg-surface-page text-body'
             }`}
           >
             {backfillStatus.message}
@@ -153,7 +153,7 @@ export function ImportedTransactionsOverlay({
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-strong">{row.instrument}</span>
                         {row.warning ? (
-                          <span className="type-caption text-amber-600" title={row.warning}>
+                          <span className="type-caption text-status-warning-text" title={row.warning}>
                             ⚠️
                           </span>
                         ) : null}

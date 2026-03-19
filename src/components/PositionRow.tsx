@@ -184,11 +184,11 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
               <span
                 className={`w-2.5 h-2.5 rounded-full ${
                   statusTone === 'success'
-                    ? 'bg-emerald-500'
+                    ? 'bg-status-success'
                     : statusTone === 'warning'
-                    ? 'bg-amber-500'
+                    ? 'bg-status-warning'
                     : statusTone === 'destructive'
-                    ? 'bg-rose-500'
+                    ? 'bg-status-danger'
                     : 'bg-faint'
                 }`}
               />
@@ -219,37 +219,37 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                   ) : null}
                 </div>
               ) : (
-                <span className="inline-flex min-h-[2.25rem] items-center rounded-lg border border-default bg-surface-page px-3 type-subhead text-faint">
+                <span className="inline-flex min-h-[2.25rem] items-center rounded-lg border border-border-default bg-surface-page px-3 type-subhead text-faint">
                   —
                 </span>
               )
             ) : programLabel || strategyLabel || showStructureChip ? (
               <div className="flex flex-col gap-1">
                 {programLabel && (
-                  <span className="inline-flex items-center rounded-full border border-default bg-surface-card px-2 py-1 type-caption font-medium text-body shadow-sm">
+                  <span className="inline-flex items-center rounded-full border border-border-default bg-surface-card px-2 py-1 type-caption font-medium text-body shadow-sm">
                     {programLabel}
                   </span>
                 )}
                 {showStructureChip && structureChipSummary && (
-                  <span className="inline-flex items-center rounded-full border border-default bg-surface-card px-3 py-1 type-caption font-medium text-body shadow-sm">
+                  <span className="inline-flex items-center rounded-full border border-border-default bg-surface-card px-3 py-1 type-caption font-medium text-body shadow-sm">
                     {structureChipSummary}
                   </span>
                 )}
                 {strategyLabel && (
-                  <span className="inline-flex items-center rounded-full border border-default bg-surface-card px-2 py-1 type-caption font-medium text-body shadow-sm">
+                  <span className="inline-flex items-center rounded-full border border-border-default bg-surface-card px-2 py-1 type-caption font-medium text-body shadow-sm">
                     {strategyLabel}
                   </span>
                 )}
               </div>
             ) : (
-              <span className="inline-flex min-h-[2.25rem] items-center rounded-lg border border-default bg-surface-page px-3 type-subhead text-faint">
+              <span className="inline-flex min-h-[2.25rem] items-center rounded-lg border border-border-default bg-surface-page px-3 type-subhead text-faint">
                 —
               </span>
             )}
           </td>
         )}
         {visibleCols.includes('pnl') && (
-          <td className={`p-3 align-top ${posTotalPnl < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+          <td className={`p-3 align-top ${posTotalPnl < 0 ? 'text-status-danger' : 'text-status-success'}`}>
             {fmtPremium(posTotalPnl, p.underlying)}
             <div className="type-caption text-muted">
               <span title="Realized">{fmtPremium(p.realizedPnl, p.underlying)}</span>
@@ -259,7 +259,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           </td>
         )}
         {visibleCols.includes('pnlpct') && (
-          <td className={`p-3 align-top ${markAwarePnlPct && markAwarePnlPct < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+          <td className={`p-3 align-top ${markAwarePnlPct && markAwarePnlPct < 0 ? 'text-status-danger' : 'text-status-success'}`}>
             {markAwarePnlPct == null ? '—' : `${markAwarePnlPct.toFixed(2)}%`}
           </td>
         )}
@@ -273,7 +273,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
             <button
               type="button"
               className={`inline-flex items-center justify-center rounded-md border px-2 py-1 text-subtle shadow-sm ${
-                hasPlaybookValue ? 'border-default bg-surface-card hover:bg-surface-hover' : 'border-default bg-surface-page opacity-60'
+                hasPlaybookValue ? 'border-border-default bg-surface-card hover:bg-surface-hover' : 'border-border-default bg-surface-page opacity-60'
               }`}
               disabled={!hasPlaybookValue}
               onClick={() => (hasPlaybookValue && onPlaybookOpen ? onPlaybookOpen(p) : null)}
@@ -286,14 +286,14 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
         <td className="p-3 align-top text-right">
           {isUpdateMode ? (
             <div className="inline-flex flex-wrap items-center gap-2 justify-end">
-              <span className="inline-flex items-center justify-center rounded-md border border-default bg-surface-page px-2 py-1 text-[11px] text-muted">
+              <span className="inline-flex items-center justify-center rounded-md border border-border-default bg-surface-page px-2 py-1 text-[11px] text-muted">
                 Saved
               </span>
               {onArchive ? (
                 <button
                   type="button"
                   onClick={() => onArchive(p.id)}
-                  className="inline-flex items-center justify-center rounded-md border border-default bg-surface-card px-2 py-1 type-caption font-medium text-subtle shadow-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center justify-center rounded-md border border-border-default bg-surface-card px-2 py-1 type-caption font-medium text-subtle shadow-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
                   title="Archive this saved structure"
                   disabled={archiving}
                 >
@@ -312,7 +312,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowDetailOverlay(true)}
-                    className="inline-flex items-center justify-center rounded-md border border-default bg-surface-card p-2 text-subtle shadow-sm hover:bg-surface-hover"
+                    className="inline-flex items-center justify-center rounded-md border border-border-default bg-surface-card p-2 text-subtle shadow-sm hover:bg-surface-hover"
                     title="View transaction details"
                   >
                     <Plus className="h-4 w-4" />
@@ -321,7 +321,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowSaveOverlay(true)}
-                    className="inline-flex items-center justify-center rounded-md border border-default bg-surface-card p-2 text-subtle shadow-sm hover:bg-surface-hover"
+                    className="inline-flex items-center justify-center rounded-md border border-border-default bg-surface-card p-2 text-subtle shadow-sm hover:bg-surface-hover"
                     title="Update saved structure"
                   >
                     <Pencil className="h-4 w-4" />
@@ -330,7 +330,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowExportOverlay(true)}
-                    className="inline-flex items-center justify-center rounded-md border border-default bg-surface-card p-2 text-subtle shadow-sm hover:bg-surface-hover"
+                    className="inline-flex items-center justify-center rounded-md border border-border-default bg-surface-card p-2 text-subtle shadow-sm hover:bg-surface-hover"
                     title="Export trade JSON"
                   >
                     <Download className="h-4 w-4" />
@@ -343,14 +343,14 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
             <button
               type="button"
               onClick={() => setShowSaveOverlay(true)}
-              className="inline-flex items-center justify-center rounded-md border border-default bg-surface-card p-2 text-subtle shadow-sm hover:bg-surface-hover"
+              className="inline-flex items-center justify-center rounded-md border border-border-default bg-surface-card p-2 text-subtle shadow-sm hover:bg-surface-hover"
               title="Open save overlay"
             >
               <Save className="h-4 w-4" />
               <span className="sr-only">Open save overlay</span>
             </button>
           ) : (
-            <span className="inline-flex items-center justify-center rounded-md border border-default bg-surface-page px-2 py-1 text-[11px] text-muted">
+            <span className="inline-flex items-center justify-center rounded-md border border-border-default bg-surface-page px-2 py-1 text-[11px] text-muted">
               Save disabled
             </span>
           )}
@@ -372,7 +372,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                 <div className="type-subhead font-medium flex items-center gap-2">
                   <span>{fmtPremium(p.netPremium, p.underlying)}</span>
                   {isClosed ? (
-                    <span className={p.realizedPnl < 0 ? 'text-rose-600' : 'text-emerald-600'}>
+                    <span className={p.realizedPnl < 0 ? 'text-status-danger' : 'text-status-success'}>
                       / {fmtPremium(p.realizedPnl, p.underlying)}
                     </span>
                   ) : null}
@@ -421,7 +421,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                           const multiplier = ref.exchange === 'coincall' ? markInfo?.multiplier : ref.defaultMultiplier
                           const u = legUnrealizedPnL(l, markPrice, multiplier)
                           unrealizedCell = (
-                            <span className={u < 0 ? 'text-rose-600' : 'text-emerald-600'}>
+                            <span className={u < 0 ? 'text-status-danger' : 'text-status-success'}>
                               {fmtPremium(u, p.underlying, 4)}
                             </span>
                           )
@@ -434,7 +434,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                                 {formatLegInstrument(l, ref)}
                               </td>
                               <td className="p-2 text-right font-mono tabular-nums">{fmtFourDecimals(l.qtyNet)}</td>
-                              <td className={`p-2 text-right font-mono tabular-nums ${l.realizedPnl < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                              <td className={`p-2 text-right font-mono tabular-nums ${l.realizedPnl < 0 ? 'text-status-danger' : 'text-status-success'}`}>
                                 {fmtPremium(l.realizedPnl, p.underlying, 4)}
                               </td>
                               <td className="p-2 text-right font-mono tabular-nums">

@@ -23,25 +23,25 @@ const LANES: {
   {
     id: 'nearProfit',
     label: 'Near Profit',
-    accent: 'text-emerald-400',
-    headerBg: 'bg-emerald-950/60',
-    border: 'border-emerald-800/60',
+    accent: 'text-status-success',
+    headerBg: 'bg-status-success-bg',
+    border: 'border-status-success-border',
     countVariant: 'success',
   },
   {
     id: 'nearLoss',
     label: 'Near Loss',
-    accent: 'text-rose-400',
-    headerBg: 'bg-rose-950/60',
-    border: 'border-rose-800/60',
+    accent: 'text-status-danger',
+    headerBg: 'bg-status-danger-bg',
+    border: 'border-status-danger-border',
     countVariant: 'danger',
   },
   {
     id: 'nearDTE',
     label: 'Near DTE',
-    accent: 'text-amber-400',
-    headerBg: 'bg-amber-950/60',
-    border: 'border-amber-800/60',
+    accent: 'text-status-warning',
+    headerBg: 'bg-status-warning-bg',
+    border: 'border-status-warning-border',
     countVariant: 'warning',
   },
 ]
@@ -90,7 +90,7 @@ function KanbanCard({ p, marks }: { p: Position; marks: MarksMap }) {
 
       <div className="flex items-center gap-3 type-caption">
         {hasPnl ? (
-          <span className={pnl >= 0 ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}>
+          <span className={pnl >= 0 ? 'text-status-success font-semibold' : 'text-status-danger font-semibold'}>
             {pnl >= 0 ? '+' : ''}{fmtPremium(pnl)}
           </span>
         ) : (
@@ -98,7 +98,7 @@ function KanbanCard({ p, marks }: { p: Position; marks: MarksMap }) {
         )}
 
         {minDte !== null ? (
-          <span className={`font-medium tabular-nums ${minDte <= 7 ? 'text-amber-400' : 'text-text-tertiary'}`}>
+          <span className={`font-medium tabular-nums ${minDte <= 7 ? 'text-status-warning' : 'text-text-tertiary'}`}>
             {minDte}d
           </span>
         ) : null}

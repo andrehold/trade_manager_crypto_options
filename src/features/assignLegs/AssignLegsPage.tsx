@@ -126,7 +126,7 @@ function SortableLegChip({
         {onRemove && (
           <button
             onClick={(e) => { e.stopPropagation(); onRemove() }}
-            className="shrink-0 text-text-disabled hover:text-rose-400 type-caption leading-none ml-1 transition-colors"
+            className="shrink-0 text-text-disabled hover:text-status-danger type-caption leading-none ml-1 transition-colors"
             title="Remove from structure"
           >
             ✕
@@ -256,7 +256,7 @@ function DraggableLegChip({
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onExclude() }}
-            className="shrink-0 text-text-disabled hover:text-amber-400 leading-none ml-1 transition-colors"
+            className="shrink-0 text-text-disabled hover:text-status-warning leading-none ml-1 transition-colors"
             title="Save as unprocessed"
           >
             <EyeOff size={11} />
@@ -321,7 +321,7 @@ function Droppable({
     <div
       ref={setNodeRef}
       style={style}
-      className={`${className ?? ''} ${isOver ? 'ring-2 ring-blue-500/50 ring-inset' : ''}`}
+      className={`${className ?? ''} ${isOver ? 'ring-2 ring-status-info-border ring-inset' : ''}`}
     >
       {children}
     </div>
@@ -361,9 +361,9 @@ function NewStructureDropZone({
       ref={setNodeRef}
       className={`border border-dashed rounded-xl p-3 transition-colors ${
         isOver
-          ? 'border-blue-500/60 bg-blue-500/5'
+          ? 'border-status-info-border bg-status-info-bg'
           : items.length > 0
-          ? 'border-emerald-500/40 bg-emerald-500/5'
+          ? 'border-status-success-border bg-status-success-bg'
           : 'border-border-strong bg-bg-surface-1/50'
       }`}
     >
@@ -465,7 +465,7 @@ function SavedStructureCard({
     <div
       ref={setNodeRef}
       className={`border rounded-xl px-3 py-2.5 transition-colors ${
-        isOver ? 'border-blue-500/50 bg-blue-500/5' : 'border-border-strong bg-bg-surface-1/50'
+        isOver ? 'border-status-info-border bg-status-info-bg' : 'border-border-strong bg-bg-surface-1/50'
       }`}
     >
       <div className="flex items-center gap-2 mb-2">
@@ -489,7 +489,7 @@ function SavedStructureCard({
         <SortableContext items={newLegs.map((i) => i.id)} strategy={rectSortingStrategy}>
           <div
             className={`flex-1 min-w-0 border border-dashed rounded-xl p-2 min-h-[36px] transition-colors ${
-              isOver ? 'border-blue-500/50 bg-blue-500/5' : 'border-border-strong bg-bg-surface-1/50'
+              isOver ? 'border-status-info-border bg-status-info-bg' : 'border-border-strong bg-bg-surface-1/50'
             }`}
           >
             {newLegs.length === 0 ? (
@@ -539,7 +539,7 @@ function LocalStructureCard({
     <div
       ref={setNodeRef}
       className={`border rounded-xl p-3 transition-colors ${
-        isOver ? 'border-blue-500/50 bg-blue-500/5' : 'border-border-strong bg-bg-surface-1/50'
+        isOver ? 'border-status-info-border bg-status-info-bg' : 'border-border-strong bg-bg-surface-1/50'
       }`}
     >
       <div className="flex items-center justify-between mb-2">
@@ -561,7 +561,7 @@ function LocalStructureCard({
           </select>
           <button
             onClick={onRemove}
-            className="type-caption text-text-disabled hover:text-rose-400 transition-colors"
+            className="type-caption text-text-disabled hover:text-status-danger transition-colors"
             title="Delete structure"
           >
             ✕
@@ -1066,7 +1066,7 @@ function AssignLegsPageInner({
             )}
           </div>
           {validationMsg && (
-            <span className="type-caption font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-1">
+            <span className="type-caption font-bold banner-warning border rounded-lg px-3 py-1">
               {validationMsg}
             </span>
           )}
@@ -1361,7 +1361,7 @@ function AssignLegsPageInner({
                           <td className="p-2">
                             <button
                               onClick={() => handleRestoreItem(item.id)}
-                              className="flex items-center gap-1 text-text-tertiary hover:text-emerald-400 transition-colors"
+                              className="flex items-center gap-1 text-text-tertiary hover:text-status-success transition-colors"
                               title="Restore to new legs"
                             >
                               <RotateCcw size={11} />
@@ -1409,8 +1409,8 @@ function AssignLegsPageInner({
                           <td className="p-2">
                             <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${
                               p.source === 'structure'
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                ? 'bg-status-success-bg text-status-success-text border border-status-success-border'
+                                : 'bg-status-warning-bg text-status-warning-text border border-status-warning-border'
                             }`}>
                               {p.source === 'structure' ? 'Structure' : 'Unprocessed'}
                             </span>

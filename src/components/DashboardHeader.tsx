@@ -23,7 +23,7 @@ type Props = {
 
 export function DashboardHeader({ title, clientName, portfolioGreeks }: Props) {
   return (
-    <div className="flex items-center justify-between px-6 py-3 border-b border-border-default bg-bg-canvas">
+    <div className="flex items-center justify-between px-6 py-[18px] border-b border-border-default bg-bg-canvas">
       {/* Left: nav arrows + page title */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-0.5">

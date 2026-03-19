@@ -97,7 +97,7 @@ export const TradeCard = React.forwardRef<
         {onRemove && (
           <button
             onClick={(e) => { e.stopPropagation(); onRemove() }}
-            className="shrink-0 text-text-disabled hover:text-rose-400 text-[11px] leading-none ml-1 transition-colors"
+            className="shrink-0 text-text-disabled hover:text-status-danger text-[11px] leading-none ml-1 transition-colors"
             title="Remove from structure"
           >
             ✕

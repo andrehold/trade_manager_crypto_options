@@ -80,39 +80,44 @@ export function Sidebar({
   return (
     <aside
       className={[
-        'scheme-light',
-        'flex flex-col bg-surface-page text-white',
+        'flex flex-col bg-surface-page text-heading',
         'sticky top-0 h-screen overflow-y-auto overflow-x-hidden shrink-0',
         'transition-[width] duration-200 ease-in-out',
-        collapsed ? 'w-16' : 'w-60',
+        collapsed ? 'w-[72px]' : 'w-60',
       ].join(' ')}
     >
       {/* ── Logo + collapse toggle ── */}
       <div
         className={[
-          'flex items-center gap-3 px-3 py-4 border-b border-default',
+          'flex items-center gap-3 px-3 py-4 border-b border-border-default',
           collapsed ? 'justify-center' : '',
         ].join(' ')}
       >
         {collapsed ? (
           <button
             onClick={onToggle}
-            className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-500 text-white shrink-0 hover:bg-emerald-600 transition-colors"
+            aria-label="Expand sidebar"
+            className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-accent-600 text-white shrink-0 hover:bg-accent-700 transition-colors focus:outline-none focus:ring-2 focus:ring-border-accent"
             title="Expand sidebar"
           >
             <Zap className="w-4 h-4" strokeWidth={2.5} />
           </button>
         ) : (
-          <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-500 text-white shrink-0">
+          <button
+            onClick={onToggle}
+            aria-label="Collapse sidebar"
+            className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-accent-600 text-white shrink-0 hover:bg-accent-700 transition-colors focus:outline-none focus:ring-2 focus:ring-border-accent"
+            title="Collapse sidebar"
+          >
             <Zap className="w-4 h-4" strokeWidth={2.5} />
-          </span>
+          </button>
         )}
         {!collapsed && (
           <div className="flex-1 min-w-0">
             <p className="type-subhead font-semibold leading-tight truncate tracking-tight">
               Trade Desk
             </p>
-            <p className="text-[10px] text-faint leading-tight truncate">
+            <p className="type-micro text-faint leading-tight truncate">
               Demo · Frontend Only
             </p>
           </div>
@@ -120,7 +125,8 @@ export function Sidebar({
         {!collapsed && (
           <button
             onClick={onToggle}
-            className="p-1 rounded-lg text-faint hover:text-white hover:bg-surface-card transition ml-auto shrink-0"
+            aria-label="Collapse sidebar"
+            className="p-1 rounded-xl text-faint hover:text-heading hover:bg-surface-hover transition ml-auto shrink-0 focus:outline-none focus:ring-2 focus:ring-border-accent"
             title="Collapse sidebar"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -140,14 +146,15 @@ export function Sidebar({
               className={[
                 'flex items-center gap-3 rounded-xl px-3 py-2.5 type-subhead font-medium',
                 'transition-colors w-full text-left',
+                'focus:outline-none focus:ring-2 focus:ring-border-accent',
                 collapsed ? 'justify-center' : '',
                 isActive
-                  ? 'bg-emerald-500/15 text-emerald-400'
-                  : 'text-faint hover:bg-surface-section hover:text-heading',
+                  ? 'bg-accent-500/15 text-accent-400'
+                  : 'text-faint hover:bg-surface-hover hover:text-heading',
               ].join(' ')}
             >
               <Icon
-                className={['w-5 h-5 shrink-0', isActive ? 'text-emerald-400' : ''].join(' ')}
+                className={['w-5 h-5 shrink-0', isActive ? 'text-accent-400' : ''].join(' ')}
               />
               {!collapsed && <span className="truncate">{label}</span>}
             </button>
@@ -155,8 +162,7 @@ export function Sidebar({
         })}
       </nav>
 
-      {/* ── Divider ── */}
-      <div className="mx-3 border-t border-default" />
+      <hr className="mx-3 border-0 border-t border-border-default" />
 
       {/* ── BTC Spot ── */}
       <div
@@ -173,10 +179,10 @@ export function Sidebar({
         <Bitcoin className="w-4 h-4 text-amber-400 shrink-0" />
         {!collapsed && (
           <div className="flex flex-col leading-tight">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-faint">
+            <span className="type-micro font-semibold uppercase tracking-widest text-faint">
               BTC Spot
             </span>
-            <span className="type-subhead font-semibold text-white tabular-nums">{btcFormatted}</span>
+            <span className="type-subhead font-semibold text-heading tabular-nums">{btcFormatted}</span>
           </div>
         )}
       </div>
@@ -185,9 +191,10 @@ export function Sidebar({
       <div className="px-2 pb-3">
         <button
           className={[
-            'w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700',
+            'w-full rounded-xl bg-accent-600 hover:bg-accent-700 active:bg-accent-800',
             'text-white py-2 type-subhead font-semibold transition-colors',
             'flex items-center justify-center gap-2',
+            'focus:outline-none focus:ring-2 focus:ring-border-accent',
           ].join(' ')}
           title="Add Trade"
         >
@@ -199,8 +206,7 @@ export function Sidebar({
       {/* ── Spacer ── */}
       <div className="flex-1" />
 
-      {/* ── Divider ── */}
-      <div className="mx-3 border-t border-default" />
+      <hr className="mx-3 border-0 border-t border-border-default" />
 
       {/* ── Alerts only ── */}
       <div
@@ -212,7 +218,11 @@ export function Sidebar({
         <button
           onClick={collapsed ? () => onToggleAlertsOnly(!alertsOnly) : undefined}
           title={collapsed ? (alertsOnly ? 'Alerts on' : 'Alerts off') : undefined}
-          className={collapsed ? 'cursor-pointer' : 'cursor-default'}
+          aria-label={alertsOnly ? 'Disable alerts filter' : 'Enable alerts filter'}
+          className={[
+            collapsed ? 'cursor-pointer' : 'cursor-default',
+            'focus:outline-none focus:ring-2 focus:ring-border-accent rounded-lg',
+          ].join(' ')}
         >
           <Bell
             className={[
@@ -230,7 +240,7 @@ export function Sidebar({
       </div>
 
       {/* ── Client selector ── */}
-      <div className="border-t border-default">
+      <div className="border-t border-border-default">
         {collapsed ? (
           <div className="flex justify-center px-4 py-3" title={selectedClient}>
             <Users className="w-4 h-4 text-faint" />
@@ -239,17 +249,18 @@ export function Sidebar({
           <div className="flex items-center gap-2 px-4 py-3">
             <Users className="w-4 h-4 text-faint shrink-0" />
             <div className="flex-1 min-w-0 flex flex-col leading-tight">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-faint">
+              <span className="type-micro font-semibold uppercase tracking-widest text-faint">
                 Client
               </span>
               <select
-                className="bg-transparent type-subhead font-semibold text-white focus:outline-none"
+                aria-label="Select client"
+                className="w-full bg-surface-chip border border-border-default rounded-lg px-2 py-1 type-subhead font-semibold text-heading hover:border-border-accent transition-colors focus:outline-none focus:ring-2 focus:ring-border-accent disabled:opacity-45 disabled:cursor-not-allowed"
                 value={selectedClient}
                 onChange={(e) => onSelectClient(e.target.value)}
                 disabled={!isAdmin}
               >
                 {clientOptions.map((c) => (
-                  <option key={c} value={c} className="bg-surface-page text-white">
+                  <option key={c} value={c} className="bg-surface-page text-heading">
                     {c}
                   </option>
                 ))}
@@ -258,14 +269,15 @@ export function Sidebar({
             {isAdmin && (
               <button
                 onClick={onAddClient}
-                className="p-1 rounded-lg text-faint hover:text-white hover:bg-surface-card transition shrink-0"
+                aria-label="Add client"
+                className="p-1 rounded-lg text-faint hover:text-heading hover:bg-surface-hover transition shrink-0 focus:outline-none focus:ring-2 focus:ring-border-accent"
                 title="Add client"
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
             )}
             {!isAdmin && (
-              <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted">
+              <span className="type-micro font-semibold uppercase tracking-widest text-muted">
                 Locked
               </span>
             )}
@@ -276,7 +288,7 @@ export function Sidebar({
       {/* ── User + sign out ── */}
       <div
         className={[
-          'flex items-center gap-2 px-4 py-3 border-t border-default',
+          'flex items-center gap-2 px-4 py-3 border-t border-border-default',
           collapsed ? 'justify-center' : '',
         ].join(' ')}
       >
@@ -288,7 +300,8 @@ export function Sidebar({
         )}
         <button
           onClick={onSignOut}
-          className="p-1 rounded-lg text-faint hover:text-rose-400 hover:bg-surface-card transition shrink-0"
+          aria-label="Sign out"
+          className="p-1 rounded-lg text-faint hover:text-rose-400 hover:bg-surface-hover transition shrink-0 focus:outline-none focus:ring-2 focus:ring-border-accent"
           title="Sign out"
         >
           <LogOut className="w-4 h-4" />

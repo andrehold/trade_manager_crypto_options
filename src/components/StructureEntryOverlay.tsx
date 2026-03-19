@@ -613,7 +613,7 @@ function Field({
   const { label, type = 'text', options, placeholder, helperText, required, step, inputMode, disabled } = meta;
   const displayValue = value ?? '';
   const baseClass = `mt-1 block w-full rounded-lg border bg-bg-surface-1 px-3 py-2 type-subhead text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-2 ${
-    missing ? 'border-rose-500 focus:ring-rose-400' : 'border-border-default focus:ring-border-accent'
+    missing ? 'border-status-danger focus:ring-status-danger' : 'border-border-default focus:ring-border-accent'
   } ${disabled ? 'cursor-not-allowed bg-bg-canvas text-text-tertiary' : ''}`;
 
   const handleChange = (
@@ -648,9 +648,9 @@ function Field({
   const labelText = (
     <span className="type-caption font-medium uppercase tracking-wide text-text-secondary">
       {label}
-      {required ? <span className="ml-1 text-rose-500">*</span> : null}
+      {required ? <span className="ml-1 text-status-danger">*</span> : null}
       {missing ? (
-        <span className="ml-2 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-600">
+        <span className="ml-2 rounded-full bg-status-danger-bg px-2 py-0.5 text-[10px] font-semibold text-status-danger-text">
           Required
         </span>
       ) : null}
@@ -723,7 +723,7 @@ function CheckboxField({
     <label
       className={`flex items-center gap-2 rounded-lg border px-3 py-2 type-subhead ${
         missing
-          ? 'border-rose-500 bg-rose-50 text-rose-600'
+          ? 'border-status-danger bg-status-danger-bg text-status-danger-text'
           : 'border-border-default bg-bg-surface-1 text-text-secondary'
       }`}
     >
@@ -735,10 +735,10 @@ function CheckboxField({
       />
       <span className="font-medium">{meta.label}</span>
       {meta.required ? (
-        <span className="ml-2 type-caption font-semibold uppercase tracking-wide text-rose-600">Required</span>
+        <span className="ml-2 type-caption font-semibold uppercase tracking-wide text-status-danger-text">Required</span>
       ) : null}
       {missing ? (
-        <span className="ml-2 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-600">
+        <span className="ml-2 rounded-full bg-status-danger-bg px-2 py-0.5 text-[10px] font-semibold text-status-danger-text">
           Missing
         </span>
       ) : null}
@@ -1625,11 +1625,11 @@ export function StructureEntryOverlay({
                 </div>
               ) : null}
               {missing.size > 0 ? (
-                <span className="rounded-full bg-rose-50 px-3 py-1 font-medium text-rose-600">
+                <span className="rounded-full bg-status-danger-bg px-3 py-1 font-medium text-status-danger-text">
                   {missing.size} required field{missing.size === 1 ? '' : 's'} missing
                 </span>
               ) : (
-                <span className="rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-600">
+                <span className="rounded-full bg-status-success-bg px-3 py-1 font-medium text-status-success-text">
                   All required fields complete
                 </span>
               )}
@@ -1661,24 +1661,24 @@ export function StructureEntryOverlay({
                 </div>
               ) : null}
               {loadError ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 type-subhead text-amber-700">
+                <div className="rounded-xl border banner-warning px-4 py-3 type-subhead">
                   {loadError}
                 </div>
               ) : null}
               {saveStatus.type === 'error' ? (
-                <div className="space-y-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 type-subhead text-rose-700">
+                <div className="space-y-2 rounded-xl border banner-danger px-4 py-3 type-subhead">
                   <p className="font-medium">
                     {saveStatus.message ?? 'Unable to save structure. Please try again.'}
                   </p>
                   {saveStatus.details ? (
-                    <pre className="whitespace-pre-wrap type-caption leading-5 text-rose-600">
+                    <pre className="whitespace-pre-wrap type-caption leading-5 text-status-danger-text">
                       {saveStatus.details}
                     </pre>
                   ) : null}
                 </div>
               ) : null}
               {saveStatus.type === 'success' ? (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 type-subhead text-emerald-700">
+                <div className="rounded-xl border banner-success px-4 py-3 type-subhead">
                   {saveStatus.message ?? 'Structure saved successfully.'}
                 </div>
               ) : null}
@@ -1802,7 +1802,7 @@ export function StructureEntryOverlay({
                   type="button"
                   onClick={handleToggleIncludeVenue}
                   className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 type-caption font-semibold ${
-                    includeVenue ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-border-default bg-bg-surface-1 text-text-secondary'
+                    includeVenue ? 'banner-success' : 'border-border-default bg-bg-surface-1 text-text-secondary'
                   }`}
                 >
                   {includeVenue ? 'Included' : 'Excluded'}

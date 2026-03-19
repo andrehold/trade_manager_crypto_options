@@ -6,10 +6,10 @@ export type ReviewStructureOption = { value: string; label: string; legInstrumen
 function SideCell({ action, side }: { action?: TxnRow['action']; side: TxnRow['side'] }) {
   const chipClasses =
     action === 'open'
-      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      ? 'banner-success'
       : action === 'close'
-      ? 'bg-rose-50 text-rose-700 border-rose-200'
-      : 'bg-surface-page text-subtle border-default';
+      ? 'banner-danger'
+      : 'bg-surface-page text-subtle border-border-default';
 
   return (
     <div className="flex items-center gap-2">
@@ -127,7 +127,7 @@ const ReviewRow = React.memo(function ReviewRow({
               </option>
             ))}
           </select>
-          <span className={`type-caption ${selectedStructureId ? 'text-emerald-600' : 'text-muted'}`}>
+          <span className={`type-caption ${selectedStructureId ? 'text-status-success-text' : 'text-muted'}`}>
             {isUnprocessed
               ? 'Will be saved as unprocessed and excluded from future imports.'
               : hasAllocations
@@ -143,7 +143,7 @@ const ReviewRow = React.memo(function ReviewRow({
               : 'No saved structures available for this client.'}
           </span>
           {allowAllocations && !isUnprocessed ? (
-            <div className="mt-2 rounded-lg border border-default bg-surface-page p-2">
+            <div className="mt-2 rounded-lg border border-border-default bg-surface-page p-2">
               <div className="flex items-center justify-between type-caption text-subtle mb-2">
                 <span>Allocations (split qty across structures)</span>
                 <button
@@ -182,7 +182,7 @@ const ReviewRow = React.memo(function ReviewRow({
                         />
                         <button
                           type="button"
-                          className="type-caption text-rose-600 hover:text-rose-700"
+                          className="type-caption text-status-danger hover:text-status-danger/80"
                           onClick={() => onRemoveAllocation(i, allocIndex)}
                         >
                           Remove
@@ -202,8 +202,8 @@ const ReviewRow = React.memo(function ReviewRow({
                 <div
                   className={`mt-2 type-caption ${
                     Math.abs(totalAllocated - rowQty) <= Number.EPSILON
-                      ? 'text-emerald-600'
-                      : 'text-amber-600'
+                      ? 'text-status-success-text'
+                      : 'text-status-warning-text'
                   }`}
                 >
                   Allocated {totalAllocated} / {rowQty}
@@ -489,14 +489,14 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
           </div>
         </div>
         {importHistorical ? (
-          <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-900 type-subhead p-3">
+          <div className="mb-3 rounded-xl border banner-danger type-subhead p-3">
             <p className="font-medium">
               Historical mode is enabled. Duplicate trade or order IDs may already exist in your saved imports.
             </p>
           </div>
         ) : null}
         {(duplicateTradeIds?.length || duplicateOrderIds?.length) ? (
-          <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 type-subhead p-3">
+          <div className="mb-3 rounded-xl border banner-warning type-subhead p-3">
             <p className="font-medium">
               {allowAllocations
                 ? 'Trade/order IDs already exist in saved fills or unprocessed trades. Allocation mode keeps these rows so you can split the execution across structures.'

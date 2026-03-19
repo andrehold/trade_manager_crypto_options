@@ -138,15 +138,15 @@ export function StrategyPlaybookPage({
               </p>
               <ul className="mt-4 space-y-3 type-subhead text-text-primary">
                 <li className="flex gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-400" />
+                  <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-status-success" />
                   <span>Validate short-dated IV premium versus weekly tenor.</span>
                 </li>
                 <li className="flex gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-400" />
+                  <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-status-success" />
                   <span>Map key strikes &amp; funding to gauge directional bias.</span>
                 </li>
                 <li className="flex gap-2">
-                  <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-400" />
+                  <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-status-success" />
                   <span>Plan defined-risk exits for gap scenarios before the weekend.</span>
                 </li>
               </ul>

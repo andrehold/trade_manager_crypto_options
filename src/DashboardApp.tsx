@@ -2,7 +2,6 @@ import React from 'react'
 import Papa from 'papaparse'
 import { Toggle } from './components/Toggle'
 import { Sidebar } from './components/Sidebar'
-import { UploadBox } from './components/UploadBox'
 import { setAssignLegsContext } from './features/assignLegs/assignLegsStore'
 import { setColumnMapperContext } from './features/mapCSV/columnMapperStore'
 import { ReviewOverlay, type ReviewStructureOption } from './components/ReviewOverlay'
@@ -2058,9 +2057,9 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
       <div className="relative min-h-screen overflow-hidden bg-bg-canvas">
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-br from-surface-page via-surface-section to-surface-page" />
-          <div className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-sky-500/30 blur-3xl" />
-          <div className="absolute bottom-[-120px] right-[-80px] h-[520px] w-[520px] rounded-full bg-indigo-500/20 blur-3xl" />
-          <div className="absolute -bottom-32 left-[-60px] h-80 w-80 rounded-full bg-emerald-500/20 blur-3xl" />
+          <div className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-status-info-bg blur-3xl" />
+          <div className="absolute bottom-[-120px] right-[-80px] h-[520px] w-[520px] rounded-full bg-playbook-bg blur-3xl" />
+          <div className="absolute -bottom-32 left-[-60px] h-80 w-80 rounded-full bg-status-success-bg blur-3xl" />
         </div>
 
         <div className="absolute inset-0 bg-bg-canvas/50 backdrop-blur">
@@ -2270,7 +2269,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
           <div className="px-6 pb-2">
             <div className="h-1 bg-bg-surface-1 rounded-full overflow-hidden">
               <div
-                className="h-1 bg-emerald-500 rounded-full transition-all"
+                className="h-1 bg-status-success rounded-full transition-all"
                 style={{ width: markFetch.total ? `${Math.round((markFetch.done / markFetch.total) * 100)}%` : '10%' }}
               />
             </div>
@@ -2317,10 +2316,10 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                     </div>
                   </div>
                   {savedStructuresError && (
-                    <div className="px-4 py-3 type-subhead text-rose-400">{savedStructuresError}</div>
+                    <div className="px-4 py-3 type-subhead text-status-danger">{savedStructuresError}</div>
                   )}
                   {programPlaybooksError && (
-                    <div className="px-4 py-3 type-subhead text-amber-400">{programPlaybooksError}</div>
+                    <div className="px-4 py-3 type-subhead text-status-warning">{programPlaybooksError}</div>
                   )}
                   {filteredSaved.length === 0 ? (
                     <div className="px-4 py-4 type-subhead text-text-tertiary">
@@ -2488,9 +2487,9 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                               {group.positions.map((position) => {
                                 const sideLower = position.side.toLowerCase();
                                 const sideClass = sideLower === 'buy'
-                                  ? 'text-emerald-500'
+                                  ? 'text-status-success'
                                   : sideLower === 'sell'
-                                  ? 'text-rose-500'
+                                  ? 'text-status-danger'
                                   : 'text-text-tertiary';
                                 return (
                                   <tr key={position.id} className="border-t border-border-default">
@@ -2561,15 +2560,6 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                   </div>
                 )}
 
-                {/* Upload box when no local positions */}
-                {positions.length === 0 && (
-                  <div className="p-4">
-                    <UploadBox onFiles={handleFiles} />
-                    <p className="type-caption text-text-disabled mt-3">
-                      Tip: You can re-open the Column Picker to adjust visible columns.
-                    </p>
-                  </div>
-                )}
               </div>
             )}
 

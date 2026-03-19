@@ -25,7 +25,7 @@ export function ColumnPicker({ visibleCols, onVisibleColsChange }: ColumnPickerP
   return (
     <details className="ml-auto">
       <summary className="type-subhead text-subtle cursor-pointer select-none">Columns</summary>
-      <div className="absolute mt-2 bg-surface-section border border-strong rounded-xl shadow-xl p-3 z-10">
+      <div className="absolute mt-2 bg-surface-section border border-border-strong rounded-xl shadow-xl p-3 z-10">
         {ALL_COLUMNS.map((c) => (
           <label key={c.key} className="flex items-center gap-2 type-subhead text-subtle py-1">
             <input
