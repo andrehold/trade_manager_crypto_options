@@ -19,6 +19,7 @@ import { fetchSavedStructures, appendTradesToStructure, filterDuplicateRows } fr
 import { createStructure } from '../../lib/positions/createStructure'
 import { saveUnprocessedTrades } from '../../lib/positions/saveUnprocessedTrades'
 import { deriveSyntheticDeliveryTradeId, sanitizeIdentifier } from '../../lib/positions/identifiers'
+import { Button } from '../../components/ui'
 
 type Props = {
   onBack: () => void
@@ -397,18 +398,18 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
   // ── Upload zone (no file yet, no pre-existing context) ──────────────────────
   if (!ctx && !localHeaders) {
     return (
-      <div className={embedded ? 'flex-1 flex flex-col' : 'min-h-screen bg-surface-page flex flex-col'}>
+      <div className={embedded ? 'flex-1 flex flex-col' : 'min-h-screen bg-bg-canvas flex flex-col'}>
         {/* Header — only shown when not embedded (standalone page) */}
         {!embedded && (
-          <div className="flex items-center gap-3 px-6 py-4 border-b border-default">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-border-default">
             <button
               onClick={onBack}
-              className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors"
+              className="p-1.5 rounded-lg hover:bg-bg-surface-4 transition-colors"
               aria-label="Back"
             >
-              <ArrowLeft size={18} className="text-subtle" />
+              <ArrowLeft size={18} className="text-text-secondary" />
             </button>
-            <h1 className="type-headline font-semibold text-strong">Import CSV</h1>
+            <h1 className="type-headline font-semibold text-text-primary">Import CSV</h1>
           </div>
         )}
 
@@ -423,14 +424,14 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
             className={[
               'flex-1 flex flex-col rounded-2xl border p-5 transition-colors',
               isDragging
-                ? 'bg-surface-card border-accent'
-                : 'bg-surface-section border-default',
+                ? 'bg-bg-surface-1 border-border-accent'
+                : 'bg-bg-surface-1 border-border-default',
             ].join(' ')}
           >
             {/* Section label — upper left */}
             <div className="flex items-center gap-1.5">
-              <FileText size={13} className="text-muted" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted">
+              <FileText size={13} className="text-text-tertiary" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-text-tertiary">
                 Import
               </span>
             </div>
@@ -442,8 +443,8 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
                 className={[
                   'w-full max-w-xs border border-dashed rounded-xl py-7 flex items-center justify-center gap-2 transition-colors',
                   isDragging
-                    ? 'border-accent text-strong bg-surface-chip/30'
-                    : 'border-strong text-muted hover:border-accent hover:text-body hover:bg-surface-card/50',
+                    ? 'border-border-accent text-text-primary bg-bg-surface-3/30'
+                    : 'border-border-strong text-text-tertiary hover:border-border-accent hover:text-text-secondary hover:bg-bg-surface-1/50',
                 ].join(' ')}
               >
                 <FileText size={15} />
@@ -466,36 +467,36 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
 
   // ── Column mapping UI ────────────────────────────────────────────────────────
   return (
-    <div className={embedded ? 'flex-1 flex flex-col' : 'min-h-screen bg-surface-page flex flex-col'}>
+    <div className={embedded ? 'flex-1 flex flex-col' : 'min-h-screen bg-bg-canvas flex flex-col'}>
       {/* Header — only shown when not embedded (standalone page) */}
       {!embedded && (
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-default">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-border-default">
           <button
             onClick={handleCancel}
-            className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors"
+            className="p-1.5 rounded-lg hover:bg-bg-surface-4 transition-colors"
             aria-label="Back"
           >
-            <ArrowLeft size={18} className="text-subtle" />
+            <ArrowLeft size={18} className="text-text-secondary" />
           </button>
-          <h1 className="type-headline font-semibold text-strong">Mapping</h1>
+          <h1 className="type-headline font-semibold text-text-primary">Mapping</h1>
           {localHeaders && (
-            <span className="type-caption text-muted ml-1">— {localRawRows?.length ?? 0} rows</span>
+            <span className="type-caption text-text-tertiary ml-1">— {localRawRows?.length ?? 0} rows</span>
           )}
         </div>
       )}
 
       {/* Card area — mirrors the upload zone layout */}
       <div className="flex-1 flex flex-col p-6 min-h-0">
-        <div className="flex-1 flex flex-col bg-surface-section rounded-2xl border border-default overflow-hidden">
+        <div className="flex-1 flex flex-col bg-bg-surface-1 rounded-2xl border border-border-default overflow-hidden">
 
           {/* Card section label */}
           <div className="flex items-center gap-1.5 px-5 pt-5 pb-0">
-            <FileText size={13} className="text-muted" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted">
+            <FileText size={13} className="text-text-tertiary" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-text-tertiary">
               Mapping
             </span>
             {localHeaders && (
-              <span className="text-[10px] text-faint ml-1">— {localRawRows?.length ?? 0} rows</span>
+              <span className="text-[10px] text-text-disabled ml-1">— {localRawRows?.length ?? 0} rows</span>
             )}
           </div>
 
@@ -504,20 +505,20 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
 
             {/* Exchange selector */}
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[0.15em] text-muted mb-2">
+              <label className="block text-[10px] font-semibold uppercase tracking-[0.15em] text-text-tertiary mb-2">
                 Exchange
               </label>
               <div className="relative">
                 <select
                   value={exchange}
                   onChange={(e) => setExchange(e.target.value as 'deribit' | 'coincall' | 'cme')}
-                  className="w-full appearance-none bg-surface-chip border border-accent/30 rounded-2xl px-4 py-3 pr-9 type-subhead text-strong focus:outline-none focus:border-accent cursor-pointer transition-colors"
+                  className="w-full appearance-none bg-bg-surface-3 border border-border-accent/30 rounded-2xl px-4 py-3 pr-9 type-subhead text-text-primary focus:outline-none focus:border-border-accent cursor-pointer transition-colors"
                 >
                   <option value="deribit">Deribit</option>
                   <option value="coincall">Coincall</option>
                   <option value="cme">CME</option>
                 </select>
-                <ChevronsUpDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+                <ChevronsUpDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
               </div>
             </div>
 
@@ -525,21 +526,21 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {EXPECTED_FIELDS.map((f) => (
                 <div key={f.key}>
-                  <label className="block text-[10px] font-semibold uppercase tracking-[0.15em] text-muted mb-2">
+                  <label className="block text-[10px] font-semibold uppercase tracking-[0.15em] text-text-tertiary mb-2">
                     {f.label}
                   </label>
                   <div className="relative">
                     <select
                       value={mapping[f.key] || ''}
                       onChange={(e) => setMapping((m) => ({ ...m, [f.key]: e.target.value }))}
-                      className="w-full appearance-none bg-surface-chip border border-accent/30 rounded-2xl px-4 py-3 pr-9 type-subhead text-strong focus:outline-none focus:border-accent cursor-pointer transition-colors"
+                      className="w-full appearance-none bg-bg-surface-3 border border-border-accent/30 rounded-2xl px-4 py-3 pr-9 type-subhead text-text-primary focus:outline-none focus:border-border-accent cursor-pointer transition-colors"
                     >
                       <option value="">— select —</option>
                       {headers.map((h) => (
                         <option key={h} value={h}>{h}</option>
                       ))}
                     </select>
-                    <ChevronsUpDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+                    <ChevronsUpDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
                   </div>
                 </div>
               ))}
@@ -548,21 +549,21 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
             {/* Import-only options */}
             {mode === 'import' && (
               <div className="space-y-2 pt-1">
-                <label className="inline-flex items-center gap-2.5 type-caption text-subtle cursor-pointer">
+                <label className="inline-flex items-center gap-2.5 type-caption text-text-secondary cursor-pointer">
                   <input
                     type="checkbox"
                     checked={importHistoricalRows}
                     onChange={(e) => setImportHistoricalRows(e.target.checked)}
-                    className="rounded accent-emerald-500"
+                    className="rounded accent-accent-500"
                   />
                   <span>Import historical rows (skip duplicates)</span>
                 </label>
-                <label className="inline-flex items-center gap-2.5 type-caption text-subtle cursor-pointer">
+                <label className="inline-flex items-center gap-2.5 type-caption text-text-secondary cursor-pointer">
                   <input
                     type="checkbox"
                     checked={allowAllocations}
                     onChange={(e) => setAllowAllocations(e.target.checked)}
-                    className="rounded accent-emerald-500"
+                    className="rounded accent-accent-500"
                   />
                   <span>Allow trade allocations (reuse trade/order IDs across structures)</span>
                 </label>
@@ -571,10 +572,10 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
 
             {/* Re-upload option for local flow */}
             {localHeaders && (
-              <div className="pt-1 border-t border-default">
+              <div className="pt-1 border-t border-border-default">
                 <button
                   onClick={() => { setLocalHeaders(null); setLocalRawRows(null) }}
-                  className="type-caption text-muted hover:text-body transition-colors"
+                  className="type-caption text-text-tertiary hover:text-text-secondary transition-colors"
                 >
                   ← Upload a different file
                 </button>
@@ -583,20 +584,18 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
           </div>
 
           {/* Footer actions */}
-          <div className="px-5 py-4 border-t border-default flex justify-end gap-3">
-            <button
-              onClick={handleCancel}
-              className="px-4 py-2 rounded-xl border border-strong text-subtle hover:bg-surface-hover type-subhead transition-colors"
-            >
+          <div className="px-5 py-4 border-t border-border-default flex justify-end gap-3">
+            <Button variant="secondary" onClick={handleCancel}>
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="primary"
               onClick={handleConfirm}
               disabled={isProcessing}
-              className="px-4 py-2 rounded-xl bg-surface-primary-btn text-on-primary-btn type-subhead font-medium hover:bg-surface-hover transition-colors disabled:opacity-50"
+              loading={isProcessing}
             >
               {isProcessing ? 'Processing…' : mode === 'backfill' ? 'Start Backfill' : 'Start Import'}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

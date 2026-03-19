@@ -1,6 +1,7 @@
 import React from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { getPlaybook, listPlaybooks } from './playbooks'
+import { Button, Card } from '../../components/ui'
 
 type StrategyPlaybookPageProps = {
   slug: string
@@ -22,75 +23,76 @@ export function StrategyPlaybookPage({
 
   if (!playbook) {
     return (
-      <div className={embedded ? 'flex-1 min-h-0 flex flex-col bg-surface-page text-strong' : 'min-h-screen bg-surface-page text-strong'}>
+      <div className={embedded ? 'flex-1 min-h-0 flex flex-col bg-bg-canvas text-text-primary' : 'min-h-screen bg-bg-canvas text-text-primary'}>
         <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-16">
           {!embedded && (
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<ArrowLeft className="h-4 w-4" />}
               onClick={onBackToDashboard}
-              className="w-fit inline-flex items-center gap-2 rounded-full border border-strong px-4 py-2 type-subhead text-strong hover:bg-surface-card"
+              className="w-fit"
             >
-              <ArrowLeft className="h-4 w-4" />
               Back to dashboard
-            </button>
+            </Button>
           )}
-          <div className="rounded-xl border border-default bg-surface-card p-8 shadow-xl">
-            <h1 className="type-display-l font-semibold tracking-tight text-heading">Playbook not found</h1>
-            <p className="mt-4 text-body">
+          <Card variant="panel">
+            <h1 className="type-display-l font-semibold tracking-tight text-text-primary">Playbook not found</h1>
+            <p className="mt-4 text-text-secondary">
               We could not find the requested strategy playbook. Choose another strategy from the catalogue.
             </p>
-            <button
-              type="button"
+            <Button
+              variant="primary"
               onClick={onBackToIndex}
-              className="mt-6 inline-flex items-center justify-center rounded-full bg-sky-500 px-5 py-2 type-subhead font-semibold text-white shadow hover:bg-sky-400"
+              className="mt-6"
             >
               Browse playbooks
-            </button>
-          </div>
+            </Button>
+          </Card>
         </div>
       </div>
     )
   }
 
   return (
-    <div className={embedded ? 'flex-1 min-h-0 flex flex-col bg-surface-page text-strong' : 'min-h-screen bg-surface-page text-strong'}>
+    <div className={embedded ? 'flex-1 min-h-0 flex flex-col bg-bg-canvas text-text-primary' : 'min-h-screen bg-bg-canvas text-text-primary'}>
       <header className="px-6 py-8">
         <div className="mx-auto flex max-w-5xl flex-col gap-4">
           {!embedded && (
-            <div className="flex flex-wrap items-center gap-3 type-subhead text-body">
-              <button
-                type="button"
+            <div className="flex flex-wrap items-center gap-3 type-subhead text-text-secondary">
+              <Button
+                variant="secondary"
+                size="sm"
+                leftIcon={<ArrowLeft className="h-4 w-4" />}
                 onClick={onBackToDashboard}
-                className="inline-flex items-center gap-2 rounded-full border border-strong px-3 py-1.5 hover:bg-surface-card"
               >
-                <ArrowLeft className="h-4 w-4" />
                 Dashboard
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={onBackToIndex}
-                className="inline-flex items-center gap-2 rounded-full border border-strong px-3 py-1.5 hover:bg-surface-card"
               >
                 Browse Playbooks
-              </button>
+              </Button>
             </div>
           )}
 
           <div>
-            <p className="type-caption uppercase tracking-[0.3em] text-sky-300">Strategy Playbook</p>
-            <h1 className="mt-3 type-display-l font-semibold tracking-tight text-white">
+            <p className="type-caption uppercase tracking-[0.3em] text-accent-400">Strategy Playbook</p>
+            <h1 className="mt-3 type-display-l font-semibold tracking-tight text-text-primary">
               {playbook.name}
             </h1>
             {playbook.tagline ? (
-              <p className="mt-4 max-w-3xl type-title-m text-body">{playbook.tagline}</p>
+              <p className="mt-4 max-w-3xl type-title-m text-text-secondary">{playbook.tagline}</p>
             ) : null}
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 type-subhead text-subtle">
+          <div className="flex flex-wrap items-center gap-4 type-subhead text-text-tertiary">
             {playbook.lastUpdated ? (
-              <span className="rounded-full border border-strong px-3 py-1">Updated {playbook.lastUpdated}</span>
+              <span className="rounded-full border border-border-strong px-3 py-1">Updated {playbook.lastUpdated}</span>
             ) : null}
-            <span className="rounded-full border border-strong px-3 py-1 text-body">
+            <span className="rounded-full border border-border-strong px-3 py-1 text-text-secondary">
               {playbook.description}
             </span>
           </div>
@@ -101,40 +103,40 @@ export function StrategyPlaybookPage({
         <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-[3fr_1.2fr]">
           <article className="space-y-8">
             {playbook.sections.map((section) => (
-              <section key={section.title} className="rounded-xl border border-default bg-surface-card p-6 shadow-xl">
-                <h2 className="type-title-l font-semibold text-white">{section.title}</h2>
-                {section.intro ? <p className="mt-3 type-subhead text-body">{section.intro}</p> : null}
+              <Card key={section.title} variant="panel">
+                <h2 className="type-title-l font-semibold text-text-primary">{section.title}</h2>
+                {section.intro ? <p className="mt-3 type-subhead text-text-secondary">{section.intro}</p> : null}
                 {section.paragraphs?.map((paragraph, idx) => (
-                  <p key={idx} className="mt-4 type-headline leading-relaxed text-strong">
+                  <p key={idx} className="mt-4 type-headline leading-relaxed text-text-primary">
                     {paragraph}
                   </p>
                 ))}
                 {section.lists?.map((list) => (
-                  <div key={list.title ?? list.items[0]} className="mt-5 rounded-xl border border-default bg-surface-chip p-4">
+                  <div key={list.title ?? list.items[0]} className="mt-5 rounded-xl border border-border-default bg-bg-surface-3 p-4">
                     {list.title ? (
-                      <h3 className="type-subhead font-semibold uppercase tracking-wide text-body">{list.title}</h3>
+                      <h3 className="type-subhead font-semibold uppercase tracking-wide text-text-secondary">{list.title}</h3>
                     ) : null}
-                    <ul className="mt-3 space-y-2 type-subhead text-strong">
+                    <ul className="mt-3 space-y-2 type-subhead text-text-primary">
                       {list.items.map((item) => (
                         <li key={item} className="flex gap-2">
-                          <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-sky-400" />
+                          <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-accent-400" />
                           <span>{item}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
                 ))}
-              </section>
+              </Card>
             ))}
           </article>
 
           <aside className="flex flex-col gap-6">
-            <div className="rounded-xl border border-default bg-surface-card p-6 shadow-xl">
-              <h2 className="type-subhead font-semibold uppercase tracking-[0.3em] text-body">Execution Checklist</h2>
-              <p className="mt-3 type-subhead text-body">
+            <Card variant="panel">
+              <h2 className="type-subhead font-semibold uppercase tracking-[0.3em] text-text-secondary">Execution Checklist</h2>
+              <p className="mt-3 type-subhead text-text-secondary">
                 Snapshot the plan before you stage orders. Confirm IV context, liquidity, and catalysts before sizing.
               </p>
-              <ul className="mt-4 space-y-3 type-subhead text-strong">
+              <ul className="mt-4 space-y-3 type-subhead text-text-primary">
                 <li className="flex gap-2">
                   <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-400" />
                   <span>Validate short-dated IV premium versus weekly tenor.</span>
@@ -148,42 +150,42 @@ export function StrategyPlaybookPage({
                   <span>Plan defined-risk exits for gap scenarios before the weekend.</span>
                 </li>
               </ul>
-            </div>
+            </Card>
 
             {others.length ? (
-              <div className="rounded-xl border border-default bg-surface-card p-6 shadow-xl">
-                <h2 className="type-subhead font-semibold uppercase tracking-[0.3em] text-body">Other Playbooks</h2>
-                <p className="mt-3 type-subhead text-body">Explore more strategies built on the same framework.</p>
-                <ul className="mt-4 space-y-3 type-subhead text-strong">
+              <Card variant="panel">
+                <h2 className="type-subhead font-semibold uppercase tracking-[0.3em] text-text-secondary">Other Playbooks</h2>
+                <p className="mt-3 type-subhead text-text-secondary">Explore more strategies built on the same framework.</p>
+                <ul className="mt-4 space-y-3 type-subhead text-text-primary">
                   {others.map((item) => (
                     <li key={item.slug}>
                       <button
                         type="button"
                         onClick={() => onOpenPlaybook(item.slug)}
-                        className="text-left text-sky-300 hover:text-sky-200"
+                        className="text-left text-accent-400 hover:text-accent-300"
                       >
                         {item.name}
                       </button>
                     </li>
                   ))}
                 </ul>
-              </div>
+              </Card>
             ) : null}
 
-            <div className="rounded-xl border border-default bg-surface-card p-6 shadow-xl">
-              <h2 className="type-subhead font-semibold uppercase tracking-[0.3em] text-body">Need to tweak it?</h2>
-              <p className="mt-3 type-subhead text-body">
+            <Card variant="panel">
+              <h2 className="type-subhead font-semibold uppercase tracking-[0.3em] text-text-secondary">Need to tweak it?</h2>
+              <p className="mt-3 type-subhead text-text-secondary">
                 Document any adjustments directly in the playbook field inside the positions table so teammates see the latest
                 nuance.
               </p>
-              <button
-                type="button"
+              <Button
+                variant="primary"
                 onClick={onBackToDashboard}
-                className="mt-4 inline-flex items-center justify-center rounded-full bg-sky-500 px-4 py-2 type-subhead font-semibold text-white shadow hover:bg-sky-400"
+                className="mt-4"
               >
                 Back to positions
-              </button>
-            </div>
+              </Button>
+            </Card>
           </aside>
         </div>
       </main>

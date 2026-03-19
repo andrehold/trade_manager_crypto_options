@@ -1,4 +1,5 @@
 import React from 'react'
+import { Chip } from './ui'
 
 type Props = {
   expiries: string[]
@@ -23,28 +24,24 @@ export function ExpiryDatePicker({ expiries, selected, onSelect }: Props) {
 
   return (
     <div className="flex items-center gap-1.5 px-6 py-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-      <button
+      <Chip
+        variant="date"
+        selected={selected === null}
         onClick={() => onSelect(null)}
-        className={`flex-shrink-0 px-3 py-1 rounded-full type-caption font-medium tracking-wide transition-all ${
-          selected === null
-            ? 'bg-surface-primary-btn text-on-primary-btn shadow-sm'
-            : 'bg-transparent text-muted border border-strong hover:border-accent hover:text-body'
-        }`}
+        className="flex-shrink-0"
       >
         All
-      </button>
+      </Chip>
       {expiries.map((exp) => (
-        <button
+        <Chip
           key={exp}
+          variant="date"
+          selected={exp === selected}
           onClick={() => onSelect(exp === selected ? null : exp)}
-          className={`flex-shrink-0 px-3 py-1 rounded-full type-caption font-medium tracking-wide transition-all ${
-            exp === selected
-              ? 'bg-surface-primary-btn text-on-primary-btn shadow-sm'
-              : 'bg-transparent text-muted border border-strong hover:border-accent hover:text-body'
-          }`}
+          className="flex-shrink-0"
         >
           {formatExpiry(exp)}
-        </button>
+        </Chip>
       ))}
     </div>
   )

@@ -77,6 +77,97 @@
   --text-caption: 0.75rem;
   --text-caption--line-height: 1.5;
   --text-caption--letter-spacing: 0em;
+
+  /* ── New design-system tokens (Phase 1) ────────────────────────── */
+
+  /* Background / Surface */
+  --color-bg-canvas:      #050505;
+  --color-bg-elevated:    #0A0A0B;
+  --color-bg-surface-1:   #101013;
+  --color-bg-surface-2:   #141418;
+  --color-bg-surface-3:   #1A1A20;
+  --color-bg-surface-4:   #202029;
+  --color-bg-overlay:     rgba(5, 5, 5, 0.78);
+  --color-bg-inverse:     #F4F4F8;
+
+  /* Text roles */
+  --color-text-primary:   #F4F4F8;
+  --color-text-secondary: #B7B7C5;
+  --color-text-tertiary:  #8A8A98;
+  --color-text-disabled:  #626270;
+  --color-text-inverse:   #101013;
+  --color-text-accent:    #A16EFF;
+
+  /* Border roles */
+  --color-border-subtle:  rgba(255, 255, 255, 0.06);
+  --color-border-danger:  #EF4444;
+  --color-border-success: #22C55E;
+  --color-border-warning: #F59E0B;
+
+  /* Accent (purple) */
+  --color-accent-300:     #B895FF;
+  --color-accent-400:     #A16EFF;
+  --color-accent-500:     #8B5CF6;
+  --color-accent-600:     #7C3AED;
+  --color-accent-700:     #6D28D9;
+  --color-accent-glow:    rgba(139, 92, 246, 0.36);
+
+  /* Status */
+  --color-status-success:   #22C55E;
+  --color-status-warning:   #F59E0B;
+  --color-status-danger:    #EF4444;
+  --color-status-info:      #38BDF8;
+  --color-status-waiting:   #8B5CF6;
+  --color-status-approved:  #F59E0B;
+  --color-status-active:    #22C55E;
+  --color-status-completed: #6C6C7C;
+  --color-status-occupied:  #6C6C7C;
+  --color-status-available: #22C55E;
+
+  /* Raw neutrals (edge cases) */
+  --color-neutral-950:    #0A0A0B;
+  --color-neutral-925:    #101013;
+  --color-neutral-900:    #141418;
+  --color-neutral-850:    #1A1A20;
+  --color-neutral-800:    #202029;
+  --color-neutral-750:    #262631;
+  --color-neutral-700:    #2E2E3A;
+  --color-neutral-600:    #4A4A59;
+  --color-neutral-500:    #6C6C7C;
+  --color-neutral-400:    #9696A6;
+  --color-neutral-300:    #B7B7C5;
+  --color-neutral-200:    #D7D7E2;
+  --color-neutral-100:    #F4F4F8;
+}
+
+/* ── Non-color design tokens (not in @theme — no utility class needed) ── */
+:root {
+  /* Radius */
+  --radius-xs:    8px;
+  --radius-sm:    10px;
+  --radius-md:    12px;
+  --radius-lg:    16px;
+  --radius-xl:    20px;
+  --radius-2xl:   24px;
+  --radius-pill:  999px;
+  --radius-round: 9999px;
+
+  /* Shadows */
+  --shadow-soft:    0 8px 24px rgba(0, 0, 0, 0.22);
+  --shadow-card:    0 0 0 1px rgba(255,255,255,0.05), 0 10px 30px rgba(0,0,0,0.22);
+  --shadow-overlay: 0 24px 80px rgba(0,0,0,0.5);
+
+  /* Glows */
+  --glow-accent-sm: 0 0 0 1px rgba(139,92,246,0.85), 0 0 0 4px rgba(139,92,246,0.12);
+  --glow-accent-md: 0 0 0 1px rgba(139,92,246,0.9), 0 0 18px rgba(139,92,246,0.28);
+  --glow-accent-lg: 0 0 0 1px rgba(139,92,246,0.9), 0 0 28px rgba(139,92,246,0.32);
+
+  /* Motion */
+  --duration-fast:     120ms;
+  --duration-normal:   180ms;
+  --duration-slow:     260ms;
+  --easing-standard:   cubic-bezier(0.2, 0, 0, 1);
+  --easing-emphasized: cubic-bezier(0.2, 0, 0, 1.05);
 }
 
 /* ── scheme-light: pins light-mode tokens on elements that must stay light ──
@@ -119,7 +210,8 @@
    always win — unlayered CSS beats @layer utilities regardless of specificity. */
 @layer base {
   body {
-    font-family: var(--font-sans);
+    font-family: Inter, SF Pro Display, ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: "tnum" 1, "liga" 1;
     background-color: var(--color-surface-page);
     color: var(--color-text-heading);
   }
@@ -182,9 +274,21 @@
   letter-spacing: var(--text-subhead--letter-spacing);
   font-weight: 500;
 }
+.type-body {
+  font-size: 0.875rem;   /* 14px */
+  line-height: 1.25rem;  /* 20px */
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
 .type-caption {
   font-size: var(--text-caption);
   line-height: var(--text-caption--line-height);
   letter-spacing: var(--text-caption--letter-spacing);
   font-weight: 500;
+}
+.type-micro {
+  font-size: 0.6875rem;  /* 11px */
+  line-height: 0.875rem; /* 14px */
+  font-weight: 500;
+  letter-spacing: 0.015em;
 }

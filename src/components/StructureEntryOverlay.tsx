@@ -1,6 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import Overlay from './Overlay';
+import { Button } from './ui';
 import type { Position, TxnRow } from '../utils';
 import { computeMissing } from '../features/import/missing';
 import { importTrades } from '../lib/import';
@@ -611,9 +612,9 @@ function Field({
 }) {
   const { label, type = 'text', options, placeholder, helperText, required, step, inputMode, disabled } = meta;
   const displayValue = value ?? '';
-  const baseClass = `mt-1 block w-full rounded-lg border bg-surface-card px-3 py-2 type-subhead text-heading placeholder:text-faint focus:outline-none focus:ring-2 ${
-    missing ? 'border-rose-500 focus:ring-rose-400' : 'border-default focus:ring-border-accent'
-  } ${disabled ? 'cursor-not-allowed bg-surface-page text-muted' : ''}`;
+  const baseClass = `mt-1 block w-full rounded-lg border bg-bg-surface-1 px-3 py-2 type-subhead text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-2 ${
+    missing ? 'border-rose-500 focus:ring-rose-400' : 'border-border-default focus:ring-border-accent'
+  } ${disabled ? 'cursor-not-allowed bg-bg-canvas text-text-tertiary' : ''}`;
 
   const handleChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
@@ -645,7 +646,7 @@ function Field({
   };
 
   const labelText = (
-    <span className="type-caption font-medium uppercase tracking-wide text-subtle">
+    <span className="type-caption font-medium uppercase tracking-wide text-text-secondary">
       {label}
       {required ? <span className="ml-1 text-rose-500">*</span> : null}
       {missing ? (
@@ -667,7 +668,7 @@ function Field({
           placeholder={placeholder}
           disabled={disabled}
         />
-        {helperText ? <p className="text-[11px] text-muted">{helperText}</p> : null}
+        {helperText ? <p className="text-[11px] text-text-tertiary">{helperText}</p> : null}
       </label>
     );
   }
@@ -684,7 +685,7 @@ function Field({
             </option>
           ))}
         </select>
-        {helperText ? <p className="text-[11px] text-muted">{helperText}</p> : null}
+        {helperText ? <p className="text-[11px] text-text-tertiary">{helperText}</p> : null}
       </label>
     );
   }
@@ -702,7 +703,7 @@ function Field({
         inputMode={inputMode}
         disabled={disabled}
       />
-      {helperText ? <p className="text-[11px] text-muted">{helperText}</p> : null}
+      {helperText ? <p className="text-[11px] text-text-tertiary">{helperText}</p> : null}
     </label>
   );
 }
@@ -723,14 +724,14 @@ function CheckboxField({
       className={`flex items-center gap-2 rounded-lg border px-3 py-2 type-subhead ${
         missing
           ? 'border-rose-500 bg-rose-50 text-rose-600'
-          : 'border-default bg-surface-card text-body'
+          : 'border-border-default bg-bg-surface-1 text-text-secondary'
       }`}
     >
       <input
         type="checkbox"
         checked={Boolean(value)}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-strong bg-surface-card text-subtle focus:ring-border-accent"
+        className="h-4 w-4 rounded border-border-strong bg-bg-surface-1 text-text-secondary focus:ring-border-accent"
       />
       <span className="font-medium">{meta.label}</span>
       {meta.required ? (
@@ -741,7 +742,7 @@ function CheckboxField({
           Missing
         </span>
       ) : null}
-      {meta.helperText ? <span className="ml-auto type-caption text-muted">{meta.helperText}</span> : null}
+      {meta.helperText ? <span className="ml-auto type-caption text-text-tertiary">{meta.helperText}</span> : null}
     </label>
   );
 }
@@ -754,10 +755,10 @@ type SectionProps = {
 
 function Section({ title, description, children }: SectionProps) {
   return (
-    <section className="space-y-3 rounded-2xl border border-default bg-surface-card p-5 shadow-sm">
+    <section className="space-y-3 rounded-2xl border border-border-default bg-bg-surface-1 p-5 shadow-sm">
       <header className="space-y-1">
-        <h3 className="type-subhead font-semibold uppercase tracking-wide text-body">{title}</h3>
-        {description ? <p className="type-caption text-muted">{description}</p> : null}
+        <h3 className="type-subhead font-semibold uppercase tracking-wide text-text-secondary">{title}</h3>
+        {description ? <p className="type-caption text-text-tertiary">{description}</p> : null}
       </header>
       <div className="space-y-4">{children}</div>
     </section>
@@ -1594,30 +1595,30 @@ export function StructureEntryOverlay({
   return (
     <Overlay open={open} onClose={onClose} title={overlayTitle}>
       <div
-        className="flex max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-surface-card"
+        className="flex max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-bg-surface-1"
         style={{ width: 'min(960px, calc(100vw - 3rem))' }}
       >
-        <header className="flex items-center gap-3 border-b border-default bg-surface-card px-6 py-4">
+        <header className="flex items-center gap-3 border-b border-border-default bg-bg-surface-1 px-6 py-4">
           <div>
-            <h2 className="type-headline font-semibold text-heading">
+            <h2 className="type-headline font-semibold text-text-primary">
               {isUpdateMode
                 ? `Update saved structure for ${position.underlying}`
                 : `Structure entry for ${position.underlying}`}
             </h2>
-            <p className="type-caption text-muted">
+            <p className="type-caption text-text-tertiary">
               {isUpdateMode
                 ? 'Review and update the saved program, position, legs, and fills. Fields marked with * are required.'
                 : 'Fill in details for program, position, legs, and fills. Fields marked with * are required.'}
             </p>
           </div>
-          <div className="ml-auto flex items-center gap-3 type-caption text-muted">
+          <div className="ml-auto flex items-center gap-3 type-caption text-text-tertiary">
             {!supabaseUnavailable && user?.email ? (
-              <div className="flex items-center gap-2 rounded-full border border-default bg-surface-page px-3 py-1 text-subtle">
-                <span className="font-medium text-body">{user.email}</span>
+              <div className="flex items-center gap-2 rounded-full border border-border-default bg-bg-canvas px-3 py-1 text-text-secondary">
+                <span className="font-medium text-text-secondary">{user.email}</span>
                   <button
                     type="button"
                     onClick={handleSignOut}
-                    className="type-caption font-semibold text-muted transition hover:text-body"
+                    className="type-caption font-semibold text-text-tertiary transition hover:text-text-secondary"
                   >
                     Sign out
                   </button>
@@ -1632,32 +1633,30 @@ export function StructureEntryOverlay({
                   All required fields complete
                 </span>
               )}
-              <button
-                type="button"
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={handleSave}
                 disabled={saveDisabled}
-                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 type-subhead font-semibold transition focus:outline-none focus:ring-2 focus:ring-border-accent ${
-                  saveDisabled
-                    ? 'border-default bg-surface-chip text-faint'
-                    : 'border-surface-primary-btn bg-surface-primary-btn text-on-primary-btn hover:bg-surface-card'
-                }`}
+                loading={saving}
+                className="rounded-full px-4"
               >
                 {primaryButtonLabel}
-              </button>
+              </Button>
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-default text-muted hover:bg-surface-hover"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border-default text-text-tertiary hover:bg-bg-surface-4"
               >
                 <X className="h-4 w-4" />
                 <span className="sr-only">Close</span>
               </button>
             </div>
           </header>
-          <div className="flex-1 overflow-y-auto bg-surface-page px-6 py-6">
+          <div className="flex-1 overflow-y-auto bg-bg-canvas px-6 py-6">
             <div className="space-y-6">
               {loadingExisting ? (
-                <div className="rounded-xl border border-default bg-surface-card px-4 py-3 type-subhead text-subtle">
+                <div className="rounded-xl border border-border-default bg-bg-surface-1 px-4 py-3 type-subhead text-text-secondary">
                   Loading saved structure details…
                 </div>
               ) : null}
@@ -1684,25 +1683,25 @@ export function StructureEntryOverlay({
                 </div>
               ) : null}
               {(supabaseUnavailable || supabaseChecking || supabaseSignedOut) && (
-                <div className="space-y-2 rounded-2xl border border-dashed border-strong bg-surface-card p-4 type-subhead text-subtle">
+                <div className="space-y-2 rounded-2xl border border-dashed border-border-strong bg-bg-surface-1 p-4 type-subhead text-text-secondary">
                   {supabaseUnavailable ? (
                     <>
-                      <p className="font-semibold text-body">Supabase unavailable</p>
+                      <p className="font-semibold text-text-secondary">Supabase unavailable</p>
                       <p>
                         Program lookups and strategy autocomplete are disabled. Provide any required identifiers manually or
-                        configure <code className="rounded bg-surface-chip px-1 py-0.5">VITE_SUPABASE_URL</code> and{' '}
-                        <code className="rounded bg-surface-chip px-1 py-0.5">VITE_SUPABASE_PUBLISHABLE_KEY</code> to enable live
+                        configure <code className="rounded bg-bg-surface-3 px-1 py-0.5">VITE_SUPABASE_URL</code> and{' '}
+                        <code className="rounded bg-bg-surface-3 px-1 py-0.5">VITE_SUPABASE_PUBLISHABLE_KEY</code> to enable live
                         resources.
                       </p>
                     </>
                   ) : supabaseChecking ? (
                     <>
-                      <p className="font-semibold text-body">Restoring Supabase session…</p>
+                      <p className="font-semibold text-text-secondary">Restoring Supabase session…</p>
                       <p>Realtime lookups will become available once your saved credentials are verified.</p>
                     </>
                   ) : (
                     <>
-                      <p className="font-semibold text-body">Supabase sign-in required for lookups</p>
+                      <p className="font-semibold text-text-secondary">Supabase sign-in required for lookups</p>
                       <p>
                         You can continue editing the payload manually. Sign in from the main workspace header to enable program
                         and strategy search.
@@ -1714,7 +1713,7 @@ export function StructureEntryOverlay({
 
               <Section title="Program" description="Program metadata required before importing trades.">
                 {programLoading && (
-                  <div className="mb-3 flex items-center gap-2 type-caption text-muted">
+                  <div className="mb-3 flex items-center gap-2 type-caption text-text-tertiary">
                     <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
@@ -1746,7 +1745,7 @@ export function StructureEntryOverlay({
 
             <Section title="Position" description="Core structure-level details for the trade grouping.">
                 {strategyLoading && (
-                  <div className="mb-3 flex items-center gap-2 type-caption text-muted">
+                  <div className="mb-3 flex items-center gap-2 type-caption text-text-tertiary">
                     <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
@@ -1797,13 +1796,13 @@ export function StructureEntryOverlay({
               title="Venue (optional)"
               description="Toggle on to include venue details for new venue creation or association."
             >
-              <div className="flex items-center justify-between rounded-xl border border-default bg-surface-chip px-4 py-3 type-subhead text-subtle">
+              <div className="flex items-center justify-between rounded-xl border border-border-default bg-bg-surface-3 px-4 py-3 type-subhead text-text-secondary">
                 <span>Include venue details in payload</span>
                 <button
                   type="button"
                   onClick={handleToggleIncludeVenue}
                   className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 type-caption font-semibold ${
-                    includeVenue ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-default bg-surface-card text-subtle'
+                    includeVenue ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-border-default bg-bg-surface-1 text-text-secondary'
                   }`}
                 >
                   {includeVenue ? 'Included' : 'Excluded'}
@@ -1822,7 +1821,7 @@ export function StructureEntryOverlay({
                   ))}
                 </div>
               ) : (
-                <p className="type-caption text-muted">
+                <p className="type-caption text-text-tertiary">
                   Venue block is optional. Enable it if you need to create or link to a trading venue record.
                 </p>
               )}
@@ -1836,9 +1835,9 @@ export function StructureEntryOverlay({
                 {(form.legs ?? []).map((leg, index) => (
                   <div
                     key={index}
-                    className="space-y-4 rounded-2xl border border-default bg-surface-card p-4"
+                    className="space-y-4 rounded-2xl border border-border-default bg-bg-surface-1 p-4"
                   >
-                    <h4 className="type-caption font-semibold uppercase tracking-wide text-subtle">
+                    <h4 className="type-caption font-semibold uppercase tracking-wide text-text-secondary">
                       Leg {index + 1}
                     </h4>
                     <div className="grid gap-4 md:grid-cols-3">
@@ -1924,15 +1923,15 @@ export function StructureEntryOverlay({
               description="Individual fills generated from the source transactions. Update quantities, timestamps, or references as needed."
             >
               {(form.fills?.length ?? 0) === 0 ? (
-                <p className="type-caption text-muted">No fills detected for this structure.</p>
+                <p className="type-caption text-text-tertiary">No fills detected for this structure.</p>
               ) : (
                 <div className="space-y-6">
                   {(form.fills ?? []).map((fill, index) => (
                     <div
                       key={index}
-                      className="space-y-4 rounded-2xl border border-default bg-surface-card p-4"
+                      className="space-y-4 rounded-2xl border border-border-default bg-bg-surface-1 p-4"
                     >
-                      <h4 className="type-caption font-semibold uppercase tracking-wide text-subtle">
+                      <h4 className="type-caption font-semibold uppercase tracking-wide text-text-secondary">
                         Fill {index + 1}
                       </h4>
                       <div className="grid gap-4 md:grid-cols-3">

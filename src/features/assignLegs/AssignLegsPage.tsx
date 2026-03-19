@@ -36,6 +36,7 @@ import {
 import { buildStructureChipSummary } from '../../lib/positions'
 import { getAssignLegsContext, clearAssignLegsContext } from './assignLegsStore'
 import { PremiumBadge } from '../../components/TradeCard'
+import { Button, Badge } from '../../components/ui'
 
 const CONTAINER_BACKLOG = 'backlog'
 const CONTAINER_NEW_STRUCTURE = 'new-structure'
@@ -112,20 +113,20 @@ function SortableLegChip({
       style={style}
       {...attributes}
       {...listeners}
-      className={`flex flex-col bg-surface-card border border-strong/60 rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing touch-none select-none min-w-[160px] flex-1 max-w-[260px] transition-transform${extraClassName ? ' ' + extraClassName : ''}`}
+      className={`flex flex-col bg-bg-surface-1 border border-border-strong/60 rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing touch-none select-none min-w-[160px] flex-1 max-w-[260px] transition-transform${extraClassName ? ' ' + extraClassName : ''}`}
     >
       {/* Header: icon + qty+strike + remove */}
       <div className="flex items-center justify-between gap-1">
         <div className="flex items-center gap-1.5 min-w-0">
-          <Blocks size={13} className="shrink-0 text-muted" />
-          <span className="type-caption font-bold text-strong truncate">
+          <Blocks size={13} className="shrink-0 text-text-tertiary" />
+          <span className="type-caption font-bold text-text-primary truncate">
             {sign}{qtyStr} {strikePart}
           </span>
         </div>
         {onRemove && (
           <button
             onClick={(e) => { e.stopPropagation(); onRemove() }}
-            className="shrink-0 text-faint hover:text-rose-400 type-caption leading-none ml-1 transition-colors"
+            className="shrink-0 text-text-disabled hover:text-rose-400 type-caption leading-none ml-1 transition-colors"
             title="Remove from structure"
           >
             ✕
@@ -134,21 +135,21 @@ function SortableLegChip({
       </div>
 
       {/* Divider */}
-      <div className="border-t border-strong/60 my-2" />
+      <div className="border-t border-border-strong/60 my-2" />
 
       {/* Expiry */}
       {expiryPart && (
         <div className="flex items-center gap-1.5 mb-1">
-          <Calendar size={11} className="shrink-0 text-muted" />
-          <span className="type-caption text-subtle whitespace-nowrap">{expiryPart}</span>
+          <Calendar size={11} className="shrink-0 text-text-tertiary" />
+          <span className="type-caption text-text-secondary whitespace-nowrap">{expiryPart}</span>
         </div>
       )}
 
       {/* Timestamp */}
       {(datePart || timePart) && (
         <div className="flex items-center gap-1.5 mb-2">
-          <Clock size={11} className="shrink-0 text-muted" />
-          <span className="type-caption text-subtle whitespace-nowrap" title={ts}>
+          <Clock size={11} className="shrink-0 text-text-tertiary" />
+          <span className="type-caption text-text-secondary whitespace-nowrap" title={ts}>
             {datePart}{timePart ? ` ${timePart}` : ''}
           </span>
         </div>
@@ -157,7 +158,7 @@ function SortableLegChip({
       {/* Open/close chip */}
       {action && (
         <div className="mb-1">
-          <span className="inline-flex items-center gap-1 bg-surface-chip rounded-md px-2 py-0.5 type-caption font-bold leading-tight text-strong">
+          <span className="inline-flex items-center gap-1 bg-bg-surface-3 rounded-md px-2 py-0.5 type-caption font-bold leading-tight text-text-primary">
             {action === 'open'
               ? <ArrowUpRight size={10} className="shrink-0 text-blue-400" />
               : <ArrowDownLeft size={10} className="shrink-0 text-orange-400" />
@@ -182,11 +183,11 @@ function SortableLegChip({
 function GhostChip({ legItem, exchange }: { legItem: LegItem; exchange: Exchange }) {
   return (
     <div
-      className="flex flex-col bg-surface-chip border border-accent rounded-xl px-2.5 py-2 shadow-2xl opacity-90 touch-none select-none min-w-[148px] max-w-[240px]"
+      className="flex flex-col bg-bg-surface-3 border border-border-accent rounded-xl px-2.5 py-2 shadow-2xl opacity-90 touch-none select-none min-w-[148px] max-w-[240px]"
     >
       <div className="flex items-center gap-1.5">
-        <Blocks size={12} className="shrink-0 text-subtle" />
-        <span className="type-caption font-bold text-strong truncate">
+        <Blocks size={12} className="shrink-0 text-text-secondary" />
+        <span className="type-caption font-bold text-text-primary truncate">
           {formatLegLabel(legItem.row, exchange)}
         </span>
       </div>
@@ -242,12 +243,12 @@ function DraggableLegChip({
       style={style}
       {...attributes}
       {...listeners}
-      className={`flex flex-col bg-surface-card border border-strong/60 rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing touch-none select-none min-w-[160px] flex-1 max-w-[260px]${extraClassName ? ' ' + extraClassName : ''}`}
+      className={`flex flex-col bg-bg-surface-1 border border-border-strong/60 rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing touch-none select-none min-w-[160px] flex-1 max-w-[260px]${extraClassName ? ' ' + extraClassName : ''}`}
     >
       <div className="flex items-center justify-between gap-1">
         <div className="flex items-center gap-1.5 min-w-0">
-          <Blocks size={13} className="shrink-0 text-muted" />
-          <span className="type-caption font-bold text-strong truncate">
+          <Blocks size={13} className="shrink-0 text-text-tertiary" />
+          <span className="type-caption font-bold text-text-primary truncate">
             {sign}{qtyStr} {strikePart}
           </span>
         </div>
@@ -255,7 +256,7 @@ function DraggableLegChip({
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onExclude() }}
-            className="shrink-0 text-faint hover:text-amber-400 leading-none ml-1 transition-colors"
+            className="shrink-0 text-text-disabled hover:text-amber-400 leading-none ml-1 transition-colors"
             title="Save as unprocessed"
           >
             <EyeOff size={11} />
@@ -263,19 +264,19 @@ function DraggableLegChip({
         )}
       </div>
 
-      <div className="border-t border-strong/60 my-2" />
+      <div className="border-t border-border-strong/60 my-2" />
 
       {expiryPart && (
         <div className="flex items-center gap-1.5 mb-1">
-          <Calendar size={11} className="shrink-0 text-muted" />
-          <span className="type-caption text-subtle whitespace-nowrap">{expiryPart}</span>
+          <Calendar size={11} className="shrink-0 text-text-tertiary" />
+          <span className="type-caption text-text-secondary whitespace-nowrap">{expiryPart}</span>
         </div>
       )}
 
       {(datePart || timePart) && (
         <div className="flex items-center gap-1.5 mb-2">
-          <Clock size={11} className="shrink-0 text-muted" />
-          <span className="type-caption text-subtle whitespace-nowrap" title={ts}>
+          <Clock size={11} className="shrink-0 text-text-tertiary" />
+          <span className="type-caption text-text-secondary whitespace-nowrap" title={ts}>
             {datePart}{timePart ? ` ${timePart}` : ''}
           </span>
         </div>
@@ -283,7 +284,7 @@ function DraggableLegChip({
 
       {action && (
         <div className="mb-1">
-          <span className="inline-flex items-center gap-1 bg-surface-chip rounded-md px-2 py-0.5 type-caption font-bold leading-tight text-strong">
+          <span className="inline-flex items-center gap-1 bg-bg-surface-3 rounded-md px-2 py-0.5 type-caption font-bold leading-tight text-text-primary">
             {action === 'open'
               ? <ArrowUpRight size={10} className="shrink-0 text-blue-400" />
               : <ArrowDownLeft size={10} className="shrink-0 text-orange-400" />
@@ -363,7 +364,7 @@ function NewStructureDropZone({
           ? 'border-blue-500/60 bg-blue-500/5'
           : items.length > 0
           ? 'border-emerald-500/40 bg-emerald-500/5'
-          : 'border-strong bg-surface-section/50'
+          : 'border-border-strong bg-bg-surface-1/50'
       }`}
     >
       <div className="flex items-center justify-between mb-2.5">
@@ -371,7 +372,7 @@ function NewStructureDropZone({
           <select
             value={structureType}
             onChange={(e) => onStructureTypeChange(e.target.value)}
-            className="bg-surface-card border border-strong rounded-lg px-1.5 py-0.5 type-caption text-body focus:outline-none focus:border-accent"
+            className="bg-bg-surface-1 border border-border-strong rounded-lg px-1.5 py-0.5 type-caption text-text-secondary focus:outline-none focus:border-border-accent"
           >
             {STRUCTURE_TYPES.map((st) => (
               <option key={st.code} value={st.code}>
@@ -380,37 +381,33 @@ function NewStructureDropZone({
             ))}
           </select>
           {items.length > 0 && (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleAutoDetect}
-              className="px-2 py-0.5 type-caption font-medium rounded-lg border border-accent bg-surface-card text-body hover:bg-surface-hover hover:border-accent transition-colors"
+              className="!h-auto !px-2 !py-0.5 type-caption"
               title="Auto-detect structure type from legs"
             >
               Auto
-            </button>
+            </Button>
           )}
           {netPremium !== null && <PremiumBadge value={netPremium} />}
         </div>
         {items.length > 0 && (
           <div className="flex items-center gap-1.5">
-            <button
-              onClick={onSort}
-              className="px-2.5 py-0.5 type-caption font-medium rounded-lg bg-surface-chip text-body hover:bg-surface-hover transition-colors"
-            >
+            <Button variant="ghost" size="sm" onClick={onSort} className="!h-auto !px-2.5 !py-0.5 type-caption">
               Sort
-            </button>
-            <button
-              onClick={onSave}
-              className="px-2.5 py-0.5 type-caption font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 transition-colors"
-            >
+            </Button>
+            <Button variant="primary" size="sm" onClick={onSave} className="!h-auto !px-2.5 !py-0.5 type-caption">
               Save
-            </button>
+            </Button>
           </div>
         )}
       </div>
       <SortableContext items={items.map((i) => i.id)} strategy={rectSortingStrategy}>
         <div className="flex flex-wrap gap-2 min-h-[36px] content-start">
           {items.length === 0 ? (
-            <p className="type-caption text-faint italic py-1">
+            <p className="type-caption text-text-disabled italic py-1">
               Drop legs here to create a new structure
             </p>
           ) : (
@@ -436,7 +433,7 @@ function ExistingLegChip({ leg }: { leg: Leg }) {
   const qty = Math.abs(leg.qtyNet)
   const qtyStr = qty % 1 === 0 ? String(qty) : qty.toFixed(2)
   return (
-    <span className="inline-flex items-center gap-1 bg-surface-chip/50 border border-accent/50 rounded-lg px-2 py-1 type-caption text-body select-none">
+    <span className="inline-flex items-center gap-1 bg-bg-surface-3/50 border border-border-accent/50 rounded-lg px-2 py-1 type-caption text-text-secondary select-none">
       <span className="font-medium">
         {sign}{qtyStr} / {leg.optionType}{leg.strike}
       </span>
@@ -468,11 +465,11 @@ function SavedStructureCard({
     <div
       ref={setNodeRef}
       className={`border rounded-xl px-3 py-2.5 transition-colors ${
-        isOver ? 'border-blue-500/50 bg-blue-500/5' : 'border-strong bg-surface-card/50'
+        isOver ? 'border-blue-500/50 bg-blue-500/5' : 'border-border-strong bg-bg-surface-1/50'
       }`}
     >
       <div className="flex items-center gap-2 mb-2">
-        <p className="type-caption font-semibold text-subtle truncate flex-1" title={label}>
+        <p className="type-caption font-semibold text-text-secondary truncate flex-1" title={label}>
           {label}
         </p>
         {newLegsNetPremium !== null && <PremiumBadge value={newLegsNetPremium} />}
@@ -486,17 +483,17 @@ function SavedStructureCard({
               ))}
             </div>
           ) : (
-            <p className="type-caption text-faint italic">No legs</p>
+            <p className="type-caption text-text-disabled italic">No legs</p>
           )}
         </div>
         <SortableContext items={newLegs.map((i) => i.id)} strategy={rectSortingStrategy}>
           <div
             className={`flex-1 min-w-0 border border-dashed rounded-xl p-2 min-h-[36px] transition-colors ${
-              isOver ? 'border-blue-500/50 bg-blue-500/5' : 'border-strong bg-surface-section/50'
+              isOver ? 'border-blue-500/50 bg-blue-500/5' : 'border-border-strong bg-bg-surface-1/50'
             }`}
           >
             {newLegs.length === 0 ? (
-              <p className="type-caption text-faint italic text-center py-0.5">Drop legs to add</p>
+              <p className="type-caption text-text-disabled italic text-center py-0.5">Drop legs to add</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {newLegs.map((item) => (
@@ -542,11 +539,11 @@ function LocalStructureCard({
     <div
       ref={setNodeRef}
       className={`border rounded-xl p-3 transition-colors ${
-        isOver ? 'border-blue-500/50 bg-blue-500/5' : 'border-strong bg-surface-card/50'
+        isOver ? 'border-blue-500/50 bg-blue-500/5' : 'border-border-strong bg-bg-surface-1/50'
       }`}
     >
       <div className="flex items-center justify-between mb-2">
-        <p className="type-caption font-semibold text-subtle truncate flex-1">
+        <p className="type-caption font-semibold text-text-secondary truncate flex-1">
           {formatStructureLabel(items, meta.type)}
         </p>
         <div className="flex items-center gap-1.5 ml-2 shrink-0">
@@ -554,7 +551,7 @@ function LocalStructureCard({
           <select
             value={meta.type}
             onChange={(e) => onTypeChange(e.target.value)}
-            className="bg-surface-card border border-strong rounded-lg px-1.5 py-0.5 type-caption text-body focus:outline-none focus:border-accent"
+            className="bg-bg-surface-1 border border-border-strong rounded-lg px-1.5 py-0.5 type-caption text-text-secondary focus:outline-none focus:border-border-accent"
           >
             {STRUCTURE_TYPES.map((st) => (
               <option key={st.code} value={st.code}>
@@ -564,7 +561,7 @@ function LocalStructureCard({
           </select>
           <button
             onClick={onRemove}
-            className="type-caption text-faint hover:text-rose-400 transition-colors"
+            className="type-caption text-text-disabled hover:text-rose-400 transition-colors"
             title="Delete structure"
           >
             ✕
@@ -574,7 +571,7 @@ function LocalStructureCard({
       <SortableContext items={items.map((i) => i.id)} strategy={rectSortingStrategy}>
         <div className="flex flex-wrap gap-2 min-h-[28px] content-start">
           {items.length === 0 ? (
-            <p className="type-caption text-faint italic py-0.5">Drop legs here</p>
+            <p className="type-caption text-text-disabled italic py-0.5">Drop legs here</p>
           ) : (
             items.map((item) => (
               <SortableLegChip
@@ -1010,20 +1007,20 @@ function AssignLegsPageInner({
   /* ═════════════════════ RENDER ═════════════════════ */
 
   return (
-    <div className={embedded ? 'flex-1 min-h-0 flex flex-col bg-surface-page' : 'h-screen flex flex-col bg-surface-page'}>
+    <div className={embedded ? 'flex-1 min-h-0 flex flex-col bg-bg-canvas' : 'h-screen flex flex-col bg-bg-canvas'}>
       {/* ── header ── */}
-      <div className="shrink-0 flex items-center gap-3 px-6 pt-5 pb-3 border-b border-default">
+      <div className="shrink-0 flex items-center gap-3 px-6 pt-5 pb-3 border-b border-border-default">
         {!embedded && (
           <button
             onClick={handleCancel}
-            className="p-1.5 rounded-lg hover:bg-surface-card text-subtle transition-colors"
+            className="p-1.5 rounded-lg hover:bg-bg-surface-2 text-text-secondary transition-colors"
             title="Back to dashboard"
           >
             <ArrowLeft size={18} />
           </button>
         )}
         {!embedded && (
-          <h3 className="type-subhead font-semibold text-heading tracking-tight">Assign Legs to Structures</h3>
+          <h3 className="type-subhead font-semibold text-text-primary tracking-tight">Assign Legs to Structures</h3>
         )}
         <div className="flex gap-2">
           {([
@@ -1032,44 +1029,38 @@ function AssignLegsPageInner({
             { key: 'unprocessed' as const, label: 'Unprocessed', count: manuallyExcludedItems.length },
             { key: 'processed' as const, label: 'Processed', count: processedRows.length },
           ]).map(({ key, label, count }) => (
-            <button
+            <Button
               key={key}
-              className={`px-3 py-1 rounded-lg border type-caption font-bold uppercase tracking-[0.1em] transition-colors ${
-                activeTab === key
-                  ? 'bg-surface-primary-btn text-on-primary-btn border-surface-primary-btn'
-                  : 'border-strong text-muted hover:bg-surface-card hover:text-body'
-              }`}
+              variant={activeTab === key ? 'primary' : 'secondary'}
+              size="sm"
+              className="type-caption font-bold uppercase tracking-[0.1em]"
               onClick={() => setActiveTab(key)}
             >
               {label} ({count})
-            </button>
+            </Button>
           ))}
         </div>
         <div className="ml-auto flex items-center gap-3">
           {/* Cancel button with confirmation popover */}
           <div className="relative">
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => setShowCancelConfirm(true)}
-              className="px-3 py-1 rounded-lg border border-strong text-subtle type-caption font-bold hover:bg-surface-card hover:text-body transition-colors"
+              className="type-caption font-bold"
             >
               Cancel
-            </button>
+            </Button>
             {showCancelConfirm && (
-              <div className="absolute right-0 top-full mt-2 z-50 w-68 bg-surface-section border border-strong rounded-xl shadow-2xl p-4">
-                <p className="type-body text-strong mb-4">You have unsaved changes. Would you cancel?</p>
+              <div className="absolute right-0 top-full mt-2 z-50 w-68 bg-bg-surface-2 border border-border-strong rounded-xl shadow-2xl p-4">
+                <p className="type-body text-text-primary mb-4">You have unsaved changes. Would you cancel?</p>
                 <div className="flex gap-2 justify-end">
-                  <button
-                    onClick={() => setShowCancelConfirm(false)}
-                    className="px-3 py-1.5 rounded-lg border border-strong text-subtle type-caption font-bold hover:bg-surface-card transition-colors"
-                  >
+                  <Button variant="secondary" size="sm" onClick={() => setShowCancelConfirm(false)}>
                     No
-                  </button>
-                  <button
-                    onClick={() => { clearAssignLegsContext(); onCancel(); onBack(); }}
-                    className="px-3 py-1.5 rounded-lg bg-red-600 text-white type-caption font-bold hover:bg-red-500 transition-colors"
-                  >
+                  </Button>
+                  <Button variant="danger" size="sm" onClick={() => { clearAssignLegsContext(); onCancel(); onBack(); }}>
                     Yes
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -1079,9 +1070,12 @@ function AssignLegsPageInner({
               {validationMsg}
             </span>
           )}
-          <button
+          <Button
+            variant="primary"
+            size="sm"
             onClick={handleImport}
             disabled={!canImport || importing}
+            loading={importing}
             title={
               importing
                 ? 'Import in progress…'
@@ -1089,10 +1083,10 @@ function AssignLegsPageInner({
                 ? validationMsg
                 : undefined
             }
-            className="px-3 py-1 rounded-lg bg-emerald-600 text-white type-caption font-bold hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="type-caption font-bold"
           >
             {importing ? 'Importing…' : 'Import'}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -1112,15 +1106,15 @@ function AssignLegsPageInner({
                 {/* Header row: label + pagination controls */}
                 <div className="shrink-0 flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <p className="type-caption font-semibold text-muted uppercase tracking-[0.12em]">
+                    <p className="type-caption font-semibold text-text-tertiary uppercase tracking-[0.12em]">
                       New Legs ({backlogCount})
                     </p>
                     <button
                       onClick={() => { setFilterFutureOnly(f => !f); setBacklogPage(0) }}
                       className={`px-2 py-0.5 rounded-full type-caption font-medium transition-colors ${
                         filterFutureOnly
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-surface-card text-subtle hover:text-strong'
+                          ? 'bg-accent-500 text-text-primary'
+                          : 'bg-bg-surface-1 text-text-secondary hover:text-text-primary'
                       }`}
                     >
                       Future only
@@ -1129,8 +1123,8 @@ function AssignLegsPageInner({
                       onClick={() => { setFilterAction(a => a === 'open' ? null : 'open'); setBacklogPage(0) }}
                       className={`px-2 py-0.5 rounded-full type-caption font-medium transition-colors ${
                         filterAction === 'open'
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-surface-card text-subtle hover:text-strong'
+                          ? 'bg-accent-500 text-text-primary'
+                          : 'bg-bg-surface-1 text-text-secondary hover:text-text-primary'
                       }`}
                     >
                       Open
@@ -1139,8 +1133,8 @@ function AssignLegsPageInner({
                       onClick={() => { setFilterAction(a => a === 'close' ? null : 'close'); setBacklogPage(0) }}
                       className={`px-2 py-0.5 rounded-full type-caption font-medium transition-colors ${
                         filterAction === 'close'
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-surface-card text-subtle hover:text-strong'
+                          ? 'bg-accent-500 text-text-primary'
+                          : 'bg-bg-surface-1 text-text-secondary hover:text-text-primary'
                       }`}
                     >
                       Close
@@ -1151,17 +1145,17 @@ function AssignLegsPageInner({
                       <button
                         onClick={() => setBacklogPage(p => Math.max(0, p - 1))}
                         disabled={currentPage === 0}
-                        className="w-5 h-5 flex items-center justify-center rounded text-subtle hover:text-strong hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors type-caption"
+                        className="w-5 h-5 flex items-center justify-center rounded text-text-secondary hover:text-text-primary hover:bg-bg-surface-4 disabled:opacity-30 disabled:cursor-not-allowed transition-colors type-caption"
                       >
                         ‹
                       </button>
-                      <span className="type-caption text-muted tabular-nums">
+                      <span className="type-caption text-text-tertiary tabular-nums">
                         {pageStart + 1}–{pageEnd} of {backlogCount}
                       </span>
                       <button
                         onClick={() => setBacklogPage(p => Math.min(totalBacklogPages - 1, p + 1))}
                         disabled={currentPage >= totalBacklogPages - 1}
-                        className="w-5 h-5 flex items-center justify-center rounded text-subtle hover:text-strong hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors type-caption"
+                        className="w-5 h-5 flex items-center justify-center rounded text-text-secondary hover:text-text-primary hover:bg-bg-surface-4 disabled:opacity-30 disabled:cursor-not-allowed transition-colors type-caption"
                       >
                         ›
                       </button>
@@ -1170,11 +1164,11 @@ function AssignLegsPageInner({
                 </div>
                 <Droppable
                   id={CONTAINER_BACKLOG}
-                  className="flex-1 min-h-0 rounded-xl p-3 bg-surface-section border border-default"
+                  className="flex-1 min-h-0 rounded-xl p-3 bg-bg-surface-1 border border-border-default"
                 >
                   <div className="grid grid-cols-2 gap-2">
                     {backlogCount === 0 ? (
-                      <p className="type-caption text-faint italic text-center py-4 col-span-2">
+                      <p className="type-caption text-text-disabled italic text-center py-4 col-span-2">
                         All legs assigned
                       </p>
                     ) : (
@@ -1190,7 +1184,7 @@ function AssignLegsPageInner({
               <div className="flex-1 min-w-0 flex flex-col gap-3">
                 {/* Pinned: New structure drop zone */}
                 <div className="shrink-0">
-                  <p className="type-caption font-semibold text-muted uppercase tracking-[0.12em] mb-2">
+                  <p className="type-caption font-semibold text-text-tertiary uppercase tracking-[0.12em] mb-2">
                     New Structure
                   </p>
                   <NewStructureDropZone
@@ -1205,14 +1199,14 @@ function AssignLegsPageInner({
                 </div>
 
                 {/* Scrollable: structure cards */}
-                <p className="shrink-0 type-caption font-semibold text-muted uppercase tracking-[0.12em] mb-2">
+                <p className="shrink-0 type-caption font-semibold text-text-tertiary uppercase tracking-[0.12em] mb-2">
                   Saved Structures
                 </p>
-                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col gap-3 bg-surface-section border border-default rounded-xl p-3">
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col gap-3 bg-bg-surface-1 border border-border-default rounded-xl p-3">
                   {/* Local (unsaved) structures */}
                   {localStructureIds.length > 0 && (
                     <div>
-                      <p className="type-caption font-semibold text-muted uppercase tracking-[0.12em] mb-2">
+                      <p className="type-caption font-semibold text-text-tertiary uppercase tracking-[0.12em] mb-2">
                         New Structures (overlay only)
                       </p>
                       <div className="space-y-2.5">
@@ -1258,7 +1252,7 @@ function AssignLegsPageInner({
                   )}
 
                   {savedStructureInfos.length === 0 && localStructureIds.length === 0 && (
-                    <p className="type-caption text-faint italic text-center py-6">
+                    <p className="type-caption text-text-disabled italic text-center py-6">
                       No saved structures. Drop legs above to create one.
                     </p>
                   )}
@@ -1276,7 +1270,7 @@ function AssignLegsPageInner({
           /* ──── No Import tab ──── */
           <div className="h-full flex flex-col gap-3 overflow-hidden">
             {noImportRows.length > 0 && (
-              <p className="shrink-0 type-caption text-faint">
+              <p className="shrink-0 type-caption text-text-disabled">
                 {(() => {
                   const counts: Record<string, number> = {}
                   for (const r of noImportRows) {
@@ -1298,11 +1292,11 @@ function AssignLegsPageInner({
               </p>
             )}
             {noImportRows.length === 0 ? (
-              <p className="type-caption text-faint italic">All CSV rows are option trades.</p>
+              <p className="type-caption text-text-disabled italic">All CSV rows are option trades.</p>
             ) : (
-              <div className="flex-1 min-h-0 overflow-auto border border-default rounded-xl">
+              <div className="flex-1 min-h-0 overflow-auto border border-border-default rounded-xl">
                 <table className="min-w-full type-caption">
-                  <thead className="bg-surface-section text-muted sticky top-0">
+                  <thead className="bg-bg-surface-1 text-text-tertiary sticky top-0">
                     <tr>
                       <th className="p-2 text-left font-medium">Instrument</th>
                       <th className="p-2 text-left font-medium">Type</th>
@@ -1315,18 +1309,18 @@ function AssignLegsPageInner({
                   </thead>
                   <tbody>
                     {noImportRows.map((r, i) => (
-                      <tr key={i} className="border-t border-default text-subtle">
+                      <tr key={i} className="border-t border-border-default text-text-secondary">
                         <td className="p-2">{r.instrument || '—'}</td>
                         <td className="p-2">{r.csvType || '—'}</td>
                         <td className="p-2 capitalize">{r.side || '—'}</td>
                         <td className="p-2">{r.amount || '—'}</td>
                         <td className="p-2">{r.price || '—'}</td>
-                        <td className="p-2 text-muted">
+                        <td className="p-2 text-text-tertiary">
                           {r.excludeReason ? ({ not_option_trade: 'Not option trade', no_instrument: 'No instrument', no_side: 'No side', no_amount: 'No amount', no_price: 'Zero price' } as Record<string, string>)[r.excludeReason] ?? r.excludeReason : '—'}
                         </td>
                         <td className="p-2">
                           {r.rawCsv ? (
-                            <pre className="text-[10px] text-muted whitespace-pre-wrap max-w-[360px] overflow-auto max-h-[80px]">{JSON.stringify(r.rawCsv, null, 2)}</pre>
+                            <pre className="text-[10px] text-text-tertiary whitespace-pre-wrap max-w-[360px] overflow-auto max-h-[80px]">{JSON.stringify(r.rawCsv, null, 2)}</pre>
                           ) : '—'}
                         </td>
                       </tr>
@@ -1340,11 +1334,11 @@ function AssignLegsPageInner({
           /* ──── Unprocessed tab (user-driven, starts empty) ──── */
           <div className="h-full flex flex-col gap-3 overflow-hidden">
             {manuallyExcludedItems.length === 0 ? (
-              <p className="type-caption text-faint italic">No unprocessed rows. Use the eye-off icon on legs in the Open tab to mark them as unprocessed.</p>
+              <p className="type-caption text-text-disabled italic">No unprocessed rows. Use the eye-off icon on legs in the Open tab to mark them as unprocessed.</p>
             ) : (
-              <div className="flex-1 min-h-0 overflow-auto border border-default rounded-xl">
+              <div className="flex-1 min-h-0 overflow-auto border border-border-default rounded-xl">
                 <table className="min-w-full type-caption">
-                  <thead className="bg-surface-section text-muted sticky top-0">
+                  <thead className="bg-bg-surface-1 text-text-tertiary sticky top-0">
                     <tr>
                       <th className="p-2 text-left font-medium">Instrument</th>
                       <th className="p-2 text-left font-medium">Side</th>
@@ -1358,7 +1352,7 @@ function AssignLegsPageInner({
                     {manuallyExcludedItems.map((item) => {
                       const r = item.row
                       return (
-                        <tr key={item.id} className="border-t border-default text-subtle">
+                        <tr key={item.id} className="border-t border-border-default text-text-secondary">
                           <td className="p-2">{r.instrument}</td>
                           <td className="p-2 capitalize">{r.side}</td>
                           <td className="p-2">{r.amount}</td>
@@ -1367,7 +1361,7 @@ function AssignLegsPageInner({
                           <td className="p-2">
                             <button
                               onClick={() => handleRestoreItem(item.id)}
-                              className="flex items-center gap-1 text-muted hover:text-emerald-400 transition-colors"
+                              className="flex items-center gap-1 text-text-tertiary hover:text-emerald-400 transition-colors"
                               title="Restore to new legs"
                             >
                               <RotateCcw size={11} />
@@ -1386,15 +1380,15 @@ function AssignLegsPageInner({
           /* ──── Processed tab (already in DB) ──── */
           <div className="h-full flex flex-col gap-3 overflow-hidden">
             {processedRows.length === 0 ? (
-              <p className="type-caption text-faint italic">No previously imported rows found in this CSV.</p>
+              <p className="type-caption text-text-disabled italic">No previously imported rows found in this CSV.</p>
             ) : (
               <>
-                <p className="shrink-0 type-caption text-faint">
+                <p className="shrink-0 type-caption text-text-disabled">
                   {processedRows.length} row{processedRows.length !== 1 ? 's' : ''} already stored in database.
                 </p>
-                <div className="flex-1 min-h-0 overflow-auto border border-default rounded-xl">
+                <div className="flex-1 min-h-0 overflow-auto border border-border-default rounded-xl">
                   <table className="min-w-full type-caption">
-                    <thead className="bg-surface-section text-muted sticky top-0">
+                    <thead className="bg-bg-surface-1 text-text-tertiary sticky top-0">
                       <tr>
                         <th className="p-2 text-left font-medium">Instrument</th>
                         <th className="p-2 text-left font-medium">Side</th>
@@ -1406,7 +1400,7 @@ function AssignLegsPageInner({
                     </thead>
                     <tbody>
                       {processedRows.map((p, i) => (
-                        <tr key={i} className="border-t border-default text-subtle">
+                        <tr key={i} className="border-t border-border-default text-text-secondary">
                           <td className="p-2">{p.row.instrument}</td>
                           <td className="p-2 capitalize">{p.row.side}</td>
                           <td className="p-2">{p.row.amount}</td>

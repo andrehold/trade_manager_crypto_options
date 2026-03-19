@@ -8,6 +8,7 @@ import {
   TrendingDown,
   TrendingUp,
 } from 'lucide-react'
+import { Badge } from './ui'
 
 /* ── helpers ── */
 
@@ -26,13 +27,13 @@ export function PremiumBadge({ value }: { value: number }) {
   const isCredit = value < 0
   const sign = isCredit ? '+' : '-'
   return (
-    <span className="inline-flex items-center gap-1 bg-surface-chip rounded-md px-2 py-0.5 text-[11px] font-bold leading-tight text-strong">
+    <Badge variant={isCredit ? 'success' : 'danger'} className="gap-1 text-[11px] font-bold leading-tight">
       {isCredit
-        ? <TrendingDown size={10} className="shrink-0 text-emerald-400" />
-        : <TrendingUp size={10} className="shrink-0 text-rose-400" />
+        ? <TrendingDown size={10} className="shrink-0" />
+        : <TrendingUp size={10} className="shrink-0" />
       }
       {sign}{formatPremium(value)}
-    </span>
+    </Badge>
   )
 }
 
@@ -84,19 +85,19 @@ export const TradeCard = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={`flex flex-col bg-surface-card border border-strong/60 rounded-xl px-3 py-2.5 select-none${className ? ' ' + className : ''}`}
+      className={`flex flex-col bg-bg-surface-1 border border-border-strong/60 rounded-xl px-3 py-2.5 select-none${className ? ' ' + className : ''}`}
       {...rest}
     >
       {/* Header: icon + label + remove */}
       <div className="flex items-center justify-between gap-1">
         <div className="flex items-center gap-1.5 min-w-0">
-          <Blocks size={13} className="shrink-0 text-muted" />
-          <span className="type-caption font-bold text-strong truncate">{label}</span>
+          <Blocks size={13} className="shrink-0 text-text-tertiary" />
+          <span className="type-caption font-bold text-text-primary truncate">{label}</span>
         </div>
         {onRemove && (
           <button
             onClick={(e) => { e.stopPropagation(); onRemove() }}
-            className="shrink-0 text-faint hover:text-rose-400 text-[11px] leading-none ml-1 transition-colors"
+            className="shrink-0 text-text-disabled hover:text-rose-400 text-[11px] leading-none ml-1 transition-colors"
             title="Remove from structure"
           >
             ✕
@@ -105,21 +106,21 @@ export const TradeCard = React.forwardRef<
       </div>
 
       {/* Divider */}
-      <div className="border-t border-strong/60 my-2" />
+      <div className="border-t border-border-strong/60 my-2" />
 
       {/* Expiry */}
       {expiryPart && (
         <div className="flex items-center gap-1.5 mb-1">
-          <Calendar size={11} className="shrink-0 text-muted" />
-          <span className="text-[11px] text-subtle whitespace-nowrap">{expiryPart}</span>
+          <Calendar size={11} className="shrink-0 text-text-tertiary" />
+          <span className="text-[11px] text-text-secondary whitespace-nowrap">{expiryPart}</span>
         </div>
       )}
 
       {/* Timestamp */}
       {(datePart || timePart) && (
         <div className="flex items-center gap-1.5 mb-2">
-          <Clock size={11} className="shrink-0 text-muted" />
-          <span className="text-[11px] text-subtle whitespace-nowrap" title={fullTimestamp}>
+          <Clock size={11} className="shrink-0 text-text-tertiary" />
+          <span className="text-[11px] text-text-secondary whitespace-nowrap" title={fullTimestamp}>
             {datePart}{timePart ? ` ${timePart}` : ''}
           </span>
         </div>
@@ -128,13 +129,13 @@ export const TradeCard = React.forwardRef<
       {/* Open/close chip */}
       {action && (
         <div className="mb-1">
-          <span className="inline-flex items-center gap-1 bg-surface-chip rounded-md px-2 py-0.5 text-[11px] font-bold leading-tight text-strong">
+          <Badge variant={action === 'open' ? 'info' : 'warning'} className="gap-1 text-[11px] font-bold leading-tight">
             {action === 'open'
-              ? <ArrowUpRight size={10} className="shrink-0 text-blue-400" />
-              : <ArrowDownLeft size={10} className="shrink-0 text-orange-400" />
+              ? <ArrowUpRight size={10} className="shrink-0" />
+              : <ArrowDownLeft size={10} className="shrink-0" />
             }
             {action}
-          </span>
+          </Badge>
         </div>
       )}
 

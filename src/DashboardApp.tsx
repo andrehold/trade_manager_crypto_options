@@ -31,6 +31,7 @@ import { ColumnPicker } from './components/ColumnPicker'
 import { PositionTableHead } from './components/PositionTableHead'
 import { SortHeader } from './components/SortHeader'
 import { RefreshCw, TrendingUp, Upload, GanttChart, Inbox } from 'lucide-react'
+import { Button } from './components/ui'
 import {
   archiveStructure,
   fetchSavedStructures,
@@ -2028,12 +2029,12 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
 
   if (!supabaseConfigured || !supabase) {
     return (
-      <div className="min-h-screen bg-surface-page flex items-center justify-center p-6">
-        <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-default bg-surface-card p-8 text-center type-subhead text-subtle shadow-sm">
-          <p className="type-headline font-semibold text-body">Supabase configuration required</p>
+      <div className="min-h-screen bg-bg-canvas flex items-center justify-center p-6">
+        <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-border-default bg-bg-surface-1 p-8 text-center type-subhead text-text-secondary shadow-sm">
+          <p className="type-headline font-semibold text-text-secondary">Supabase configuration required</p>
           <p>
-            Set <code className="rounded bg-surface-chip px-1 py-0.5">VITE_SUPABASE_URL</code> and{' '}
-            <code className="rounded bg-surface-chip px-1 py-0.5">VITE_SUPABASE_PUBLISHABLE_KEY</code> to enable
+            Set <code className="rounded bg-bg-surface-3 px-1 py-0.5">VITE_SUPABASE_URL</code> and{' '}
+            <code className="rounded bg-bg-surface-3 px-1 py-0.5">VITE_SUPABASE_PUBLISHABLE_KEY</code> to enable
             authentication and program lookups.
           </p>
         </div>
@@ -2043,9 +2044,9 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-surface-page flex items-center justify-center p-6">
-        <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-default bg-surface-card p-8 text-center type-subhead text-subtle shadow-sm">
-          <p className="type-headline font-semibold text-body">Checking Supabase session…</p>
+      <div className="min-h-screen bg-bg-canvas flex items-center justify-center p-6">
+        <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-border-default bg-bg-surface-1 p-8 text-center type-subhead text-text-secondary shadow-sm">
+          <p className="type-headline font-semibold text-text-secondary">Checking Supabase session…</p>
           <p>Hold tight while we verify your saved Supabase credentials.</p>
         </div>
       </div>
@@ -2054,7 +2055,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
 
   if (!user) {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-surface-page">
+      <div className="relative min-h-screen overflow-hidden bg-bg-canvas">
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-br from-surface-page via-surface-section to-surface-page" />
           <div className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-sky-500/30 blur-3xl" />
@@ -2062,25 +2063,25 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
           <div className="absolute -bottom-32 left-[-60px] h-80 w-80 rounded-full bg-emerald-500/20 blur-3xl" />
         </div>
 
-        <div className="absolute inset-0 bg-surface-page/50 backdrop-blur">
+        <div className="absolute inset-0 bg-bg-canvas/50 backdrop-blur">
           <div className="absolute inset-x-6 top-28 hidden gap-6 opacity-60 lg:flex">
-            <div className="flex flex-1 flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 text-left type-caption text-strong/80">
+            <div className="flex flex-1 flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 text-left type-caption text-text-primary/80">
               <div className="h-3 w-32 rounded-full bg-white/20" />
               <div className="grid grid-cols-2 gap-3">
-                <div className="h-24 rounded-2xl border border-white/5 bg-surface-section/40" />
-                <div className="h-24 rounded-2xl border border-white/5 bg-surface-section/40" />
-                <div className="h-24 rounded-2xl border border-white/5 bg-surface-section/40" />
-                <div className="h-24 rounded-2xl border border-white/5 bg-surface-section/40" />
+                <div className="h-24 rounded-2xl border border-white/5 bg-bg-surface-1/40" />
+                <div className="h-24 rounded-2xl border border-white/5 bg-bg-surface-1/40" />
+                <div className="h-24 rounded-2xl border border-white/5 bg-bg-surface-1/40" />
+                <div className="h-24 rounded-2xl border border-white/5 bg-bg-surface-1/40" />
               </div>
               <div className="h-3 w-20 rounded-full bg-white/20" />
             </div>
-            <div className="hidden w-64 flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 type-caption text-strong/80 xl:flex">
+            <div className="hidden w-64 flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 type-caption text-text-primary/80 xl:flex">
               <div className="h-3 w-24 rounded-full bg-white/20" />
               <div className="space-y-3">
-                <div className="h-10 rounded-2xl border border-white/5 bg-surface-section/40" />
-                <div className="h-10 rounded-2xl border border-white/5 bg-surface-section/40" />
-                <div className="h-10 rounded-2xl border border-white/5 bg-surface-section/40" />
-                <div className="h-10 rounded-2xl border border-white/5 bg-surface-section/40" />
+                <div className="h-10 rounded-2xl border border-white/5 bg-bg-surface-1/40" />
+                <div className="h-10 rounded-2xl border border-white/5 bg-bg-surface-1/40" />
+                <div className="h-10 rounded-2xl border border-white/5 bg-bg-surface-1/40" />
+                <div className="h-10 rounded-2xl border border-white/5 bg-bg-surface-1/40" />
               </div>
               <div className="h-3 w-14 rounded-full bg-white/20" />
             </div>
@@ -2090,12 +2091,12 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
         <div className="relative z-10 flex min-h-screen items-center justify-center p-6">
           <div className="w-full max-w-md space-y-8">
             {/* Branding / copy */}
-            <div className="space-y-2 text-center text-strong">
-              <p className="type-caption font-semibold uppercase tracking-[0.35em] text-faint">
+            <div className="space-y-2 text-center text-text-primary">
+              <p className="type-caption font-semibold uppercase tracking-[0.35em] text-text-disabled">
                 Authentication required
               </p>
               <h1 className="type-display-l font-semibold tracking-tight">Sign in to continue</h1>
-              <p className="type-subhead text-faint">
+              <p className="type-subhead text-text-disabled">
                 Unlock lookups, structure imports, and live mark fetching.
               </p>
             </div>
@@ -2104,7 +2105,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
             <SupabaseLogin />
 
             {/* Footnote */}
-            <p className="text-center type-caption text-faint">
+            <p className="text-center type-caption text-text-disabled">
               Access is limited to authorized trading workspaces.
             </p>
           </div>
@@ -2115,18 +2116,18 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
 
   // Search suggestions dropdown (used in ViewSelector)
   const searchSuggestionsNode = showInstrumentSuggestions && instrumentSuggestions.length > 0 ? (
-    <div className="absolute left-0 right-0 z-20 mt-2 rounded-2xl border border-strong bg-surface-section shadow-xl">
-      <ul className="max-h-56 overflow-y-auto py-2 type-subhead text-body">
+    <div className="absolute left-0 right-0 z-20 mt-2 rounded-2xl border border-border-strong bg-bg-surface-1 shadow-xl">
+      <ul className="max-h-56 overflow-y-auto py-2 type-subhead text-text-secondary">
         {instrumentSuggestions.map((instrument) => (
           <li key={instrument}>
             <button
               type="button"
-              className="flex w-full items-center justify-between px-4 py-2 text-left hover:bg-surface-card"
+              className="flex w-full items-center justify-between px-4 py-2 text-left hover:bg-bg-surface-1"
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => handleInstrumentSelection(instrument)}
             >
-              <span className="font-medium text-strong">{instrument}</span>
-              <span className="type-caption text-muted">Instrument</span>
+              <span className="font-medium text-text-primary">{instrument}</span>
+              <span className="type-caption text-text-tertiary">Instrument</span>
             </button>
           </li>
         ))}
@@ -2135,7 +2136,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
   ) : null;
 
   return (
-    <div className="flex min-h-screen bg-surface-page">
+    <div className="flex min-h-screen bg-bg-canvas">
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((c) => !c)}
@@ -2157,7 +2158,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
       />
 
       {/* Main content */}
-      <div className="flex-1 min-w-0 flex flex-col bg-surface-page">
+      <div className="flex-1 min-w-0 flex flex-col bg-bg-canvas">
 
         {/* ── Header: arrows + title + portfolio greeks ── */}
         <DashboardHeader
@@ -2213,72 +2214,67 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
 
         {/* ── Page title + action buttons ── */}
         <div className="px-6 pt-5 pb-2 flex items-end justify-between gap-4">
-          <h2 className="type-display-l font-bold tracking-tight text-heading">Dashboard</h2>
+          <h2 className="type-display-l font-bold tracking-tight text-text-primary">Dashboard</h2>
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* Fetch */}
-            <button
-              className="rounded-xl border border-strong bg-surface-section px-3 py-2 type-subhead font-medium text-strong inline-flex items-center gap-2 hover:bg-surface-card hover:border-accent disabled:opacity-50 transition-colors"
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={savedStructuresLoading ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" />}
               onClick={() => { refreshSavedStructures(); void fetchAvailableExpiries(); }}
               disabled={savedStructuresLoading || !supabase || !user}
               title="Refresh saved structures and fetch available expiries"
             >
-              {savedStructuresLoading ? (
-                <><Spinner className="h-3.5 w-3.5" /><span>Fetching…</span></>
-              ) : (
-                <><RefreshCw className="h-3.5 w-3.5" /><span>Fetch</span></>
-              )}
-            </button>
+              {savedStructuresLoading ? 'Fetching…' : 'Fetch'}
+            </Button>
 
             {/* Get Live Marks */}
-            <button
-              className="rounded-xl border border-strong bg-surface-section px-3 py-2 type-subhead font-medium text-strong inline-flex items-center gap-2 hover:bg-surface-card hover:border-accent disabled:opacity-50 transition-colors"
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={markFetch.inProgress ? <Spinner className="h-3.5 w-3.5" /> : <TrendingUp className="h-3.5 w-3.5" />}
               onClick={() => fetchAllMarksForPositions(positionsForMarks)}
               disabled={markFetch.inProgress}
               title="Fetch current mark/greeks for all visible legs"
             >
-              {markFetch.inProgress ? (
-                <><Spinner className="h-3.5 w-3.5" /><span>{markFetch.done}/{markFetch.total}</span></>
-              ) : (
-                <><TrendingUp className="h-3.5 w-3.5" /><span>Get Live Marks</span></>
-              )}
-            </button>
+              {markFetch.inProgress ? `${markFetch.done}/${markFetch.total}` : 'Get Live Marks'}
+            </Button>
 
             {/* Import */}
-            <button
-              className="rounded-xl border border-strong bg-surface-section px-3 py-2 type-subhead font-medium text-strong inline-flex items-center gap-2 hover:bg-surface-card hover:border-accent transition-colors"
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<Upload className="h-3.5 w-3.5" />}
               onClick={onOpenMapCSV}
               title="Import CSV trade data"
             >
-              <Upload className="h-3.5 w-3.5" />
-              <span>Import</span>
-            </button>
+              Import
+            </Button>
 
             {/* Process Backlog */}
-            <button
-              className="rounded-xl border border-strong bg-surface-section px-3 py-2 type-subhead font-medium text-strong inline-flex items-center gap-2 hover:bg-surface-card hover:border-accent disabled:opacity-50 transition-colors"
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={processBacklogLoading ? <Spinner className="h-3.5 w-3.5" /> : <Inbox className="h-3.5 w-3.5" />}
               onClick={handleProcessBacklog}
               disabled={processBacklogLoading || !supabase || !user}
               title="Process unprocessed imports from backlog"
             >
-              {processBacklogLoading ? (
-                <><Spinner className="h-3.5 w-3.5" /><span>Loading…</span></>
-              ) : (
-                <><Inbox className="h-3.5 w-3.5" /><span>Process Backlog</span></>
-              )}
-            </button>
+              {processBacklogLoading ? 'Loading…' : 'Process Backlog'}
+            </Button>
           </div>
         </div>
 
         {/* Mark-fetch progress bar */}
         {markFetch.inProgress && (
           <div className="px-6 pb-2">
-            <div className="h-1 bg-surface-card rounded-full overflow-hidden">
+            <div className="h-1 bg-bg-surface-1 rounded-full overflow-hidden">
               <div
                 className="h-1 bg-emerald-500 rounded-full transition-all"
                 style={{ width: markFetch.total ? `${Math.round((markFetch.done / markFetch.total) * 100)}%` : '10%' }}
               />
             </div>
-            <div className="type-caption text-muted mt-1">
+            <div className="type-caption text-text-tertiary mt-1">
               Fetched {markFetch.done}/{markFetch.total}
               {markFetch.errors ? <> · {markFetch.errors} errors</> : null}
             </div>
@@ -2306,17 +2302,17 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
 
         {/* ── Content rectangle ── */}
         <div className="px-6 pb-6 flex-1">
-          <div className="bg-surface-section rounded-xl border border-default overflow-hidden">
+          <div className="bg-bg-surface-1 rounded-xl border border-border-default overflow-hidden">
 
             {/* ─── TABLE VIEW ─────────────────────────────────────────────── */}
             {activeView === 'table' && (
               <div>
                 {/* Section 1: Saved Structures */}
-                <div className="border-b border-default">
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-default">
-                    <span className="type-subhead font-semibold text-body">Saved Structures</span>
+                <div className="border-b border-border-default">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
+                    <span className="type-subhead font-semibold text-text-secondary">Saved Structures</span>
                     <div className="flex items-center gap-2">
-                      {savedStructuresLoading && <span className="type-caption text-muted">Refreshing…</span>}
+                      {savedStructuresLoading && <span className="type-caption text-text-tertiary">Refreshing…</span>}
                       <ColumnPicker visibleCols={visibleCols} onVisibleColsChange={setVisibleCols} />
                     </div>
                   </div>
@@ -2327,7 +2323,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                     <div className="px-4 py-3 type-subhead text-amber-400">{programPlaybooksError}</div>
                   )}
                   {filteredSaved.length === 0 ? (
-                    <div className="px-4 py-4 type-subhead text-muted">
+                    <div className="px-4 py-4 type-subhead text-text-tertiary">
                       {savedStructures.length > 0
                         ? 'No saved structures match your filters.'
                         : savedStructuresLoading
@@ -2357,11 +2353,11 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                             />
                           ))}
                           {savedStructureGroups.closed.length > 0 && (
-                            <tr className="bg-surface-card/60 border-y border-default type-caption font-semibold uppercase tracking-wide text-muted">
+                            <tr className="bg-bg-surface-1/60 border-y border-border-default type-caption font-semibold uppercase tracking-wide text-text-tertiary">
                               <td colSpan={savedStructureColSpan} className="px-3 py-2 text-left">
                                 <div className="flex items-center gap-3">
                                   <span>Closed structures</span>
-                                  <span className="h-px flex-1 bg-surface-chip" aria-hidden />
+                                  <span className="h-px flex-1 bg-bg-surface-3" aria-hidden />
                                 </div>
                               </td>
                             </tr>
@@ -2390,19 +2386,19 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                 </div>
 
                 {/* Section 2: Open Instruments */}
-                <div className="border-b border-default">
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-default">
-                    <span className="type-subhead font-semibold text-body">Open Instruments</span>
-                    <span className="type-caption text-muted">
+                <div className="border-b border-border-default">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
+                    <span className="type-subhead font-semibold text-text-secondary">Open Instruments</span>
+                    <span className="type-caption text-text-tertiary">
                       {openInstrumentRows.length > 0 ? `${openInstrumentRows.length} instruments` : 'None'}
                     </span>
                   </div>
                   {openInstrumentRows.length === 0 ? (
-                    <div className="px-4 py-4 type-subhead text-muted">No open instruments.</div>
+                    <div className="px-4 py-4 type-subhead text-text-tertiary">No open instruments.</div>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="min-w-full type-subhead">
-                        <thead className="type-caption uppercase text-muted border-t border-default">
+                        <thead className="type-caption uppercase text-text-tertiary border-t border-border-default">
                           <tr className="text-left">
                             <th className="p-3"><SortHeader<OpenInstrumentSortKey> label="Instrument" sortKey="instrument" currentKey={openInstrumentSort.key} direction={openInstrumentSort.direction} onSort={handleOpenInstrumentSort} /></th>
                             <th className="p-3 text-right"><SortHeader<OpenInstrumentSortKey> label="Net Qty" sortKey="qtyNet" currentKey={openInstrumentSort.key} direction={openInstrumentSort.direction} onSort={handleOpenInstrumentSort} /></th>
@@ -2416,12 +2412,12 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                         </thead>
                         <tbody>
                           {openInstrumentRows.map((row) => (
-                            <tr key={row.instrument} className="border-t border-default">
-                              <td className="p-3 font-medium text-strong">{row.instrument}</td>
-                              <td className="p-3 text-right text-subtle">{formatQuantity(row.qtyNet)}</td>
-                              <td className="p-3 text-right text-subtle">{fmtPremium(row.absPnl)}</td>
+                            <tr key={row.instrument} className="border-t border-border-default">
+                              <td className="p-3 font-medium text-text-primary">{row.instrument}</td>
+                              <td className="p-3 text-right text-text-secondary">{formatQuantity(row.qtyNet)}</td>
+                              <td className="p-3 text-right text-text-secondary">{fmtPremium(row.absPnl)}</td>
                               {GREEK_SUMMARY_FIELDS.map((field) => (
-                                <td key={field.key} className="p-3 text-right text-subtle">
+                                <td key={field.key} className="p-3 text-right text-text-secondary">
                                   {fmtGreek(row.greeks[field.key])}
                                 </td>
                               ))}
@@ -2434,19 +2430,21 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                 </div>
 
                 {/* Section 3: Exchange Positions */}
-                <div className="border-b border-default">
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-default">
-                    <span className="type-subhead font-semibold text-body">Exchange Positions</span>
+                <div className="border-b border-border-default">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
+                    <span className="type-subhead font-semibold text-text-secondary">Exchange Positions</span>
                     <div className="flex items-center gap-3">
-                      <span className="type-caption text-muted">
+                      <span className="type-caption text-text-tertiary">
                         {exchangePositions.length ? `${exchangePositions.length} loaded` : 'None'}
                       </span>
-                      <button
-                        className="rounded-lg border border-strong bg-surface-card px-2.5 py-1.5 type-caption font-medium text-body hover:bg-surface-hover transition-colors"
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="type-caption"
                         onClick={() => positionUploadRef.current?.click()}
                       >
                         Upload CSV
-                      </button>
+                      </Button>
                       <input
                         ref={positionUploadRef}
                         type="file"
@@ -2457,14 +2455,14 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                     </div>
                   </div>
                   {filteredExchangePositions.length === 0 ? (
-                    <div className="px-4 py-4 type-subhead text-muted">
+                    <div className="px-4 py-4 type-subhead text-text-tertiary">
                       No exchange positions.{' '}
-                      <span className="text-faint">Upload a Deribit or Coincall CSV export above.</span>
+                      <span className="text-text-disabled">Upload a Deribit or Coincall CSV export above.</span>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="min-w-full type-subhead">
-                        <thead className="type-caption uppercase text-muted border-t border-default">
+                        <thead className="type-caption uppercase text-text-tertiary border-t border-border-default">
                           <tr className="text-left">
                             <th className="p-3">Exchange</th>
                             <th className="p-3">Instrument</th>
@@ -2479,11 +2477,11 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                         <tbody>
                           {exchangePositionGroups.map((group) => (
                             <React.Fragment key={group.label}>
-                              <tr className="bg-surface-card/60 border-t border-default type-caption font-semibold uppercase tracking-wide text-muted">
+                              <tr className="bg-bg-surface-1/60 border-t border-border-default type-caption font-semibold uppercase tracking-wide text-text-tertiary">
                                 <td colSpan={8} className="px-3 py-2 text-left">
                                   <div className="flex items-center gap-3">
                                     <span>Expiry: {group.label}</span>
-                                    <span className="h-px flex-1 bg-surface-chip" aria-hidden />
+                                    <span className="h-px flex-1 bg-bg-surface-3" aria-hidden />
                                   </div>
                                 </td>
                               </tr>
@@ -2493,17 +2491,17 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                                   ? 'text-emerald-500'
                                   : sideLower === 'sell'
                                   ? 'text-rose-500'
-                                  : 'text-muted';
+                                  : 'text-text-tertiary';
                                 return (
-                                  <tr key={position.id} className="border-t border-default">
-                                    <td className="p-3 type-caption font-semibold uppercase text-muted">{position.exchange}</td>
-                                    <td className="p-3 font-medium text-strong">{position.instrument}</td>
-                                    <td className="p-3 text-subtle">{position.expiryISO ?? '—'}</td>
-                                    <td className="p-3 text-subtle">{formatQuantity(position.size)}</td>
+                                  <tr key={position.id} className="border-t border-border-default">
+                                    <td className="p-3 type-caption font-semibold uppercase text-text-tertiary">{position.exchange}</td>
+                                    <td className="p-3 font-medium text-text-primary">{position.instrument}</td>
+                                    <td className="p-3 text-text-secondary">{position.expiryISO ?? '—'}</td>
+                                    <td className="p-3 text-text-secondary">{formatQuantity(position.size)}</td>
                                     <td className={`p-3 font-semibold ${sideClass}`}>{position.side}</td>
-                                    <td className="p-3 text-subtle">{formatPrice(position.avgPrice)}</td>
-                                    <td className="p-3 text-subtle">{formatPrice(position.markPrice)}</td>
-                                    <td className="p-3 text-subtle">{formatPrice(position.indexPrice)}</td>
+                                    <td className="p-3 text-text-secondary">{formatPrice(position.avgPrice)}</td>
+                                    <td className="p-3 text-text-secondary">{formatPrice(position.markPrice)}</td>
+                                    <td className="p-3 text-text-secondary">{formatPrice(position.indexPrice)}</td>
                                   </tr>
                                 );
                               })}
@@ -2518,8 +2516,8 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                 {/* Section 4: Live Positions (if any) */}
                 {positions.length > 0 && (
                   <div>
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-default">
-                      <span className="type-subhead font-semibold text-body">Live Positions</span>
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
+                      <span className="type-subhead font-semibold text-text-secondary">Live Positions</span>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="min-w-full type-subhead">
@@ -2527,18 +2525,18 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                         <tbody>
                           {filteredLive.length === 0 && (
                             <tr>
-                              <td colSpan={livePositionColSpan} className="p-4 type-subhead text-muted">
+                              <td colSpan={livePositionColSpan} className="p-4 type-subhead text-text-tertiary">
                                 No live positions match your filters.
                               </td>
                             </tr>
                           )}
                           {livePositionGroups.map((group) => (
                             <React.Fragment key={group.label}>
-                              <tr className="bg-surface-card/60 border-y border-default type-caption font-semibold uppercase tracking-wide text-muted">
+                              <tr className="bg-bg-surface-1/60 border-y border-border-default type-caption font-semibold uppercase tracking-wide text-text-tertiary">
                                 <td colSpan={livePositionColSpan} className="px-3 py-2 text-left">
                                   <div className="flex items-center gap-3">
                                     <span>Expiry: {group.label}</span>
-                                    <span className="h-px flex-1 bg-surface-chip" aria-hidden />
+                                    <span className="h-px flex-1 bg-bg-surface-3" aria-hidden />
                                   </div>
                                 </td>
                               </tr>
@@ -2567,7 +2565,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                 {positions.length === 0 && (
                   <div className="p-4">
                     <UploadBox onFiles={handleFiles} />
-                    <p className="type-caption text-faint mt-3">
+                    <p className="type-caption text-text-disabled mt-3">
                       Tip: You can re-open the Column Picker to adjust visible columns.
                     </p>
                   </div>
@@ -2583,9 +2581,9 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
             {/* ─── GANTT VIEW ─────────────────────────────────────────────── */}
             {activeView === 'gantt' && (
               <div className="flex flex-col items-center justify-center h-64 gap-2">
-                <GanttChart className="w-8 h-8 text-faint" />
-                <p className="type-subhead font-medium text-muted">Gantt chart</p>
-                <p className="type-caption text-faint">Coming soon</p>
+                <GanttChart className="w-8 h-8 text-text-disabled" />
+                <p className="type-subhead font-medium text-text-tertiary">Gantt chart</p>
+                <p className="type-caption text-text-disabled">Coming soon</p>
               </div>
             )}
 
