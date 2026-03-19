@@ -49,7 +49,7 @@ export function DashboardHeader({ title, clientName, portfolioGreeks }: Props) {
       <div className="flex items-center gap-1.5">
         {clientName && (
           <>
-            <Chip variant="tag" className="text-[11px] font-semibold">{clientName}</Chip>
+            <Chip variant="tag" className="type-micro font-semibold">{clientName}</Chip>
             <div className="w-px h-4 bg-border-default mx-1" />
           </>
         )}
@@ -59,8 +59,8 @@ export function DashboardHeader({ title, clientName, portfolioGreeks }: Props) {
             : '—'
           return (
             <Chip key={key} variant="tag" className="gap-1.5">
-              <span className="text-[11px] font-medium text-text-tertiary">{symbol}</span>
-              <span className="text-[11px] font-semibold text-text-primary tabular-nums">{value}</span>
+              <span className="type-micro font-medium text-text-tertiary">{symbol}</span>
+              <span className="type-micro font-semibold text-text-primary tabular-nums">{value}</span>
             </Chip>
           )
         })}

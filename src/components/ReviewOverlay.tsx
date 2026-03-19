@@ -15,7 +15,7 @@ function SideCell({ action, side }: { action?: TxnRow['action']; side: TxnRow['s
     <div className="flex items-center gap-2">
       {action ? (
         <span
-          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${chipClasses}`}
+          className={`inline-flex items-center rounded-full border px-2 py-0.5 type-micro font-semibold uppercase tracking-wide ${chipClasses}`}
         >
           {action}
         </span>

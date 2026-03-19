@@ -184,7 +184,7 @@ export function TradeJsonExportOverlay({ open, onClose, position, marks }: Trade
                     <tr key={row.id} className="border-b border-border-default last:border-0">
                       <td className="p-2">
                         <input
-                          className="w-full rounded-lg border border-border-strong bg-surface-card px-2 py-1 type-subhead text-heading focus:outline-none focus:ring-2 focus:ring-border-accent"
+                          className="w-full rounded-lg border border-border-strong bg-surface-card px-2 py-1 type-subhead text-heading focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
                           value={row.instrument}
                           onChange={(e) =>
                             setRows((prev) =>
@@ -200,7 +200,7 @@ export function TradeJsonExportOverlay({ open, onClose, position, marks }: Trade
                           type="number"
                           min={0}
                           step="0.1"
-                          className="w-24 rounded-lg border border-border-strong bg-surface-card px-2 py-1 text-right font-mono type-subhead text-heading focus:outline-none focus:ring-2 focus:ring-border-accent"
+                          className="w-24 rounded-lg border border-border-strong bg-surface-card px-2 py-1 text-right font-mono type-subhead text-heading focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
                           value={row.qty}
                           onChange={(e) =>
                             setRows((prev) =>
@@ -213,7 +213,7 @@ export function TradeJsonExportOverlay({ open, onClose, position, marks }: Trade
                       </td>
                       <td className="p-2">
                         <select
-                          className="rounded-lg border border-border-strong bg-surface-card px-2 py-1 type-subhead text-heading focus:outline-none focus:ring-2 focus:ring-border-accent"
+                          className="rounded-lg border border-border-strong bg-surface-card px-2 py-1 type-subhead text-heading focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
                           value={row.side}
                           onChange={(e) =>
                             setRows((prev) =>

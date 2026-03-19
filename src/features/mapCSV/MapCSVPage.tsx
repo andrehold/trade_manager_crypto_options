@@ -431,7 +431,7 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
             {/* Section label — upper left */}
             <div className="flex items-center gap-1.5">
               <FileText size={13} className="text-text-tertiary" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-text-tertiary">
+              <span className="type-micro font-semibold uppercase tracking-[0.15em] text-text-tertiary">
                 Import
               </span>
             </div>
@@ -443,8 +443,8 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
                 className={[
                   'w-full max-w-xs border border-dashed rounded-xl py-7 flex items-center justify-center gap-2 transition-colors',
                   isDragging
-                    ? 'border-border-accent text-text-primary bg-bg-surface-3/30'
-                    : 'border-border-strong text-text-tertiary hover:border-border-accent hover:text-text-secondary hover:bg-bg-surface-1/50',
+                    ? 'border-border-accent text-text-primary bg-bg-surface-3-alpha'
+                    : 'border-border-strong text-text-tertiary hover:border-border-accent hover:text-text-secondary hover:bg-bg-surface-1-alpha',
                 ].join(' ')}
               >
                 <FileText size={15} />
@@ -492,11 +492,11 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
           {/* Card section label */}
           <div className="flex items-center gap-1.5 px-5 pt-5 pb-0">
             <FileText size={13} className="text-text-tertiary" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-text-tertiary">
+            <span className="type-micro font-semibold uppercase tracking-[0.15em] text-text-tertiary">
               Mapping
             </span>
             {localHeaders && (
-              <span className="text-[10px] text-text-disabled ml-1">— {localRawRows?.length ?? 0} rows</span>
+              <span className="type-micro-sm text-text-disabled ml-1">— {localRawRows?.length ?? 0} rows</span>
             )}
           </div>
 
@@ -505,14 +505,14 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
 
             {/* Exchange selector */}
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[0.15em] text-text-tertiary mb-2">
+              <label className="block type-micro-sm font-semibold uppercase tracking-[0.15em] text-text-tertiary mb-2">
                 Exchange
               </label>
               <div className="relative">
                 <select
                   value={exchange}
                   onChange={(e) => setExchange(e.target.value as 'deribit' | 'coincall' | 'cme')}
-                  className="w-full appearance-none bg-bg-surface-3 border border-border-accent/30 rounded-2xl px-4 py-3 pr-9 type-subhead text-text-primary focus:outline-none focus:border-border-accent cursor-pointer transition-colors"
+                  className="w-full appearance-none bg-bg-surface-3 border border-border-default rounded-2xl px-4 py-3 pr-9 type-subhead text-text-primary focus:outline-none focus:border-border-accent cursor-pointer transition-colors"
                 >
                   <option value="deribit">Deribit</option>
                   <option value="coincall">Coincall</option>
@@ -526,14 +526,14 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {EXPECTED_FIELDS.map((f) => (
                 <div key={f.key}>
-                  <label className="block text-[10px] font-semibold uppercase tracking-[0.15em] text-text-tertiary mb-2">
+                  <label className="block type-micro-sm font-semibold uppercase tracking-[0.15em] text-text-tertiary mb-2">
                     {f.label}
                   </label>
                   <div className="relative">
                     <select
                       value={mapping[f.key] || ''}
                       onChange={(e) => setMapping((m) => ({ ...m, [f.key]: e.target.value }))}
-                      className="w-full appearance-none bg-bg-surface-3 border border-border-accent/30 rounded-2xl px-4 py-3 pr-9 type-subhead text-text-primary focus:outline-none focus:border-border-accent cursor-pointer transition-colors"
+                      className="w-full appearance-none bg-bg-surface-3 border border-border-default rounded-2xl px-4 py-3 pr-9 type-subhead text-text-primary focus:outline-none focus:border-border-accent cursor-pointer transition-colors"
                     >
                       <option value="">— select —</option>
                       {headers.map((h) => (

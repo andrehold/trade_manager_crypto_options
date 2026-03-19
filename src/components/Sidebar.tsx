@@ -97,7 +97,7 @@ export function Sidebar({
           <button
             onClick={onToggle}
             aria-label="Expand sidebar"
-            className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-accent-600 text-white shrink-0 hover:bg-accent-700 transition-colors focus:outline-none focus:ring-2 focus:ring-border-accent"
+            className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-accent-600 text-white shrink-0 hover:bg-accent-700 transition-colors focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
             title="Expand sidebar"
           >
             <Zap className="w-4 h-4" strokeWidth={2.5} />
@@ -106,7 +106,7 @@ export function Sidebar({
           <button
             onClick={onToggle}
             aria-label="Collapse sidebar"
-            className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-accent-600 text-white shrink-0 hover:bg-accent-700 transition-colors focus:outline-none focus:ring-2 focus:ring-border-accent"
+            className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-accent-600 text-white shrink-0 hover:bg-accent-700 transition-colors focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
             title="Collapse sidebar"
           >
             <Zap className="w-4 h-4" strokeWidth={2.5} />
@@ -126,7 +126,7 @@ export function Sidebar({
           <button
             onClick={onToggle}
             aria-label="Collapse sidebar"
-            className="p-1 rounded-xl text-faint hover:text-heading hover:bg-surface-hover transition ml-auto shrink-0 focus:outline-none focus:ring-2 focus:ring-border-accent"
+            className="p-1 rounded-xl text-faint hover:text-heading hover:bg-surface-hover transition ml-auto shrink-0 focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
             title="Collapse sidebar"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -146,7 +146,7 @@ export function Sidebar({
               className={[
                 'flex items-center gap-3 rounded-xl px-3 py-2.5 type-subhead font-medium',
                 'transition-colors w-full text-left',
-                'focus:outline-none focus:ring-2 focus:ring-border-accent',
+                'focus:outline-none focus:shadow-[var(--glow-accent-sm)]',
                 collapsed ? 'justify-center' : '',
                 isActive
                   ? 'bg-accent-500/15 text-accent-400'
@@ -194,7 +194,7 @@ export function Sidebar({
             'w-full rounded-xl bg-accent-600 hover:bg-accent-700 active:bg-accent-800',
             'text-white py-2 type-subhead font-semibold transition-colors',
             'flex items-center justify-center gap-2',
-            'focus:outline-none focus:ring-2 focus:ring-border-accent',
+            'focus:outline-none focus:shadow-[var(--glow-accent-sm)]',
           ].join(' ')}
           title="Add Trade"
         >
@@ -221,7 +221,7 @@ export function Sidebar({
           aria-label={alertsOnly ? 'Disable alerts filter' : 'Enable alerts filter'}
           className={[
             collapsed ? 'cursor-pointer' : 'cursor-default',
-            'focus:outline-none focus:ring-2 focus:ring-border-accent rounded-lg',
+            'focus:outline-none focus:shadow-[var(--glow-accent-sm)] rounded-lg',
           ].join(' ')}
         >
           <Bell
@@ -254,7 +254,7 @@ export function Sidebar({
               </span>
               <select
                 aria-label="Select client"
-                className="w-full bg-surface-chip border border-border-default rounded-lg px-2 py-1 type-subhead font-semibold text-heading hover:border-border-accent transition-colors focus:outline-none focus:ring-2 focus:ring-border-accent disabled:opacity-45 disabled:cursor-not-allowed"
+                className="w-full bg-surface-chip border border-border-default rounded-lg px-2 py-1 type-subhead font-semibold text-heading hover:border-border-accent transition-colors focus:outline-none focus:shadow-[var(--glow-accent-sm)] disabled:opacity-45 disabled:cursor-not-allowed"
                 value={selectedClient}
                 onChange={(e) => onSelectClient(e.target.value)}
                 disabled={!isAdmin}
@@ -270,7 +270,7 @@ export function Sidebar({
               <button
                 onClick={onAddClient}
                 aria-label="Add client"
-                className="p-1 rounded-lg text-faint hover:text-heading hover:bg-surface-hover transition shrink-0 focus:outline-none focus:ring-2 focus:ring-border-accent"
+                className="p-1 rounded-lg text-faint hover:text-heading hover:bg-surface-hover transition shrink-0 focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
                 title="Add client"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -301,7 +301,7 @@ export function Sidebar({
         <button
           onClick={onSignOut}
           aria-label="Sign out"
-          className="p-1 rounded-lg text-faint hover:text-rose-400 hover:bg-surface-hover transition shrink-0 focus:outline-none focus:ring-2 focus:ring-border-accent"
+          className="p-1 rounded-lg text-faint hover:text-status-danger hover:bg-surface-hover transition shrink-0 focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
           title="Sign out"
         >
           <LogOut className="w-4 h-4" />

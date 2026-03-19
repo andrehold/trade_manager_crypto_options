@@ -286,7 +286,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
         <td className="p-3 align-top text-right">
           {isUpdateMode ? (
             <div className="inline-flex flex-wrap items-center gap-2 justify-end">
-              <span className="inline-flex items-center justify-center rounded-md border border-border-default bg-surface-page px-2 py-1 text-[11px] text-muted">
+              <span className="inline-flex items-center justify-center rounded-md border border-border-default bg-surface-page px-2 py-1 type-micro text-muted">
                 Saved
               </span>
               {onArchive ? (
@@ -350,14 +350,14 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
               <span className="sr-only">Open save overlay</span>
             </button>
           ) : (
-            <span className="inline-flex items-center justify-center rounded-md border border-border-default bg-surface-page px-2 py-1 text-[11px] text-muted">
+            <span className="inline-flex items-center justify-center rounded-md border border-border-default bg-surface-page px-2 py-1 type-micro text-muted">
               Save disabled
             </span>
           )}
         </td>
       </tr>
       {open && (
-        <tr className="bg-surface-page/60">
+        <tr className="bg-bg-surface-1-alpha">
           <td />
           <td colSpan={20} className="p-3">
             <div className="grid md:grid-cols-3 gap-3">
@@ -452,7 +452,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                     </tbody>
                   </table>
                 </div>
-                <div className="mt-2 text-[11px] text-muted leading-snug">
+                <div className="mt-2 type-micro text-muted leading-snug">
                   uPnL sums each open lot as (mark − entry price) × signed qty × multiplier. Fully offset legs report 0 to avoid
                   mark noise when net size is flat.
                 </div>

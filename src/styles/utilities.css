@@ -147,6 +147,11 @@
   /* Softer border variant (replaces border-default/60 hacks) */
   --color-border-faint: rgba(255, 255, 255, 0.04);
 
+  /* Semi-transparent surface fills — replace /40 /50 /60 /80 opacity hacks */
+  --color-bg-surface-1-alpha: rgba(16, 16, 19, 0.50);   /* bg-surface-1/50  */
+  --color-bg-surface-3-alpha: rgba(26, 26, 32, 0.40);   /* bg-surface-3/30–50 */
+  --color-surface-tint:       rgba(255, 255, 255, 0.05); /* decorative white/5 fills */
+
   /* Raw neutrals (edge cases) */
   --color-neutral-950:    #0A0A0B;
   --color-neutral-925:    #101013;
@@ -191,6 +196,7 @@
   --glow-accent-sm: 0 0 0 1px rgba(139,92,246,0.85), 0 0 0 4px rgba(139,92,246,0.12);
   --glow-accent-md: 0 0 0 1px rgba(139,92,246,0.9), 0 0 18px rgba(139,92,246,0.28);
   --glow-accent-lg: 0 0 0 1px rgba(139,92,246,0.9), 0 0 28px rgba(139,92,246,0.32);
+  --glow-danger-sm: 0 0 0 1px rgba(239,68,68,0.85), 0 0 0 4px rgba(239,68,68,0.12);
 
   /* Motion */
   --duration-fast:     120ms;
@@ -251,6 +257,9 @@
   --color-playbook-border:       rgba(99, 102, 241, 0.30);
   --color-playbook-text:         #4338CA;
   --color-border-faint:          rgba(0, 0, 0, 0.04);
+  --color-bg-surface-1-alpha:    rgba(255, 255, 255, 0.50);
+  --color-bg-surface-3-alpha:    rgba(238, 242, 247, 0.40);
+  --color-surface-tint:          rgba(0, 0, 0, 0.03);
 }
 
 /* ── Base resets (kept from old utilities.css) ──
@@ -339,6 +348,12 @@
   line-height: 0.875rem; /* 14px */
   font-weight: 500;
   letter-spacing: 0.015em;
+}
+.type-micro-sm {
+  font-size: 0.625rem;   /* 10px */
+  line-height: 0.8125rem; /* 13px */
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 /* ── Status banner utilities ─────────────────────────────────────────

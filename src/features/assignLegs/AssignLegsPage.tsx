@@ -113,7 +113,7 @@ function SortableLegChip({
       style={style}
       {...attributes}
       {...listeners}
-      className={`flex flex-col bg-bg-surface-1 border border-border-strong/60 rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing touch-none select-none min-w-[160px] flex-1 max-w-[260px] transition-transform${extraClassName ? ' ' + extraClassName : ''}`}
+      className={`flex flex-col bg-bg-surface-1 border border-border-faint rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing touch-none select-none min-w-[160px] flex-1 max-w-[260px] transition-transform${extraClassName ? ' ' + extraClassName : ''}`}
     >
       {/* Header: icon + qty+strike + remove */}
       <div className="flex items-center justify-between gap-1">
@@ -135,7 +135,7 @@ function SortableLegChip({
       </div>
 
       {/* Divider */}
-      <div className="border-t border-border-strong/60 my-2" />
+      <div className="border-t border-border-faint my-2" />
 
       {/* Expiry */}
       {expiryPart && (
@@ -243,7 +243,7 @@ function DraggableLegChip({
       style={style}
       {...attributes}
       {...listeners}
-      className={`flex flex-col bg-bg-surface-1 border border-border-strong/60 rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing touch-none select-none min-w-[160px] flex-1 max-w-[260px]${extraClassName ? ' ' + extraClassName : ''}`}
+      className={`flex flex-col bg-bg-surface-1 border border-border-faint rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing touch-none select-none min-w-[160px] flex-1 max-w-[260px]${extraClassName ? ' ' + extraClassName : ''}`}
     >
       <div className="flex items-center justify-between gap-1">
         <div className="flex items-center gap-1.5 min-w-0">
@@ -264,7 +264,7 @@ function DraggableLegChip({
         )}
       </div>
 
-      <div className="border-t border-border-strong/60 my-2" />
+      <div className="border-t border-border-faint my-2" />
 
       {expiryPart && (
         <div className="flex items-center gap-1.5 mb-1">
@@ -364,7 +364,7 @@ function NewStructureDropZone({
           ? 'border-status-info-border bg-status-info-bg'
           : items.length > 0
           ? 'border-status-success-border bg-status-success-bg'
-          : 'border-border-strong bg-bg-surface-1/50'
+          : 'border-border-strong bg-bg-surface-1-alpha'
       }`}
     >
       <div className="flex items-center justify-between mb-2.5">
@@ -433,7 +433,7 @@ function ExistingLegChip({ leg }: { leg: Leg }) {
   const qty = Math.abs(leg.qtyNet)
   const qtyStr = qty % 1 === 0 ? String(qty) : qty.toFixed(2)
   return (
-    <span className="inline-flex items-center gap-1 bg-bg-surface-3/50 border border-border-accent/50 rounded-lg px-2 py-1 type-caption text-text-secondary select-none">
+    <span className="inline-flex items-center gap-1 bg-bg-surface-3-alpha border border-border-accent rounded-lg px-2 py-1 type-caption text-text-secondary select-none">
       <span className="font-medium">
         {sign}{qtyStr} / {leg.optionType}{leg.strike}
       </span>
@@ -465,7 +465,7 @@ function SavedStructureCard({
     <div
       ref={setNodeRef}
       className={`border rounded-xl px-3 py-2.5 transition-colors ${
-        isOver ? 'border-status-info-border bg-status-info-bg' : 'border-border-strong bg-bg-surface-1/50'
+        isOver ? 'border-status-info-border bg-status-info-bg' : 'border-border-strong bg-bg-surface-1-alpha'
       }`}
     >
       <div className="flex items-center gap-2 mb-2">
@@ -489,7 +489,7 @@ function SavedStructureCard({
         <SortableContext items={newLegs.map((i) => i.id)} strategy={rectSortingStrategy}>
           <div
             className={`flex-1 min-w-0 border border-dashed rounded-xl p-2 min-h-[36px] transition-colors ${
-              isOver ? 'border-status-info-border bg-status-info-bg' : 'border-border-strong bg-bg-surface-1/50'
+              isOver ? 'border-status-info-border bg-status-info-bg' : 'border-border-strong bg-bg-surface-1-alpha'
             }`}
           >
             {newLegs.length === 0 ? (
@@ -539,7 +539,7 @@ function LocalStructureCard({
     <div
       ref={setNodeRef}
       className={`border rounded-xl p-3 transition-colors ${
-        isOver ? 'border-status-info-border bg-status-info-bg' : 'border-border-strong bg-bg-surface-1/50'
+        isOver ? 'border-status-info-border bg-status-info-bg' : 'border-border-strong bg-bg-surface-1-alpha'
       }`}
     >
       <div className="flex items-center justify-between mb-2">
@@ -1320,7 +1320,7 @@ function AssignLegsPageInner({
                         </td>
                         <td className="p-2">
                           {r.rawCsv ? (
-                            <pre className="text-[10px] text-text-tertiary whitespace-pre-wrap max-w-[360px] overflow-auto max-h-[80px]">{JSON.stringify(r.rawCsv, null, 2)}</pre>
+                            <pre className="type-micro-sm text-text-tertiary whitespace-pre-wrap max-w-[360px] overflow-auto max-h-[80px]">{JSON.stringify(r.rawCsv, null, 2)}</pre>
                           ) : '—'}
                         </td>
                       </tr>

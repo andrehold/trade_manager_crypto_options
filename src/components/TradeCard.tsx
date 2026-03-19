@@ -27,7 +27,7 @@ export function PremiumBadge({ value }: { value: number }) {
   const isCredit = value < 0
   const sign = isCredit ? '+' : '-'
   return (
-    <Badge variant={isCredit ? 'success' : 'danger'} className="gap-1 text-[11px] font-bold leading-tight">
+    <Badge variant={isCredit ? 'success' : 'danger'} className="gap-1 type-micro font-bold leading-tight">
       {isCredit
         ? <TrendingDown size={10} className="shrink-0" />
         : <TrendingUp size={10} className="shrink-0" />
@@ -85,7 +85,7 @@ export const TradeCard = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={`flex flex-col bg-bg-surface-1 border border-border-strong/60 rounded-xl px-3 py-2.5 select-none${className ? ' ' + className : ''}`}
+      className={`flex flex-col bg-bg-surface-1 border border-border-faint rounded-xl px-3 py-2.5 select-none${className ? ' ' + className : ''}`}
       {...rest}
     >
       {/* Header: icon + label + remove */}
@@ -97,7 +97,7 @@ export const TradeCard = React.forwardRef<
         {onRemove && (
           <button
             onClick={(e) => { e.stopPropagation(); onRemove() }}
-            className="shrink-0 text-text-disabled hover:text-status-danger text-[11px] leading-none ml-1 transition-colors"
+            className="shrink-0 text-text-disabled hover:text-status-danger type-micro leading-none ml-1 transition-colors"
             title="Remove from structure"
           >
             ✕
@@ -106,13 +106,13 @@ export const TradeCard = React.forwardRef<
       </div>
 
       {/* Divider */}
-      <div className="border-t border-border-strong/60 my-2" />
+      <div className="border-t border-border-faint my-2" />
 
       {/* Expiry */}
       {expiryPart && (
         <div className="flex items-center gap-1.5 mb-1">
           <Calendar size={11} className="shrink-0 text-text-tertiary" />
-          <span className="text-[11px] text-text-secondary whitespace-nowrap">{expiryPart}</span>
+          <span className="type-micro text-text-secondary whitespace-nowrap">{expiryPart}</span>
         </div>
       )}
 
@@ -120,7 +120,7 @@ export const TradeCard = React.forwardRef<
       {(datePart || timePart) && (
         <div className="flex items-center gap-1.5 mb-2">
           <Clock size={11} className="shrink-0 text-text-tertiary" />
-          <span className="text-[11px] text-text-secondary whitespace-nowrap" title={fullTimestamp}>
+          <span className="type-micro text-text-secondary whitespace-nowrap" title={fullTimestamp}>
             {datePart}{timePart ? ` ${timePart}` : ''}
           </span>
         </div>
@@ -129,7 +129,7 @@ export const TradeCard = React.forwardRef<
       {/* Open/close chip */}
       {action && (
         <div className="mb-1">
-          <Badge variant={action === 'open' ? 'info' : 'warning'} className="gap-1 text-[11px] font-bold leading-tight">
+          <Badge variant={action === 'open' ? 'info' : 'warning'} className="gap-1 type-micro font-bold leading-tight">
             {action === 'open'
               ? <ArrowUpRight size={10} className="shrink-0" />
               : <ArrowDownLeft size={10} className="shrink-0" />

@@ -612,8 +612,8 @@ function Field({
 }) {
   const { label, type = 'text', options, placeholder, helperText, required, step, inputMode, disabled } = meta;
   const displayValue = value ?? '';
-  const baseClass = `mt-1 block w-full rounded-lg border bg-bg-surface-1 px-3 py-2 type-subhead text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-2 ${
-    missing ? 'border-status-danger focus:ring-status-danger' : 'border-border-default focus:ring-border-accent'
+  const baseClass = `mt-1 block w-full rounded-lg border bg-bg-surface-1 px-3 py-2 type-subhead text-text-primary placeholder:text-text-disabled focus:outline-none ${
+    missing ? 'border-status-danger focus:shadow-[var(--glow-danger-sm)]' : 'border-border-default focus:shadow-[var(--glow-accent-sm)]'
   } ${disabled ? 'cursor-not-allowed bg-bg-canvas text-text-tertiary' : ''}`;
 
   const handleChange = (
@@ -650,7 +650,7 @@ function Field({
       {label}
       {required ? <span className="ml-1 text-status-danger">*</span> : null}
       {missing ? (
-        <span className="ml-2 rounded-full bg-status-danger-bg px-2 py-0.5 text-[10px] font-semibold text-status-danger-text">
+        <span className="ml-2 rounded-full bg-status-danger-bg px-2 py-0.5 type-micro-sm font-semibold text-status-danger-text">
           Required
         </span>
       ) : null}
@@ -668,7 +668,7 @@ function Field({
           placeholder={placeholder}
           disabled={disabled}
         />
-        {helperText ? <p className="text-[11px] text-text-tertiary">{helperText}</p> : null}
+        {helperText ? <p className="type-micro text-text-tertiary">{helperText}</p> : null}
       </label>
     );
   }
@@ -685,7 +685,7 @@ function Field({
             </option>
           ))}
         </select>
-        {helperText ? <p className="text-[11px] text-text-tertiary">{helperText}</p> : null}
+        {helperText ? <p className="type-micro text-text-tertiary">{helperText}</p> : null}
       </label>
     );
   }
@@ -703,7 +703,7 @@ function Field({
         inputMode={inputMode}
         disabled={disabled}
       />
-      {helperText ? <p className="text-[11px] text-text-tertiary">{helperText}</p> : null}
+      {helperText ? <p className="type-micro text-text-tertiary">{helperText}</p> : null}
     </label>
   );
 }
@@ -731,14 +731,14 @@ function CheckboxField({
         type="checkbox"
         checked={Boolean(value)}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-border-strong bg-bg-surface-1 text-text-secondary focus:ring-border-accent"
+        className="h-4 w-4 rounded border-border-strong bg-bg-surface-1 text-text-secondary focus:shadow-[var(--glow-accent-sm)]"
       />
       <span className="font-medium">{meta.label}</span>
       {meta.required ? (
         <span className="ml-2 type-caption font-semibold uppercase tracking-wide text-status-danger-text">Required</span>
       ) : null}
       {missing ? (
-        <span className="ml-2 rounded-full bg-status-danger-bg px-2 py-0.5 text-[10px] font-semibold text-status-danger-text">
+        <span className="ml-2 rounded-full bg-status-danger-bg px-2 py-0.5 type-micro-sm font-semibold text-status-danger-text">
           Missing
         </span>
       ) : null}

@@ -39,7 +39,7 @@ export function SupabaseLogin() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="scheme-light relative w-full max-w-md space-y-6 overflow-hidden rounded-3xl border border-border-default/60 bg-surface-chip/80 p-8 text-left shadow-2xl backdrop-blur-xl"
+      className="scheme-light relative w-full max-w-md space-y-6 overflow-hidden rounded-3xl border border-border-faint bg-surface-chip p-8 text-left shadow-2xl backdrop-blur-xl"
     >
       <div className="pointer-events-none absolute -top-40 right-10 h-56 w-56 rounded-full bg-status-info-bg blur-3xl" />
       <div className="pointer-events-none absolute -bottom-48 left-6 h-56 w-56 rounded-full bg-status-info-bg blur-3xl" />
@@ -67,7 +67,7 @@ export function SupabaseLogin() {
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="w-full rounded-xl border border-border-default/80 bg-surface-card px-3 py-3 type-subhead font-medium text-heading shadow-sm transition focus:border-transparent focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
+          className="w-full rounded-xl border border-border-default bg-surface-card px-3 py-3 type-subhead font-medium text-heading shadow-sm transition focus:border-transparent focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
           placeholder="name@company.com"
         />
       </div>
@@ -84,7 +84,7 @@ export function SupabaseLogin() {
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded-xl border border-border-default/80 bg-surface-card px-3 py-3 pr-12 type-subhead font-medium text-heading shadow-sm transition focus:border-transparent focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
+            className="w-full rounded-xl border border-border-default bg-surface-card px-3 py-3 pr-12 type-subhead font-medium text-heading shadow-sm transition focus:border-transparent focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
             placeholder="Enter your password"
           />
           <button

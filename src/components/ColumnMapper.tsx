@@ -58,7 +58,7 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
           <select
             value={exchange}
             onChange={(e) => setExchange(e.target.value as 'deribit' | 'coincall' | 'cme')}
-            className="w-full border rounded-xl p-2 focus:outline-none focus:ring-2 focus:ring-border-accent"
+            className="w-full border rounded-xl p-2 focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
           >
             <option value="deribit">Deribit</option>
             <option value="coincall">Coincall</option>
@@ -72,7 +72,7 @@ export function ColumnMapper({ headers, onConfirm, onCancel, mode = 'import' }: 
               <select
                 value={mapping[f.key] || ""}
                 onChange={(e) => setMapping((m) => ({ ...m, [f.key]: e.target.value }))}
-                className="w-full border rounded-xl p-2 focus:outline-none focus:ring-2 focus:ring-border-accent"
+                className="w-full border rounded-xl p-2 focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
               >
                 <option value="">— Select column —</option>
                 {headers.map((h) => (

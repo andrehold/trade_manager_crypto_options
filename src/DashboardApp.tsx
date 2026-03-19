@@ -2064,25 +2064,25 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
 
         <div className="absolute inset-0 bg-bg-canvas/50 backdrop-blur">
           <div className="absolute inset-x-6 top-28 hidden gap-6 opacity-60 lg:flex">
-            <div className="flex flex-1 flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 text-left type-caption text-text-primary/80">
-              <div className="h-3 w-32 rounded-full bg-white/20" />
+            <div className="flex flex-1 flex-col gap-4 rounded-3xl border border-border-subtle bg-surface-tint p-6 text-left type-caption text-text-primary/80">
+              <div className="h-3 w-32 rounded-full bg-surface-tint" />
               <div className="grid grid-cols-2 gap-3">
-                <div className="h-24 rounded-2xl border border-white/5 bg-bg-surface-1/40" />
-                <div className="h-24 rounded-2xl border border-white/5 bg-bg-surface-1/40" />
-                <div className="h-24 rounded-2xl border border-white/5 bg-bg-surface-1/40" />
-                <div className="h-24 rounded-2xl border border-white/5 bg-bg-surface-1/40" />
+                <div className="h-24 rounded-2xl border border-border-faint bg-bg-surface-1-alpha" />
+                <div className="h-24 rounded-2xl border border-border-faint bg-bg-surface-1-alpha" />
+                <div className="h-24 rounded-2xl border border-border-faint bg-bg-surface-1-alpha" />
+                <div className="h-24 rounded-2xl border border-border-faint bg-bg-surface-1-alpha" />
               </div>
-              <div className="h-3 w-20 rounded-full bg-white/20" />
+              <div className="h-3 w-20 rounded-full bg-surface-tint" />
             </div>
-            <div className="hidden w-64 flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 type-caption text-text-primary/80 xl:flex">
-              <div className="h-3 w-24 rounded-full bg-white/20" />
+            <div className="hidden w-64 flex-col gap-4 rounded-3xl border border-border-subtle bg-surface-tint p-6 type-caption text-text-primary/80 xl:flex">
+              <div className="h-3 w-24 rounded-full bg-surface-tint" />
               <div className="space-y-3">
-                <div className="h-10 rounded-2xl border border-white/5 bg-bg-surface-1/40" />
-                <div className="h-10 rounded-2xl border border-white/5 bg-bg-surface-1/40" />
-                <div className="h-10 rounded-2xl border border-white/5 bg-bg-surface-1/40" />
-                <div className="h-10 rounded-2xl border border-white/5 bg-bg-surface-1/40" />
+                <div className="h-10 rounded-2xl border border-border-faint bg-bg-surface-1-alpha" />
+                <div className="h-10 rounded-2xl border border-border-faint bg-bg-surface-1-alpha" />
+                <div className="h-10 rounded-2xl border border-border-faint bg-bg-surface-1-alpha" />
+                <div className="h-10 rounded-2xl border border-border-faint bg-bg-surface-1-alpha" />
               </div>
-              <div className="h-3 w-14 rounded-full bg-white/20" />
+              <div className="h-3 w-14 rounded-full bg-surface-tint" />
             </div>
           </div>
         </div>
@@ -2352,7 +2352,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                             />
                           ))}
                           {savedStructureGroups.closed.length > 0 && (
-                            <tr className="bg-bg-surface-1/60 border-y border-border-default type-caption font-semibold uppercase tracking-wide text-text-tertiary">
+                            <tr className="bg-bg-surface-1-alpha border-y border-border-default type-caption font-semibold uppercase tracking-wide text-text-tertiary">
                               <td colSpan={savedStructureColSpan} className="px-3 py-2 text-left">
                                 <div className="flex items-center gap-3">
                                   <span>Closed structures</span>
@@ -2476,7 +2476,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                         <tbody>
                           {exchangePositionGroups.map((group) => (
                             <React.Fragment key={group.label}>
-                              <tr className="bg-bg-surface-1/60 border-t border-border-default type-caption font-semibold uppercase tracking-wide text-text-tertiary">
+                              <tr className="bg-bg-surface-1-alpha border-t border-border-default type-caption font-semibold uppercase tracking-wide text-text-tertiary">
                                 <td colSpan={8} className="px-3 py-2 text-left">
                                   <div className="flex items-center gap-3">
                                     <span>Expiry: {group.label}</span>
@@ -2531,7 +2531,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                           )}
                           {livePositionGroups.map((group) => (
                             <React.Fragment key={group.label}>
-                              <tr className="bg-bg-surface-1/60 border-y border-border-default type-caption font-semibold uppercase tracking-wide text-text-tertiary">
+                              <tr className="bg-bg-surface-1-alpha border-y border-border-default type-caption font-semibold uppercase tracking-wide text-text-tertiary">
                                 <td colSpan={livePositionColSpan} className="px-3 py-2 text-left">
                                   <div className="flex items-center gap-3">
                                     <span>Expiry: {group.label}</span>

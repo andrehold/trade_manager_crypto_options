@@ -82,7 +82,7 @@ function KanbanCard({ p, marks }: { p: Position; marks: MarksMap }) {
           {p.structureId ?? p.id}
         </span>
         {p.strategy ? (
-          <Badge variant="neutral" className="flex-shrink-0 text-[10px] uppercase tracking-wide">
+          <Badge variant="neutral" className="flex-shrink-0 type-micro-sm uppercase tracking-wide">
             {p.strategy}
           </Badge>
         ) : null}
