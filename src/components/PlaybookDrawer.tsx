@@ -74,15 +74,15 @@ function PlaybookDrawerComponent({ open, onClose, position, playbook, loading, e
   const safeTitle = safeProgramName
 
   return (
-    <div className="fixed inset-0 z-50 flex items-stretch justify-end">
+    <div className="fixed inset-0 z-modal flex items-stretch justify-end">
       <button
         type="button"
         aria-label="Close playbook drawer"
-        className="absolute inset-0 bg-black/50 transition-opacity"
+        className="absolute inset-0 bg-bg-overlay transition-opacity"
         onClick={onClose}
       />
       <aside ref={drawerRef} className="relative h-full w-full max-w-xl overflow-y-auto border-l border-border-default bg-surface-card">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border-default bg-surface-card px-4 py-3">
+        <div className="sticky top-0 z-sticky flex items-center justify-between border-b border-border-default bg-surface-card px-4 py-3">
           <div>
             <div className="type-caption font-semibold uppercase tracking-[0.2em] text-subtle">Program Playbook</div>
             <div className="type-title-m font-semibold text-strong">{safeTitle}</div>

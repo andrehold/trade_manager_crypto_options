@@ -56,7 +56,7 @@ export function ImportedTransactionsOverlay({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 z-modal flex items-center justify-center bg-bg-overlay p-4">
       <div className="w-full max-w-6xl rounded-2xl bg-surface-card p-6 shadow-xl">
         <div className="flex flex-wrap items-center gap-3">
           <h3 className="type-title-m font-semibold">Imported Transactions</h3>

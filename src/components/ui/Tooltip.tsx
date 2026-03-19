@@ -62,7 +62,7 @@ export const Tooltip = forwardRef<HTMLSpanElement, TooltipProps>(
           <span
             role="tooltip"
             className={[
-              'absolute z-50 whitespace-nowrap',
+              'absolute z-toast whitespace-nowrap',
               'bg-bg-surface-4 text-text-primary type-micro px-2 py-1 rounded-md',
               'pointer-events-none',
               pos.tooltip,

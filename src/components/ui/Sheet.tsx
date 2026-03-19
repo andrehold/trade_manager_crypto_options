@@ -64,7 +64,7 @@ export function Sheet({
   const positionClass = isRight ? 'right-0' : 'left-0';
 
   return ReactDOM.createPortal(
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-modal">
       {/* Overlay */}
       <div
         className={`absolute inset-0 bg-bg-overlay transition-opacity ${visible ? 'opacity-100' : 'opacity-0'}`}

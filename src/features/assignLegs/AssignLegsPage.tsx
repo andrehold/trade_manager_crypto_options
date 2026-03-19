@@ -83,7 +83,7 @@ function SortableLegChip({
     ...(isDragging
       ? {
           transform: CSS.Transform.toString(transform) + ' scale(1.03)',
-          boxShadow: '0px 16px 24px rgba(0,0,0,0.5)',
+          boxShadow: 'var(--shadow-overlay)',
         }
       : {}),
   }
@@ -1052,7 +1052,7 @@ function AssignLegsPageInner({
               Cancel
             </Button>
             {showCancelConfirm && (
-              <div className="absolute right-0 top-full mt-2 z-50 w-68 bg-bg-surface-2 border border-border-strong rounded-xl shadow-2xl p-4">
+              <div className="absolute right-0 top-full mt-2 z-modal w-68 bg-bg-surface-2 border border-border-strong rounded-xl shadow-2xl p-4">
                 <p className="type-body text-text-primary mb-4">You have unsaved changes. Would you cancel?</p>
                 <div className="flex gap-2 justify-end">
                   <Button variant="secondary" size="sm" onClick={() => setShowCancelConfirm(false)}>

@@ -479,7 +479,7 @@ export function ReviewOverlay(props: ReviewOverlayProps) {
   );
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-bg-overlay flex items-center justify-center z-modal p-4">
       <div className="bg-surface-card rounded-2xl shadow-xl w-full max-w-6xl p-6">
         <div className="flex items-center gap-3 mb-3">
           <h3 className="type-title-m font-semibold">Review & Select Lines</h3>

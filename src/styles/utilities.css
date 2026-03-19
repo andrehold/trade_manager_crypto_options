@@ -371,3 +371,12 @@
   background-color: var(--color-playbook-bg);
   border-color:     var(--color-playbook-border);
 }
+
+/* ── Z-index utilities ───────────────────────────────────────────────
+   Map the `:root` z-index scale to utility classes.
+   Usage: <div class="z-dropdown">, <div class="z-modal">, etc. */
+.z-dropdown { z-index: var(--z-dropdown); }
+.z-sticky   { z-index: var(--z-sticky); }
+.z-overlay  { z-index: var(--z-overlay); }
+.z-modal    { z-index: var(--z-modal); }
+.z-toast    { z-index: var(--z-toast); }

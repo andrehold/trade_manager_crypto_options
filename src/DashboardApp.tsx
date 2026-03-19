@@ -2087,7 +2087,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
           </div>
         </div>
 
-        <div className="relative z-10 flex min-h-screen items-center justify-center p-6">
+        <div className="relative z-dropdown flex min-h-screen items-center justify-center p-6">
           <div className="w-full max-w-md space-y-8">
             {/* Branding / copy */}
             <div className="space-y-2 text-center text-text-primary">

@@ -8,25 +8,10 @@ type OverlayProps = {
   children?: React.ReactNode; // not used now, but handy later
 };
 
-const backdropStyle: React.CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  background: 'rgba(0,0,0,0.5)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 9999,
-};
-
+/* Inline styles kept only for values that have no utility class equivalent */
 const panelStyle: React.CSSProperties = {
   minWidth: 520,
   minHeight: 280,
-  background: 'transparent',
-  color: 'inherit',
-  borderRadius: 12,
-  boxShadow: 'none',
-  outline: 'none',
-  border: 'none',
 };
 
 export default function Overlay({ open, onClose, title = 'empty overlay', children }: OverlayProps) {
@@ -50,10 +35,11 @@ export default function Overlay({ open, onClose, title = 'empty overlay', childr
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      style={backdropStyle}
+      className="fixed inset-0 z-toast flex items-center justify-center bg-bg-overlay"
       onMouseDown={onClose} // click backdrop to close
     >
       <div
+        className="bg-transparent text-inherit outline-none border-none"
         style={panelStyle}
         onMouseDown={(e) => e.stopPropagation()} // prevent backdrop close when clicking inside
         tabIndex={-1}
