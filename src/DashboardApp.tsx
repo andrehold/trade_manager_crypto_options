@@ -19,8 +19,8 @@ import {
 } from './utils'
 import { PositionRow } from './components/PositionRow'
 import { PlaybookDrawer } from './components/PlaybookDrawer'
-import { ccGetBest } from './lib/venues/coincall'
-import { dbGetBest, dbGetTicker, dbGetInstruments } from './lib/venues/deribit'
+import { dbGetTicker, dbGetInstruments } from './lib/venues/deribit'
+import { fetchDeribitMarks } from './lib/venues/fetchLiveMarks'
 import { DashboardHeader } from './components/DashboardHeader'
 import { ExpiryDatePicker } from './components/ExpiryDatePicker'
 import { ViewSelector, type ActiveView } from './components/ViewSelector'
@@ -44,8 +44,11 @@ import {
   fetchProgramPlaybooks,
   filterDuplicateRows,
   fetchUnprocessedImports,
+  fetchPrograms,
   type ProgramPlaybook,
+  type ProgramOption,
 } from './lib/positions'
+import { StructureDetailsOverlay, type StructureSummary, type StructureMetadata, type StrategyOption } from './components/StructureDetailsOverlay'
 import { resolveClientAccess } from './features/auth/access'
 import {
   deriveSyntheticDeliveryTradeId,
@@ -122,10 +125,11 @@ type DashboardAppProps = {
   onOpenPlaybook?: (slug: string) => void
   onOpenAssignLegs?: () => void
   onOpenMapCSV?: () => void
+  onNavigateDashboard?: () => void
   innerView?: InnerView
 }
 
-export default function DashboardApp({ onOpenPlaybookIndex, onOpenPlaybook, onOpenAssignLegs, onOpenMapCSV, innerView }: DashboardAppProps = {}) {
+export default function DashboardApp({ onOpenPlaybookIndex, onOpenPlaybook, onOpenAssignLegs, onOpenMapCSV, onNavigateDashboard, innerView }: DashboardAppProps = {}) {
   React.useEffect(() => { devQuickTests(); }, []);
 
   // Tracks which sub-step of the mapCSV flow is active (upload zone vs column mapping)
@@ -233,6 +237,15 @@ export default function DashboardApp({ onOpenPlaybookIndex, onOpenPlaybook, onOp
   const [programPlaybooksLoading, setProgramPlaybooksLoading] = React.useState(false);
   const [programPlaybooksError, setProgramPlaybooksError] = React.useState<string | null>(null);
   const [archiving, setArchiving] = React.useState<Record<string, boolean>>({});
+  const [pendingImport, setPendingImport] = React.useState<{
+    localRowGroups: Map<string, TxnRow[]>
+    linkedRows: TxnRow[]
+    unprocessedRows: TxnRow[]
+  } | null>(null);
+  const [pendingProgramOptions, setPendingProgramOptions] = React.useState<ProgramOption[]>([]);
+  const [pendingProgramsLoading, setPendingProgramsLoading] = React.useState(false);
+  const [pendingStrategyOptions, setPendingStrategyOptions] = React.useState<StrategyOption[]>([]);
+  const [pendingStrategiesLoading, setPendingStrategiesLoading] = React.useState(false);
 const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
   const [importedRows, setImportedRows] = React.useState<
     Array<{
@@ -878,6 +891,121 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
     setSavedStructuresVersion((prev) => prev + 1);
   }, []);
 
+  // Phase 2: execute the actual save (linked rows, new structures, unprocessed)
+  const executeFinalizeImport = React.useCallback(async (
+    linkedRows: TxnRow[],
+    localRowGroups: Map<string, TxnRow[]>,
+    unprocessedRows: TxnRow[],
+    metadataByKey?: Map<string, StructureMetadata>,
+  ) => {
+    if (!supabase) {
+      alert('Supabase is not configured. Configure environment variables to save trades.');
+      return;
+    }
+    if (!user) {
+      alert('Sign in to Supabase to save trades.');
+      return;
+    }
+
+    const errors: string[] = [];
+    let successCount = 0;
+
+    // — append to existing saved structures —
+    if (linkedRows.length > 0) {
+      const byStructure = new Map<string, TxnRow[]>();
+      for (const row of linkedRows) {
+        const targetId = row.linkedStructureId!;
+        if (!byStructure.has(targetId)) byStructure.set(targetId, []);
+        byStructure.get(targetId)!.push(row);
+      }
+
+      for (const [structureId, groupedRows] of byStructure.entries()) {
+        console.log('[Import] Appending trades to saved structure', {
+          structureId,
+          rows: groupedRows,
+          clientScope: { clientName: activeClientName, isAdmin },
+        });
+
+        const result = await appendTradesToStructure(supabase, {
+          structureId,
+          rows: groupedRows,
+          clientScope: { clientName: activeClientName, isAdmin },
+        });
+
+        if (!result.ok) {
+          console.error('[Import] appendTradesToStructure failed:', structureId, result.error);
+          errors.push(`Structure ${structureId}: ${result.error}`);
+        } else {
+          successCount++;
+        }
+      }
+    }
+
+    // — create new structures —
+    for (const [key, groupedRows] of localRowGroups.entries()) {
+      const structureType = groupedRows[0]?.structureType;
+      const underlying = groupedRows[0]?.underlying ?? '';
+      const meta = metadataByKey?.get(key);
+
+      console.log('[Import] Creating new structure in Supabase', {
+        rows: groupedRows,
+        structureType,
+        underlying,
+        programId: meta?.programId,
+        strategyName: meta?.strategyName,
+        clientScope: { clientName: activeClientName, isAdmin },
+      });
+
+      const result = await createStructure(supabase, {
+        rows: groupedRows,
+        structureType,
+        exchange: selectedExchange as any,
+        clientScope: { clientName: activeClientName, isAdmin },
+        createdBy: user.id,
+        programId: meta?.programId || undefined,
+        strategyName: meta?.strategyName || undefined,
+        notes: meta?.notes || undefined,
+      });
+
+      if (!result.ok) {
+        console.error('[Import] createStructure failed:', underlying || 'unknown', result.error);
+        errors.push(`New structure (${underlying || 'unknown'}): ${result.error}`);
+      } else {
+        successCount++;
+      }
+    }
+
+    // Only refresh when at least one write committed
+    if (successCount > 0) {
+      refreshSavedStructures();
+    }
+
+    // Save remaining backlog rows as unprocessed AFTER structures are created
+    if (unprocessedRows.length > 0 && supabase && user) {
+      console.log('[Import] Saving unprocessed trades to Supabase', {
+        rows: unprocessedRows,
+        clientScope: { clientName: activeClientName, isAdmin },
+        createdBy: user.id,
+      });
+
+      const saveResult = await saveUnprocessedTrades(supabase, {
+        rows: unprocessedRows,
+        clientScope: { clientName: activeClientName, isAdmin },
+        createdBy: user.id,
+      });
+
+      if (!saveResult.ok) {
+        console.warn('[Import] Failed to save unprocessed trades:', saveResult.error);
+        errors.push(`Unprocessed trades: ${saveResult.error}`);
+      }
+    }
+
+    if (errors.length > 0) {
+      alert(`Import completed with ${errors.length} error${errors.length > 1 ? 's' : ''}:\n\n${errors.join('\n')}`);
+    }
+  }, [activeClientName, isAdmin, refreshSavedStructures, selectedExchange, supabase, user]);
+
+  // Phase 1: intercept onConfirm from assign-legs / review overlay
   const finalizeImport = React.useCallback(async (selectedRows: TxnRow[], unprocessedRows?: TxnRow[]) => {
     const processedUnprocessedRows = unprocessedRows ?? []
     const rows: TxnRow[] = selectedRows.map((r, index) => {
@@ -921,118 +1049,81 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
       return;
     }
 
-    if (!supabase) {
-      alert('Supabase is not configured. Configure environment variables to save trades.');
+    // Group new structures by structureId
+    const localRowGroups = new Map<string, TxnRow[]>();
+    for (const row of localRows) {
+      const key = row.structureId ?? 'default';
+      if (!localRowGroups.has(key)) localRowGroups.set(key, []);
+      localRowGroups.get(key)!.push(row);
+    }
+
+    // If there are new structures, show the details overlay to collect metadata
+    if (localRowGroups.size > 0) {
+      console.log('[Import] New structures detected, showing details overlay', {
+        structureCount: localRowGroups.size,
+        linkedCount: linkedRows.length,
+        keys: [...localRowGroups.keys()],
+      });
+      setPendingImport({ localRowGroups, linkedRows, unprocessedRows: processedUnprocessedRows });
       return;
     }
 
-    if (!user) {
-      alert('Sign in to Supabase to save trades.');
-      return;
-    }
+    console.log('[Import] No new structures, executing directly', {
+      linkedCount: linkedRows.length,
+      localCount: localRows.length,
+    });
+    // No new structures — just process linked rows + unprocessed directly
+    await executeFinalizeImport(linkedRows, localRowGroups, processedUnprocessedRows);
+  }, [executeFinalizeImport, selectedExchange, supabase, user]);
 
-    const errors: string[] = [];
-    let successCount = 0;
-
-    // — append to existing saved structures —
-    if (linkedRows.length > 0) {
-      const byStructure = new Map<string, TxnRow[]>();
-      for (const row of linkedRows) {
-        const targetId = row.linkedStructureId!;
-        if (!byStructure.has(targetId)) byStructure.set(targetId, []);
-        byStructure.get(targetId)!.push(row);
+  // Fetch programs and strategies when the details overlay opens
+  React.useEffect(() => {
+    if (!pendingImport || !supabase || !user) return;
+    let active = true;
+    setPendingProgramsLoading(true);
+    fetchPrograms(supabase, user).then((result) => {
+      if (!active) return;
+      setPendingProgramsLoading(false);
+      if (result.ok) {
+        setPendingProgramOptions(result.programs);
+      } else {
+        console.warn('[Import] Failed to load programs:', result.error);
+        setPendingProgramOptions([]);
       }
+    });
+    return () => { active = false; };
+  }, [pendingImport, supabase, user]);
 
-      for (const [structureId, groupedRows] of byStructure.entries()) {
-        console.log('[Import] Appending trades to saved structure', {
-          structureId,
-          rows: groupedRows,
-          clientScope: { clientName: activeClientName, isAdmin },
-        });
+  // Called when user confirms metadata in StructureDetailsOverlay
+  const handleStructureDetailsConfirm = React.useCallback(async (metadata: Map<string, StructureMetadata>) => {
+    if (!pendingImport) return;
+    const { localRowGroups, linkedRows, unprocessedRows } = pendingImport;
+    setPendingImport(null);
+    await executeFinalizeImport(linkedRows, localRowGroups, unprocessedRows, metadata);
+  }, [executeFinalizeImport, pendingImport]);
 
-        const result = await appendTradesToStructure(supabase, {
-          structureId,
-          rows: groupedRows,
-          clientScope: { clientName: activeClientName, isAdmin },
-        });
-
-        if (!result.ok) {
-          console.error('[Import] appendTradesToStructure failed:', structureId, result.error);
-          errors.push(`Structure ${structureId}: ${result.error}`);
-        } else {
-          successCount++;
-        }
+  // Create a new program from the overlay
+  const handleCreateProgram = React.useCallback(async (name: string): Promise<ProgramOption | null> => {
+    if (!supabase || !user) return null;
+    try {
+      const { data, error } = await supabase
+        .from('programs')
+        .insert({ program_name: name })
+        .select('program_id, program_name')
+        .single();
+      if (error) {
+        console.error('[Import] Failed to create program:', error.message);
+        alert(`Failed to create program: ${error.message}`);
+        return null;
       }
+      const newProgram = data as ProgramOption;
+      setPendingProgramOptions((prev) => [...prev, newProgram].sort((a, b) => a.program_name.localeCompare(b.program_name)));
+      return newProgram;
+    } catch (err) {
+      console.error('[Import] Failed to create program:', err);
+      return null;
     }
-
-    // — create new structures —
-    if (localRows.length > 0) {
-      const byStructure = new Map<string, TxnRow[]>();
-      for (const row of localRows) {
-        const key = row.structureId ?? 'default';
-        if (!byStructure.has(key)) byStructure.set(key, []);
-        byStructure.get(key)!.push(row);
-      }
-
-      for (const groupedRows of byStructure.values()) {
-        const structureType = groupedRows[0]?.structureType;
-        const underlying = groupedRows[0]?.underlying ?? '';
-
-        console.log('[Import] Creating new structure in Supabase', {
-          rows: groupedRows,
-          structureType,
-          underlying,
-          clientScope: { clientName: activeClientName, isAdmin },
-        });
-
-        const result = await createStructure(supabase, {
-          rows: groupedRows,
-          structureType,
-          exchange: selectedExchange as any,
-          clientScope: { clientName: activeClientName, isAdmin },
-          createdBy: user.id,
-        });
-
-        if (!result.ok) {
-          console.error('[Import] createStructure failed:', underlying || 'unknown', result.error);
-          errors.push(`New structure (${underlying || 'unknown'}): ${result.error}`);
-        } else {
-          successCount++;
-        }
-      }
-    }
-
-    // Only refresh when at least one write committed — avoids a spurious empty-dashboard
-    // flash when every operation failed (structures were never saved).
-    if (successCount > 0) {
-      refreshSavedStructures();
-    }
-
-    // Save remaining backlog rows as unprocessed AFTER structures are created,
-    // so a failure here never blocks structure creation.
-    if (processedUnprocessedRows.length > 0 && supabase && user) {
-      console.log('[Import] Saving unprocessed trades to Supabase', {
-        rows: processedUnprocessedRows,
-        clientScope: { clientName: activeClientName, isAdmin },
-        createdBy: user.id,
-      });
-
-      const saveResult = await saveUnprocessedTrades(supabase, {
-        rows: processedUnprocessedRows,
-        clientScope: { clientName: activeClientName, isAdmin },
-        createdBy: user.id,
-      });
-
-      if (!saveResult.ok) {
-        console.warn('[Import] Failed to save unprocessed trades:', saveResult.error);
-        errors.push(`Unprocessed trades: ${saveResult.error}`);
-      }
-    }
-
-    if (errors.length > 0) {
-      alert(`Import completed with ${errors.length} error${errors.length > 1 ? 's' : ''}:\n\n${errors.join('\n')}`);
-    }
-  }, [activeClientName, isAdmin, refreshSavedStructures, selectedExchange, supabase, user]);
+  }, [supabase, user]);
 
   const startImport = React.useCallback(async (mapping: Record<string, string>) => {
     const exchange = (mapping as any).__exchange || 'deribit';
@@ -1048,6 +1139,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
         processedRows: [],
         exchange: exchange as Exchange,
         savedStructures,
+        strategies: pendingStrategyOptions,
         onConfirm: finalizeImport,
         onCancel: () => {},
       });
@@ -1065,6 +1157,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
       processedRows: [],
       exchange: exchange as Exchange,
       savedStructures,
+      strategies: pendingStrategyOptions,
       onConfirm: finalizeImport,
       onCancel: () => {},
     });
@@ -1102,6 +1195,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
         processedRows: [],
         exchange: selectedExchange,
         savedStructures,
+        strategies: pendingStrategyOptions,
         onConfirm: finalizeImport,
         onCancel: () => {},
       });
@@ -1249,6 +1343,35 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
       ignore = true;
     };
   }, [supabase, user, savedStructuresVersion, selectedClient, isAdmin, activeClientName]);
+
+  // Fetch strategies once when authenticated (shared by AssignLegsPage + StructureDetailsOverlay)
+  React.useEffect(() => {
+    if (!supabase || !user) {
+      setPendingStrategyOptions([]);
+      return;
+    }
+    let active = true;
+    setPendingStrategiesLoading(true);
+    supabase
+      .from('strategies')
+      .select('strategy_code, strategy_name')
+      .order('strategy_name')
+      .then(({ data, error }) => {
+        if (!active) return;
+        setPendingStrategiesLoading(false);
+        if (error) {
+          console.warn('[Strategies] Failed to load:', error.message);
+          setPendingStrategyOptions([]);
+          return;
+        }
+        setPendingStrategyOptions(
+          (data ?? []).filter(
+            (row): row is StrategyOption => Boolean(row?.strategy_code && row?.strategy_name),
+          ),
+        );
+      });
+    return () => { active = false; };
+  }, [supabase, user]);
 
   React.useEffect(() => {
     if (!supabase || !user) {
@@ -1953,65 +2076,31 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
     setMarkFetch({ inProgress: true, total: 0, done: 0, errors: 0 });
     await fetchBtcSpot();
 
-    type FetchEntry = {
-      key: string;
-      fetcher: () => Promise<{ price: number | null; multiplier: number | null; greeks?: any }>;
-    };
-
-    const entries: FetchEntry[] = [];
+    // Collect unique Deribit instrument symbols
     const seen = new Set<string>();
+    const instruments: string[] = [];
 
     for (const position of ps) {
       for (const leg of position.legs) {
         const ref = getLegMarkRef(position, leg);
-        if (!ref) continue;
-
-        if (seen.has(ref.key)) continue;
-        seen.add(ref.key);
-
-        if (ref.exchange === 'coincall') {
-          entries.push({ key: ref.key, fetcher: () => ccGetBest(ref.symbol) });
-        } else if (ref.exchange === 'deribit') {
-          entries.push({ key: ref.key, fetcher: () => dbGetBest(ref.symbol) });
-        }
+        if (!ref || ref.exchange !== 'deribit') continue; // TODO: add CoinCall later
+        if (seen.has(ref.symbol)) continue;
+        seen.add(ref.symbol);
+        instruments.push(ref.symbol);
       }
     }
 
-    setMarkFetch(prev => ({ ...prev, total: entries.length }));
-    if (entries.length === 0) {
-      setMarkFetch(prev => ({ ...prev, inProgress: false }));
+    if (instruments.length === 0) {
+      console.warn('[marks] no Deribit instruments to fetch');
+      setMarkFetch({ inProgress: false, total: 0, done: 0, errors: 0 });
       return;
     }
 
-    const MAX = 5; // throttle concurrency
-    const results: Record<string, { price: number | null; multiplier: number | null; greeks?: any }> = {};
+    setMarkFetch(prev => ({ ...prev, total: instruments.length }));
 
-    for (let i = 0; i < entries.length; i += MAX) {
-      const slice = entries.slice(i, i + MAX);
-      const vals = await Promise.all(
-        slice.map(async ({ key, fetcher }) => {
-          try {
-            const value = await fetcher();
-            return { key, value, ok: true as const };
-          } catch (e) {
-            console.error('[marks] fetch failed for', key, e);
-            return { key, value: { price: null, multiplier: null }, ok: false as const };
-          }
-        })
-      );
-
-      let errs = 0;
-      for (const { key, value, ok } of vals) {
-        results[key] = value;
-        if (!ok) errs++;
-      }
-
-      setMarkFetch(prev => ({
-        ...prev,
-        done: Math.min(prev.done + slice.length, prev.total),
-        errors: prev.errors + errs,
-      }));
-    }
+    const results = await fetchDeribitMarks(instruments, (done, total, errors) => {
+      setMarkFetch({ inProgress: true, total, done, errors });
+    });
 
     if (Object.keys(results).length) {
       setLegMarks(prev => ({ ...prev, ...results }));
@@ -2044,9 +2133,10 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
   if (authLoading) {
     return (
       <div className="min-h-screen bg-bg-canvas flex items-center justify-center p-6">
-        <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-border-default bg-bg-surface-1 p-8 text-center type-subhead text-text-secondary shadow-sm">
-          <p className="type-headline font-semibold text-text-secondary">Checking Supabase session…</p>
-          <p>Hold tight while we verify your saved Supabase credentials.</p>
+        <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-border-default bg-bg-surface-1 p-8 text-center text-subhead text-text-secondary shadow-[var(--shadow-card)]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
+          <p className="text-headline font-semibold text-text-primary">Verifying session</p>
+          <p>Checking your saved credentials...</p>
         </div>
       </div>
     );
@@ -2055,56 +2145,56 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
   if (!user) {
     return (
       <div className="relative min-h-screen overflow-hidden bg-bg-canvas">
+        {/* Ambient glow background */}
         <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-surface-page via-surface-section to-surface-page" />
-          <div className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-status-info-bg blur-3xl" />
-          <div className="absolute bottom-[-120px] right-[-80px] h-[520px] w-[520px] rounded-full bg-playbook-bg blur-3xl" />
-          <div className="absolute -bottom-32 left-[-60px] h-80 w-80 rounded-full bg-status-success-bg blur-3xl" />
+          <div className="absolute -top-40 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-accent-glow blur-3xl" />
+          <div className="absolute bottom-[-120px] right-[-80px] h-[520px] w-[520px] rounded-full bg-status-info-bg blur-3xl opacity-40" />
         </div>
 
-        <div className="absolute inset-0 bg-bg-canvas/50 backdrop-blur">
-          <div className="absolute inset-x-6 top-28 hidden gap-6 opacity-60 lg:flex">
-            <div className="flex flex-1 flex-col gap-4 rounded-3xl border border-border-subtle bg-surface-tint p-6 text-left type-caption text-text-primary/80">
-              <div className="h-3 w-32 rounded-full bg-surface-tint" />
+        {/* Ghost dashboard preview */}
+        <div className="absolute inset-0 bg-bg-canvas/60 backdrop-blur-sm">
+          <div className="absolute inset-x-6 top-28 hidden gap-6 opacity-[0.35] lg:flex">
+            <div className="flex flex-1 flex-col gap-4 rounded-2xl border border-border-subtle bg-bg-surface-1-alpha p-6">
+              <div className="h-3 w-32 rounded-full bg-bg-surface-3-alpha" />
               <div className="grid grid-cols-2 gap-3">
-                <div className="h-24 rounded-2xl border border-border-faint bg-bg-surface-1-alpha" />
-                <div className="h-24 rounded-2xl border border-border-faint bg-bg-surface-1-alpha" />
-                <div className="h-24 rounded-2xl border border-border-faint bg-bg-surface-1-alpha" />
-                <div className="h-24 rounded-2xl border border-border-faint bg-bg-surface-1-alpha" />
+                <div className="h-24 rounded-xl border border-border-subtle bg-bg-surface-1-alpha" />
+                <div className="h-24 rounded-xl border border-border-subtle bg-bg-surface-1-alpha" />
+                <div className="h-24 rounded-xl border border-border-subtle bg-bg-surface-1-alpha" />
+                <div className="h-24 rounded-xl border border-border-subtle bg-bg-surface-1-alpha" />
               </div>
-              <div className="h-3 w-20 rounded-full bg-surface-tint" />
+              <div className="h-3 w-20 rounded-full bg-bg-surface-3-alpha" />
             </div>
-            <div className="hidden w-64 flex-col gap-4 rounded-3xl border border-border-subtle bg-surface-tint p-6 type-caption text-text-primary/80 xl:flex">
-              <div className="h-3 w-24 rounded-full bg-surface-tint" />
+            <div className="hidden w-64 flex-col gap-4 rounded-2xl border border-border-subtle bg-bg-surface-1-alpha p-6 xl:flex">
+              <div className="h-3 w-24 rounded-full bg-bg-surface-3-alpha" />
               <div className="space-y-3">
-                <div className="h-10 rounded-2xl border border-border-faint bg-bg-surface-1-alpha" />
-                <div className="h-10 rounded-2xl border border-border-faint bg-bg-surface-1-alpha" />
-                <div className="h-10 rounded-2xl border border-border-faint bg-bg-surface-1-alpha" />
-                <div className="h-10 rounded-2xl border border-border-faint bg-bg-surface-1-alpha" />
+                <div className="h-10 rounded-xl border border-border-subtle bg-bg-surface-1-alpha" />
+                <div className="h-10 rounded-xl border border-border-subtle bg-bg-surface-1-alpha" />
+                <div className="h-10 rounded-xl border border-border-subtle bg-bg-surface-1-alpha" />
+                <div className="h-10 rounded-xl border border-border-subtle bg-bg-surface-1-alpha" />
               </div>
-              <div className="h-3 w-14 rounded-full bg-surface-tint" />
+              <div className="h-3 w-14 rounded-full bg-bg-surface-3-alpha" />
             </div>
           </div>
         </div>
 
-        <div className="relative z-dropdown flex min-h-screen items-center justify-center p-6">
+        {/* Login content */}
+        <div className="relative z-[var(--z-dropdown)] flex min-h-screen items-center justify-center p-6">
           <div className="w-full max-w-md space-y-8">
-            {/* Branding / copy */}
-            <div className="space-y-2 text-center text-text-primary">
-              <p className="type-caption font-semibold uppercase tracking-[0.35em] text-text-disabled">
+            <div className="space-y-2 text-center">
+              <p className="text-caption font-semibold uppercase tracking-[0.35em] text-text-disabled">
                 Authentication required
               </p>
-              <h1 className="type-display-l font-semibold tracking-tight">Sign in to continue</h1>
-              <p className="type-subhead text-text-disabled">
+              <h1 className="text-display-l font-semibold tracking-tight text-text-primary">
+                Sign in to continue
+              </h1>
+              <p className="text-subhead text-text-tertiary">
                 Unlock lookups, structure imports, and live mark fetching.
               </p>
             </div>
 
-            {/* Form card */}
             <SupabaseLogin />
 
-            {/* Footnote */}
-            <p className="text-center type-caption text-text-disabled">
+            <p className="text-center text-caption text-text-disabled">
               Access is limited to authorized trading workspaces.
             </p>
           </div>
@@ -2140,6 +2230,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((c) => !c)}
         activeNav={innerView === 'mapCSV' ? 'mapCSV' : innerView === 'assignLegs' ? 'assignLegs' : (innerView === 'playbookIndex' || (typeof innerView === 'object' && innerView?.type === 'playbookDetail')) ? 'playbooks' : 'dashboard'}
+        onNavigateDashboard={onNavigateDashboard}
         onNavigatePlaybooks={onOpenPlaybookIndex}
         onNavigateAssignLegs={onOpenAssignLegs}
         onNavigateMapCSV={onOpenMapCSV}
@@ -2183,6 +2274,8 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
             onBack={() => window.history.back()}
             onOpenAssignLegs={onOpenAssignLegs}
             onStepChange={setMapCsvStep}
+            onFinalizeImport={finalizeImport}
+            strategies={pendingStrategyOptions}
           />
         )}
         {innerView === 'assignLegs' && (
@@ -2352,8 +2445,8 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                             />
                           ))}
                           {savedStructureGroups.closed.length > 0 && (
-                            <tr className="bg-bg-surface-1-alpha border-y border-border-default type-caption font-semibold uppercase tracking-wide text-text-tertiary">
-                              <td colSpan={savedStructureColSpan} className="px-3 py-2 text-left">
+                            <tr className="bg-bg-surface-1-alpha border-y border-border-default">
+                              <td colSpan={savedStructureColSpan} className="tbl-th">
                                 <div className="flex items-center gap-3">
                                   <span>Closed structures</span>
                                   <span className="h-px flex-1 bg-bg-surface-3" aria-hidden />
@@ -2612,6 +2705,31 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
         className="hidden"
         onChange={(e) => e.target.files && handleBackfillFiles(e.target.files)}
       />
+      {pendingImport && (
+        <StructureDetailsOverlay
+          structures={Array.from(pendingImport.localRowGroups.entries()).map(([key, rows]) => {
+            const underlying = rows[0]?.underlying ?? 'Unknown';
+            const expiries = [...new Set(rows.map((r) => r.expiry).filter(Boolean))];
+            const expirySketch = expiries.length > 0 ? expiries.join(', ') : 'No expiry';
+            return { key, underlying, expirySketch, legCount: rows.length } satisfies StructureSummary;
+          })}
+          programs={pendingProgramOptions}
+          programsLoading={pendingProgramsLoading}
+          strategies={pendingStrategyOptions}
+          strategiesLoading={pendingStrategiesLoading}
+          initialStrategyCodes={(() => {
+            const m = new Map<string, string>();
+            for (const [key, rows] of pendingImport.localRowGroups.entries()) {
+              const code = rows[0]?.structureType;
+              if (code) m.set(key, code);
+            }
+            return m;
+          })()}
+          onConfirm={handleStructureDetailsConfirm}
+          onBack={() => setPendingImport(null)}
+          onCreateProgram={handleCreateProgram}
+        />
+      )}
     </div>
   );
 }

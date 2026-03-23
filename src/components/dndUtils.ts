@@ -141,7 +141,7 @@ export function formatStructureLabel(
   // Determine sign from net premium
   const sign = totalNetPremium < 0 ? '-' : '+'
   const absPremium = Math.abs(totalNetPremium)
-  const premiumStr = absPremium % 1 === 0 ? String(Math.round(absPremium)) : absPremium.toFixed(2)
+  const premiumStr = absPremium.toFixed(4)
   const qtyPart = `${sign}${premiumStr}`
 
   // Collect unique expiries

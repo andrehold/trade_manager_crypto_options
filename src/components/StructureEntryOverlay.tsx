@@ -9,6 +9,7 @@ import type { ImportPayload } from '../lib/import';
 import { tryGetSupabaseClient } from '../lib/supabase';
 import { useAuth } from '../features/auth/useAuth';
 import { fetchStructurePayload } from '../lib/positions/fetchStructurePayload';
+import { fetchPrograms } from '../lib/positions/fetchPrograms';
 import {
   OPTIONS_STRUCTURES,
   CONSTRUCTIONS,
@@ -833,100 +834,13 @@ export function StructureEntryOverlay({
       setProgramLoadError(null);
       setProgramLoading(true);
       try {
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
-        if (sessionError) {
-          console.error('Failed to retrieve Supabase session for program lookup', sessionError);
-          if (active) setProgramLoadError('Could not load programs: session error.');
-          return;
-        }
-        const accessToken = session?.access_token;
-        if (!accessToken) {
-          console.error('Missing Supabase access token while loading program options');
-          if (active) setProgramLoadError('Could not load programs: not authenticated.');
-          return;
-        }
-
-        const supabaseUrl =
-          (supabase as unknown as { supabaseUrl?: string }).supabaseUrl ??
-          ((import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? null);
-        if (!supabaseUrl) {
-          console.error('Supabase URL is not configured. Unable to load program options');
-          if (active) setProgramLoadError('Could not load programs: configuration error.');
-          return;
-        }
-
-        const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
-        if (!supabaseKey) {
-          console.error('Supabase publishable key is not configured. Unable to load program options');
-          if (active) setProgramLoadError('Could not load programs: configuration error.');
-          return;
-        }
-
-        const restBase = `${supabaseUrl.replace(/\/$/, '')}/rest/v1/programs`;
-        const query = new URLSearchParams({ select: 'program_id,program_name', order: 'program_name' });
-        const requestUrl = `${restBase}?${query.toString()}`;
-
-        const response = await fetch(requestUrl, {
-          signal: abortController.signal,
-          headers: {
-            Accept: 'application/json',
-            apikey: supabaseKey,
-            Authorization: `Bearer ${accessToken}`,
-            Prefer: 'count=exact',
-          },
-        });
-
-        if (!response.ok) {
-          const body = await response.text();
-          console.error('Failed to load program resources', {
-            status: response.status,
-            statusText: response.statusText,
-            body,
-          });
-          if (active) setProgramLoadError(`Could not load programs (${response.status}).`);
-          return;
-        }
-
-        const payload = (await response.json()) as unknown;
+        const result = await fetchPrograms(supabase, user, abortController.signal);
         if (!active) return;
-
-        if (!Array.isArray(payload)) {
-          console.error('Unexpected response shape when loading program resources', payload);
-          setProgramLoadError('Could not load programs: unexpected response.');
-          return;
+        if (result.ok) {
+          setProgramOptions(result.programs);
+        } else {
+          setProgramLoadError(result.error);
         }
-
-        const rows = payload.filter(
-          (row): row is { program_id: string; program_name: string } =>
-            Boolean(
-              row &&
-              typeof row === 'object' &&
-              typeof (row as { program_id?: unknown }).program_id === 'string' &&
-              typeof (row as { program_name?: unknown }).program_name === 'string',
-            ),
-        );
-
-        if (!rows.length) {
-          const sanitizedHeaders = {
-            Accept: 'application/json',
-            Prefer: 'count=exact',
-            apikeyPreview: `${supabaseKey.slice(0, 6)}…${supabaseKey.slice(-4)}`,
-            authorizationPreview: `Bearer ${accessToken.slice(0, 10)}…${accessToken.slice(-6)}`,
-          };
-          console.info('Program lookup succeeded but returned no rows', {
-            request: { url: requestUrl, headers: sanitizedHeaders },
-            response: {
-              status: response.status,
-              contentRange: response.headers.get('Content-Range'),
-            },
-            userId: user.id,
-          });
-        }
-
-        setProgramOptions(rows);
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
         if (active) {

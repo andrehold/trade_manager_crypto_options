@@ -1,5 +1,13 @@
 import React from 'react';
 import { getSupabaseClient } from '@/lib/supabase';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { Surface } from '@/components/ui/Surface';
+import { Eye, EyeOff, LogIn, Zap } from 'lucide-react';
+
+const DEV_EMAIL = import.meta.env.VITE_DEV_EMAIL as string | undefined;
+const DEV_PASSWORD = import.meta.env.VITE_DEV_PASSWORD as string | undefined;
+const hasDevCreds = !!(DEV_EMAIL && DEV_PASSWORD);
 
 export function SupabaseLogin() {
   const [email, setEmail] = React.useState('');
@@ -36,94 +44,95 @@ export function SupabaseLogin() {
     }
   };
 
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className="scheme-light relative w-full max-w-md space-y-6 overflow-hidden rounded-3xl border border-border-faint bg-surface-chip p-8 text-left shadow-2xl backdrop-blur-xl"
+  const togglePassword = (
+    <button
+      type="button"
+      onClick={() => setShowPassword((p) => !p)}
+      className="text-text-tertiary hover:text-text-primary transition-colors"
+      aria-label={showPassword ? 'Hide password' : 'Show password'}
     >
-      <div className="pointer-events-none absolute -top-40 right-10 h-56 w-56 rounded-full bg-status-info-bg blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-48 left-6 h-56 w-56 rounded-full bg-status-info-bg blur-3xl" />
+      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+    </button>
+  );
 
-      <div className="relative space-y-2">
-        <span className="type-caption font-semibold uppercase tracking-[0.3em] text-muted">
-          Welcome back
-        </span>
-        <h2 className="type-title-l font-semibold tracking-tight text-heading">
-          Access your trading workspace
-        </h2>
-        <p className="type-subhead text-muted">
-          Enter your credentials to continue to the command center.
-        </p>
-      </div>
+  return (
+    <Surface variant="elevated" className="w-full max-w-md p-8 space-y-6 text-left">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-1.5">
+          <label htmlFor="login-email" className="text-caption font-medium text-text-secondary">
+            Email address
+          </label>
+          <Input
+            id="login-email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="name@company.com"
+          />
+        </div>
 
-      <div className="relative space-y-1">
-        <label htmlFor="email" className="type-caption font-medium text-subtle">
-          Email address
-        </label>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          className="w-full rounded-xl border border-border-default bg-surface-card px-3 py-3 type-subhead font-medium text-heading shadow-sm transition focus:border-transparent focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
-          placeholder="name@company.com"
-        />
-      </div>
-
-      <div className="relative space-y-1">
-        <label htmlFor="password" className="type-caption font-medium text-subtle">
-          Password
-        </label>
-        <div className="relative">
-          <input
-            id="password"
+        <div className="space-y-1.5">
+          <label htmlFor="login-password" className="text-caption font-medium text-text-secondary">
+            Password
+          </label>
+          <Input
+            id="login-password"
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
             required
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded-xl border border-border-default bg-surface-card px-3 py-3 pr-12 type-subhead font-medium text-heading shadow-sm transition focus:border-transparent focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
+            onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter your password"
+            rightIcon={togglePassword}
           />
+        </div>
+
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          loading={submitting}
+          leftIcon={!submitting ? <LogIn className="h-4 w-4" /> : undefined}
+          className="w-full"
+        >
+          {submitting ? 'Signing in...' : 'Continue'}
+        </Button>
+
+        {hasDevCreds && (
           <button
             type="button"
-            onClick={() => setShowPassword((previous) => !previous)}
-            className="absolute inset-y-0 right-2 flex items-center rounded-lg px-3 type-caption font-semibold text-muted transition hover:text-heading focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
-            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            disabled={submitting}
+            onClick={() => {
+              setEmail(DEV_EMAIL!);
+              setPassword(DEV_PASSWORD!);
+            }}
+            className="flex items-center gap-1.5 self-center rounded-full bg-amber-500/15 border border-amber-500/25 px-3 py-1 text-caption font-medium text-amber-400 transition-colors hover:bg-amber-500/25 disabled:opacity-45"
           >
-            {showPassword ? 'Hide' : 'Show'}
+            <Zap className="h-3 w-3" />
+            Dev fill
           </button>
-        </div>
-      </div>
+        )}
+      </form>
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-surface-primary-btn px-4 py-3 type-subhead font-semibold text-on-primary-btn shadow-lg transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-surface-primary-btn disabled:cursor-not-allowed disabled:bg-faint"
-      >
-        <span className="absolute inset-0 -z-10 bg-gradient-to-r from-surface-primary-btn via-status-info to-surface-primary-btn opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-        {submitting ? 'Signing you in…' : 'Continue'}
-      </button>
-
-      {status ? (
-        <p
-          className={`rounded-xl px-3 py-2 type-caption font-medium ${
+      {status && (
+        <div
+          className={`rounded-xl px-3 py-2.5 text-caption font-medium ${
             status.type === 'error'
-              ? 'banner-danger'
-              : 'banner-success'
+              ? 'bg-status-danger-bg text-status-danger-text border border-status-danger-border'
+              : 'bg-status-success-bg text-status-success-text border border-status-success-border'
           }`}
           role="status"
           aria-live="polite"
         >
           {status.message}
-        </p>
-      ) : null}
+        </div>
+      )}
 
-      <div className="relative type-caption text-muted">
-        <p>Session details stay encrypted on your device for seamless access.</p>
-      </div>
-    </form>
+      <p className="text-caption text-text-tertiary">
+        Session details stay encrypted on your device.
+      </p>
+    </Surface>
   );
 }

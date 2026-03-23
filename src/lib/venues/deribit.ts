@@ -31,9 +31,9 @@ type DeribitTickerEnvelope = {
 // NEW: pick the right base per environment
 const BASE = import.meta.env.PROD ? "/api/deribit" : "/deribit";
 
-/** Low-level ticker fetch. In prod this hits /api/deribit/ticker, in dev it uses the Vite proxy. */
+/** Low-level ticker fetch. In prod this hits /api/deribit/public/ticker, in dev it uses the Vite proxy. */
 export async function dbGetTicker(instrument: string): Promise<DeribitTickerResult | null> {
-  const url = `${BASE}/ticker?instrument_name=${encodeURIComponent(instrument)}`;
+  const url = `${BASE}/public/ticker?instrument_name=${encodeURIComponent(instrument)}`;
   const res = await fetch(url);
   if (!res.ok) return null;
 

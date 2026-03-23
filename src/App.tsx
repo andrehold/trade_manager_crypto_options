@@ -50,6 +50,7 @@ export default function App() {
   const goPlaybook = React.useCallback((slug: string) => navigate(`#/playbooks/${slug}`), [navigate])
   const goAssignLegs = React.useCallback(() => navigate('#/assign-legs'), [navigate])
   const goMapCSV = React.useCallback(() => navigate('#/map-csv'), [navigate])
+  const goDashboard = React.useCallback(() => { window.location.hash = '' }, [])
 
   const innerView: InnerView | undefined =
     view.type === 'mapCSV' ? 'mapCSV' :
@@ -65,6 +66,7 @@ export default function App() {
       onOpenPlaybook={goPlaybook}
       onOpenAssignLegs={goAssignLegs}
       onOpenMapCSV={goMapCSV}
+      onNavigateDashboard={goDashboard}
     />
   )
 }

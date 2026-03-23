@@ -1,4 +1,5 @@
 import { TxnRow, Exchange, Position } from '../../utils'
+import type { StrategyOption } from '../../components/StructureDetailsOverlay'
 
 export type ProcessedRowInfo = {
   row: TxnRow
@@ -11,6 +12,7 @@ export type AssignLegsContext = {
   processedRows: ProcessedRowInfo[]
   exchange: Exchange
   savedStructures: Position[]
+  strategies: StrategyOption[]
   onConfirm: (rows: TxnRow[], unprocessedRows?: TxnRow[]) => void | Promise<void>
   onCancel: () => void
 }

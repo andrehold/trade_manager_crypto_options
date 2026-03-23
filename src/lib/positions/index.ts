@@ -42,6 +42,11 @@ export {
 } from "./createStructure";
 export { type SupabaseClientScope } from "./clientScope";
 export {
+  fetchPrograms,
+  type ProgramOption,
+  type FetchProgramsResult,
+} from "./fetchPrograms";
+export {
   fetchUnprocessedImports,
   type FetchUnprocessedImportsOptions,
   type FetchUnprocessedImportsResult,

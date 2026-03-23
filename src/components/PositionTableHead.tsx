@@ -1,4 +1,5 @@
 import React from 'react'
+import { GripVertical } from 'lucide-react'
 import { SortHeader } from './SortHeader'
 
 type ColumnDef = {
@@ -39,9 +40,9 @@ export function PositionTableHead<K extends string>({
   sort,
 }: PositionTableHeadProps<K>) {
   return (
-    <thead className="bg-bg-surface-1-alpha text-subtle">
+    <thead className="bg-bg-surface-1-alpha">
       <tr>
-        <th className="p-3 text-left w-10"> </th>
+        <th className="tbl-th w-10"> </th>
         {COLUMNS.map((col) => {
           if (!visibleCols.includes(col.key)) return null
           const content = sort ? (
@@ -53,20 +54,23 @@ export function PositionTableHead<K extends string>({
               onSort={sort.onSort}
             />
           ) : col.abbr ? (
-            <abbr title={col.abbr} className="cursor-help">
+            <abbr title={col.abbr} className="cursor-help no-underline">
               {col.label}
             </abbr>
           ) : (
             col.label
           )
           return (
-            <th key={col.key} className="p-3 text-left">
-              {content}
+            <th key={col.key} className="tbl-th">
+              <span className="inline-flex items-center gap-1.5">
+                <GripVertical className="h-3 w-3 text-faint" />
+                {content}
+              </span>
             </th>
           )
         })}
-        <th className="p-3 text-right w-12">
-          <span className="sr-only">Save position</span>
+        <th className="tbl-th text-right w-12">
+          <span className="sr-only">Actions</span>
         </th>
       </tr>
     </thead>

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { TxnRow, Exchange } from '@/utils'
+import type { OptionsStructure, Construction, ExecutionRoute } from '@/lib/import/types'
 import type { SupabaseClientScope } from './clientScope'
 import { cleanupUnprocessedImports } from './cleanupUnprocessedImports'
 import { type NormalizedTrade, normalizeTradeRow } from './normalizeTradeRow'
@@ -10,6 +11,12 @@ export type CreateStructureParams = {
   exchange?: Exchange
   clientScope?: SupabaseClientScope
   createdBy?: string
+  programId?: string
+  strategyName?: string
+  optionsStructure?: OptionsStructure
+  construction?: Construction
+  executionRoute?: ExecutionRoute
+  notes?: string
 }
 
 export type CreateStructureResult =
@@ -45,15 +52,34 @@ export async function createStructure(
   const clientName = params.clientScope?.clientName?.trim() || null
   const timestamps = normalizedRows.map((r) => r.timestamp).filter(Boolean).sort()
   const entryTs = timestamps[0] ?? new Date().toISOString()
+  const isMultiLeg = normalizedRows.length > 1
+  const optionsStructure = params.optionsStructure ?? (isMultiLeg ? 'strangle' : 'single_option')
+  const construction = params.construction ?? (isMultiLeg ? 'balanced' : 'outright')
+  const executionRoute = params.executionRoute ?? (isMultiLeg ? 'package' : 'single')
+
+  // Compute net_fill from normalised leg prices: sum of (side-signed qty × price)
+  const netFill = normalizedRows.reduce((acc, r) => {
+    const sign = r.side === 'buy' ? 1 : -1
+    return acc + sign * Math.abs(r.qty) * r.price
+  }, 0)
 
   const { error: positionError } = await client.from('positions').insert({
     position_id: positionId,
     underlier: underlying,
     strategy_code: strategyCode,
+    strategy_name: params.strategyName ?? null,
+    program_id: params.programId ?? null,
     client_name: clientName,
+    options_structure: optionsStructure,
+    construction,
+    risk_defined: isMultiLeg,
+    execution_route: executionRoute,
+    net_fill: netFill,
+    provider: exchange,
     lifecycle: 'open',
     entry_ts: entryTs,
     archived: false,
+    notes: params.notes ?? null,
   })
 
   if (positionError) {

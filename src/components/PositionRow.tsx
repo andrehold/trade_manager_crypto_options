@@ -1,5 +1,6 @@
 import React from 'react'
 import { Download, Link as LinkIcon, Pencil, Plus, Save } from 'lucide-react'
+import { StatusBadge } from './StatusBadge'
 import {
   Position,
   fmtPremium,
@@ -172,33 +173,20 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
 
   return (
     <>
-      <tr className="border-b last:border-0 hover:bg-surface-hover">
-        <td className="p-3 align-top">
+      <tr className="tbl-row">
+        <td className="tbl-td">
           <button onClick={() => setOpen((v) => !v)} className="text-muted">
             {open ? '▾' : '▸'}
           </button>
         </td>
         {visibleCols.includes('status') && (
-          <td className="p-3 align-top">
-            <div className="flex items-center gap-2">
-              <span
-                className={`w-2.5 h-2.5 rounded-full ${
-                  statusTone === 'success'
-                    ? 'bg-status-success'
-                    : statusTone === 'warning'
-                    ? 'bg-status-warning'
-                    : statusTone === 'destructive'
-                    ? 'bg-status-danger'
-                    : 'bg-faint'
-                }`}
-              />
-              <span className="text-body type-subhead">{p.status}</span>
-            </div>
+          <td className="tbl-td">
+            <StatusBadge status={p.status} />
           </td>
         )}
-        {visibleCols.includes('structure') && <td className="p-3 align-top">{p.structureId}</td>}
+        {visibleCols.includes('structure') && <td className="tbl-td">{p.structureId}</td>}
         {visibleCols.includes('dte') && (
-          <td className="p-3 align-top">
+          <td className="tbl-td">
             <div className="flex flex-col leading-tight">
               <span>{p.dte}</span>
               <span className="type-caption text-muted">
@@ -207,9 +195,9 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
             </div>
           </td>
         )}
-        {visibleCols.includes('legs') && <td className="p-3 align-top">{p.legsCount}</td>}
+        {visibleCols.includes('legs') && <td className="tbl-td">{p.legsCount}</td>}
         {visibleCols.includes('strategy') && (
-          <td className="p-3 align-top">
+          <td className="tbl-td">
             {readOnly ? (
               structureSummaryLines ? (
                 <div className="flex flex-col gap-1">
@@ -249,7 +237,7 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           </td>
         )}
         {visibleCols.includes('pnl') && (
-          <td className={`p-3 align-top ${posTotalPnl < 0 ? 'text-status-danger' : 'text-status-success'}`}>
+          <td className={`tbl-td ${posTotalPnl < 0 ? 'text-status-danger' : 'text-status-success'}`}>
             {fmtPremium(posTotalPnl, p.underlying)}
             <div className="type-caption text-muted">
               <span title="Realized">{fmtPremium(p.realizedPnl, p.underlying)}</span>
@@ -259,41 +247,41 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           </td>
         )}
         {visibleCols.includes('pnlpct') && (
-          <td className={`p-3 align-top ${markAwarePnlPct && markAwarePnlPct < 0 ? 'text-status-danger' : 'text-status-success'}`}>
+          <td className={`tbl-td ${markAwarePnlPct && markAwarePnlPct < 0 ? 'text-status-danger' : 'text-status-success'}`}>
             {markAwarePnlPct == null ? '—' : `${markAwarePnlPct.toFixed(2)}%`}
           </td>
         )}
-        {visibleCols.includes('delta') && <td className="p-3 align-top">{fmtNumber(structureGreeks.delta)}</td>}
-        {visibleCols.includes('gamma') && <td className="p-3 align-top">{fmtGreek(structureGreeks.gamma, 6)}</td>}
-        {visibleCols.includes('theta') && <td className="p-3 align-top">{fmtNumber(structureGreeks.theta)}</td>}
-        {visibleCols.includes('vega') && <td className="p-3 align-top">{fmtNumber(structureGreeks.vega)}</td>}
-        {visibleCols.includes('rho') && <td className="p-3 align-top">{fmtNumber(structureGreeks.rho)}</td>}
+        {visibleCols.includes('delta') && <td className="tbl-td">{fmtNumber(structureGreeks.delta)}</td>}
+        {visibleCols.includes('gamma') && <td className="tbl-td">{fmtGreek(structureGreeks.gamma, 6)}</td>}
+        {visibleCols.includes('theta') && <td className="tbl-td">{fmtNumber(structureGreeks.theta)}</td>}
+        {visibleCols.includes('vega') && <td className="tbl-td">{fmtNumber(structureGreeks.vega)}</td>}
+        {visibleCols.includes('rho') && <td className="tbl-td">{fmtNumber(structureGreeks.rho)}</td>}
         {visibleCols.includes('playbook') && (
-          <td className="p-3 align-top">
+          <td className="tbl-td">
             <button
               type="button"
-              className={`inline-flex items-center justify-center rounded-md border px-2 py-1 text-subtle shadow-sm ${
-                hasPlaybookValue ? 'border-border-default bg-surface-card hover:bg-surface-hover' : 'border-border-default bg-surface-page opacity-60'
+              className={`tbl-action-btn ${
+                hasPlaybookValue ? '' : 'opacity-60'
               }`}
               disabled={!hasPlaybookValue}
               onClick={() => (hasPlaybookValue && onPlaybookOpen ? onPlaybookOpen(p) : null)}
             >
-              <LinkIcon className="h-4 w-4" />
+              <LinkIcon className="h-3.5 w-3.5" />
               <span className="sr-only">Open playbook link</span>
             </button>
           </td>
         )}
-        <td className="p-3 align-top text-right">
+        <td className="tbl-td text-right">
           {isUpdateMode ? (
-            <div className="inline-flex flex-wrap items-center gap-2 justify-end">
-              <span className="inline-flex items-center justify-center rounded-md border border-border-default bg-surface-page px-2 py-1 type-micro text-muted">
+            <div className="inline-flex flex-wrap items-center gap-1.5 justify-end">
+              <span className="tbl-badge tbl-badge-neutral">
                 Saved
               </span>
               {onArchive ? (
                 <button
                   type="button"
                   onClick={() => onArchive(p.id)}
-                  className="inline-flex items-center justify-center rounded-md border border-border-default bg-surface-card px-2 py-1 type-caption font-medium text-subtle shadow-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  className="tbl-action-btn px-2.5 type-caption font-medium disabled:cursor-not-allowed disabled:opacity-60"
                   title="Archive this saved structure"
                   disabled={archiving}
                 >
@@ -308,32 +296,32 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                 </button>
               ) : null}
               {canOpenOverlay ? (
-                <div className="inline-flex items-center gap-2">
+                <div className="inline-flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => setShowDetailOverlay(true)}
-                    className="inline-flex items-center justify-center rounded-md border border-border-default bg-surface-card p-2 text-subtle shadow-sm hover:bg-surface-hover"
+                    className="tbl-action-btn"
                     title="View transaction details"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-3.5 w-3.5" />
                     <span className="sr-only">Open detail overlay</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowSaveOverlay(true)}
-                    className="inline-flex items-center justify-center rounded-md border border-border-default bg-surface-card p-2 text-subtle shadow-sm hover:bg-surface-hover"
+                    className="tbl-action-btn"
                     title="Update saved structure"
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil className="h-3.5 w-3.5" />
                     <span className="sr-only">Open update overlay</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowExportOverlay(true)}
-                    className="inline-flex items-center justify-center rounded-md border border-border-default bg-surface-card p-2 text-subtle shadow-sm hover:bg-surface-hover"
+                    className="tbl-action-btn"
                     title="Export trade JSON"
                   >
-                    <Download className="h-4 w-4" />
+                    <Download className="h-3.5 w-3.5" />
                     <span className="sr-only">Open trade export overlay</span>
                   </button>
                 </div>
@@ -343,14 +331,14 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
             <button
               type="button"
               onClick={() => setShowSaveOverlay(true)}
-              className="inline-flex items-center justify-center rounded-md border border-border-default bg-surface-card p-2 text-subtle shadow-sm hover:bg-surface-hover"
+              className="tbl-action-btn"
               title="Open save overlay"
             >
-              <Save className="h-4 w-4" />
+              <Save className="h-3.5 w-3.5" />
               <span className="sr-only">Open save overlay</span>
             </button>
           ) : (
-            <span className="inline-flex items-center justify-center rounded-md border border-border-default bg-surface-page px-2 py-1 type-micro text-muted">
+            <span className="tbl-badge tbl-badge-neutral">
               Save disabled
             </span>
           )}

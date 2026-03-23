@@ -1,4 +1,5 @@
 import React from 'react'
+import { ChevronUp, ChevronDown } from 'lucide-react'
 
 export type SortHeaderProps<K extends string> = {
   label: string
@@ -15,29 +16,25 @@ export function SortHeader<K extends string>({
   direction,
   onSort,
 }: SortHeaderProps<K>) {
-  const isAsc = currentKey === sortKey && direction === 'asc'
-  const isDesc = currentKey === sortKey && direction === 'desc'
+  const isActive = currentKey === sortKey
+  const handleClick = () => {
+    const next = isActive && direction === 'asc' ? 'desc' : 'asc'
+    onSort(sortKey, next)
+  }
+
   return (
-    <div className="inline-flex items-center gap-2">
+    <button
+      type="button"
+      className="inline-flex items-center gap-1 hover:text-subtle"
+      aria-label={`Sort by ${label}`}
+      onClick={handleClick}
+    >
       <span>{label}</span>
-      <span className="inline-flex flex-col -space-y-1">
-        <button
-          type="button"
-          className={`type-micro-sm leading-none ${isAsc ? 'text-strong' : 'text-faint hover:text-subtle'}`}
-          aria-label={`Sort ${label} ascending`}
-          onClick={() => onSort(sortKey, 'asc')}
-        >
-          ▲
-        </button>
-        <button
-          type="button"
-          className={`type-micro-sm leading-none ${isDesc ? 'text-strong' : 'text-faint hover:text-subtle'}`}
-          aria-label={`Sort ${label} descending`}
-          onClick={() => onSort(sortKey, 'desc')}
-        >
-          ▼
-        </button>
-      </span>
-    </div>
+      {isActive && (
+        direction === 'asc'
+          ? <ChevronUp className="h-3 w-3 text-strong" />
+          : <ChevronDown className="h-3 w-3 text-strong" />
+      )}
+    </button>
   )
 }

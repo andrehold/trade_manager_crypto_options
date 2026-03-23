@@ -26,9 +26,11 @@ type Props = {
   onOpenAssignLegs?: () => void
   embedded?: boolean
   onStepChange?: (step: 'upload' | 'mapping') => void
+  onFinalizeImport?: (rows: TxnRow[], unprocessedRows?: TxnRow[]) => void | Promise<void>
+  strategies?: { strategy_code: string; strategy_name: string }[]
 }
 
-export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }: Props) {
+export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange, onFinalizeImport, strategies = [] }: Props) {
   const ctx = getColumnMapperContext()
 
   // Local state for direct file upload (no pre-existing context)
@@ -300,7 +302,8 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
       processedRows,
       exchange: exch,
       savedStructures,
-      onConfirm: async (selectedRows, unprocessedRows) => {
+      strategies,
+      onConfirm: onFinalizeImport ?? (async (selectedRows, unprocessedRows) => {
         const sb = tryGetSupabaseClient()
         if (!sb) {
           alert('Supabase is not configured. Cannot save trades.')
@@ -385,7 +388,7 @@ export function MapCSVPage({ onBack, onOpenAssignLegs, embedded, onStepChange }:
         }
 
         window.location.hash = ''
-      },
+      }),
       onCancel: () => {
         window.location.hash = ''
       },

@@ -23,6 +23,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { TxnRow, Exchange, Position, Leg, parseInstrumentByExchange, daysTo } from '../../utils'
+import type { StrategyOption } from '../../components/StructureDetailsOverlay'
 import {
   LegItem,
   BoardState,
@@ -334,6 +335,7 @@ function NewStructureDropZone({
   items,
   exchange,
   structureType,
+  strategyTypes,
   onStructureTypeChange,
   onSave,
   onSort,
@@ -342,6 +344,7 @@ function NewStructureDropZone({
   items: LegItem[]
   exchange: Exchange
   structureType: string
+  strategyTypes: { code: string; label: string }[]
   onStructureTypeChange: (type: string) => void
   onSave: () => void
   onSort: () => void
@@ -374,7 +377,7 @@ function NewStructureDropZone({
             onChange={(e) => onStructureTypeChange(e.target.value)}
             className="bg-bg-surface-1 border border-border-strong rounded-lg px-1.5 py-0.5 type-caption text-text-secondary focus:outline-none focus:border-border-accent"
           >
-            {STRUCTURE_TYPES.map((st) => (
+            {strategyTypes.map((st) => (
               <option key={st.code} value={st.code}>
                 {st.code} – {st.label}
               </option>
@@ -520,6 +523,7 @@ function LocalStructureCard({
   items,
   meta,
   exchange,
+  strategyTypes,
   onTypeChange,
   onRemove,
   onRemoveItem,
@@ -528,6 +532,7 @@ function LocalStructureCard({
   items: LegItem[]
   meta: { type: string }
   exchange: Exchange
+  strategyTypes: { code: string; label: string }[]
   onTypeChange: (type: string) => void
   onRemove: () => void
   onRemoveItem: (id: string) => void
@@ -553,7 +558,7 @@ function LocalStructureCard({
             onChange={(e) => onTypeChange(e.target.value)}
             className="bg-bg-surface-1 border border-border-strong rounded-lg px-1.5 py-0.5 type-caption text-text-secondary focus:outline-none focus:border-border-accent"
           >
-            {STRUCTURE_TYPES.map((st) => (
+            {strategyTypes.map((st) => (
               <option key={st.code} value={st.code}>
                 {st.code} – {st.label}
               </option>
@@ -608,6 +613,7 @@ function AssignLegsPageInner({
   processedRows = [],
   exchange,
   savedStructures = [],
+  strategies = [],
   onConfirm,
   onCancel,
   onBack,
@@ -618,11 +624,20 @@ function AssignLegsPageInner({
   processedRows?: { row: TxnRow; source: 'structure' | 'unprocessed_imports' }[]
   exchange: Exchange
   savedStructures?: Position[]
+  strategies?: StrategyOption[]
   onConfirm: (rows: TxnRow[], unprocessedRows?: TxnRow[]) => void | Promise<void>
   onCancel: () => void
   onBack: () => void
   embedded?: boolean
 }) {
+  // Use DB strategies when available, fall back to hardcoded STRUCTURE_TYPES
+  const strategyTypes = useMemo(() => {
+    if (strategies.length > 0) {
+      return strategies.map((s) => ({ code: s.strategy_code, label: s.strategy_name }))
+    }
+    return STRUCTURE_TYPES.map((st) => ({ code: st.code, label: st.label }))
+  }, [strategies])
+
   const [activeTab, setActiveTab] = useState<'open' | 'no_import' | 'unprocessed' | 'processed'>('open')
   const [importing, setImporting] = useState(false)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
@@ -631,6 +646,7 @@ function AssignLegsPageInner({
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [filterFutureOnly, setFilterFutureOnly] = useState(false)
   const [filterAction, setFilterAction] = useState<'open' | 'close' | null>(null)
+  const [backlogSortDir, setBacklogSortDir] = useState<'asc' | 'desc'>('asc')
 
   /* ── build saved-structure info ── */
   const savedStructureInfos = useMemo<SavedStructureInfo[]>(() => {
@@ -786,8 +802,14 @@ function AssignLegsPageInner({
     let items = backlogItems
     if (filterFutureOnly) items = items.filter(item => item.row.expiry && daysTo(item.row.expiry) >= 0)
     if (filterAction) items = items.filter(item => item.row.action === filterAction)
+    const dir = backlogSortDir === 'asc' ? 1 : -1
+    items = [...items].sort((a, b) => {
+      const ta = a.row.timestamp ?? ''
+      const tb = b.row.timestamp ?? ''
+      return ta < tb ? -dir : ta > tb ? dir : 0
+    })
     return items
-  }, [backlogItems, filterFutureOnly, filterAction])
+  }, [backlogItems, filterFutureOnly, filterAction, backlogSortDir])
   const backlogCount = filteredBacklogItems.length
   const newStructureCount = newStructureItems.length
   const canImport = newStructureCount === 0
@@ -1139,6 +1161,14 @@ function AssignLegsPageInner({
                     >
                       Close
                     </button>
+                    <select
+                      value={backlogSortDir}
+                      onChange={(e) => { setBacklogSortDir(e.target.value as 'asc' | 'desc'); setBacklogPage(0) }}
+                      className="rounded-lg border border-border-default bg-bg-surface-1 px-2 py-0.5 type-caption text-text-primary focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
+                    >
+                      <option value="asc">Sort by: oldest first</option>
+                      <option value="desc">Sort by: newest first</option>
+                    </select>
                   </div>
                   {backlogCount > 0 && (
                     <div className="flex items-center gap-1.5">
@@ -1191,6 +1221,7 @@ function AssignLegsPageInner({
                     items={newStructureItems}
                     exchange={exchange}
                     structureType={newStructureType}
+                    strategyTypes={strategyTypes}
                     onStructureTypeChange={setNewStructureType}
                     onSave={handleSaveNewStructure}
                     onSort={handleSortNewStructure}
@@ -1217,6 +1248,7 @@ function AssignLegsPageInner({
                             items={(board.containers[sId] ?? []).map((id) => board.itemsById[id])}
                             meta={board.structureMeta[sId] ?? { type: 'Custom' }}
                             exchange={exchange}
+                            strategyTypes={strategyTypes}
                             onTypeChange={(t) => handleStructureTypeChange(sId, t)}
                             onRemove={() => handleRemoveStructure(sId)}
                             onRemoveItem={handleRemoveItem}
