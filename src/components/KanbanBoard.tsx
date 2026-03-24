@@ -67,9 +67,10 @@ function classifyPosition(p: Position, marks: MarksMap): LaneId {
 type Props = {
   positions: Position[]
   marks: MarksMap
+  onCardClick?: (p: Position) => void
 }
 
-export function KanbanBoard({ positions, marks }: Props) {
+export function KanbanBoard({ positions, marks, onCardClick }: Props) {
   const lanes = React.useMemo(() => {
     const buckets: Record<LaneId, Position[]> = {
       new: [],
@@ -102,7 +103,7 @@ export function KanbanBoard({ positions, marks }: Props) {
             {lanes[id].length === 0 ? (
               <p className="type-caption text-text-disabled text-center py-6">No structures</p>
             ) : (
-              lanes[id].map((p) => <StructureCard key={p.id} position={p} marks={marks} />)
+              lanes[id].map((p) => <StructureCard key={p.id} position={p} marks={marks} onClick={onCardClick} />)
             )}
           </div>
         </div>

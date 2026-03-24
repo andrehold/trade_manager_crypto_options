@@ -54,3 +54,6 @@ export type { EmptyStateProps } from './EmptyState';
 
 export { Tooltip } from './Tooltip';
 export type { TooltipProps } from './Tooltip';
+
+export { DataTable } from './DataTable';
+export type { DataTableProps, Column } from './DataTable';

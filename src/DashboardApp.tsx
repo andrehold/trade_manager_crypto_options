@@ -59,12 +59,14 @@ import { MapCSVPage } from './features/mapCSV/MapCSVPage'
 import { AssignLegsPage } from './features/assignLegs/AssignLegsPage'
 import { PlaybookIndexPage } from './features/playbooks/PlaybookIndexPage'
 import { StrategyPlaybookPage } from './features/playbooks/StrategyPlaybookPage'
+import { StructureDetailPage } from './features/structureDetail/StructureDetailPage'
 
 export type InnerView =
   | 'mapCSV'
   | 'assignLegs'
   | 'playbookIndex'
   | { type: 'playbookDetail'; slug: string }
+  | { type: 'structureDetail'; id: string }
 
 const CLIENT_LIST_STORAGE_KEY = 'tm_client_names_v1'
 const SELECTED_CLIENT_STORAGE_KEY = 'tm_selected_client_v1'
@@ -125,11 +127,12 @@ type DashboardAppProps = {
   onOpenPlaybook?: (slug: string) => void
   onOpenAssignLegs?: () => void
   onOpenMapCSV?: () => void
+  onOpenStructureDetail?: (id: string) => void
   onNavigateDashboard?: () => void
   innerView?: InnerView
 }
 
-export default function DashboardApp({ onOpenPlaybookIndex, onOpenPlaybook, onOpenAssignLegs, onOpenMapCSV, onNavigateDashboard, innerView }: DashboardAppProps = {}) {
+export default function DashboardApp({ onOpenPlaybookIndex, onOpenPlaybook, onOpenAssignLegs, onOpenMapCSV, onOpenStructureDetail, onNavigateDashboard, innerView }: DashboardAppProps = {}) {
   React.useEffect(() => { devQuickTests(); }, []);
 
   // Tracks which sub-step of the mapCSV flow is active (upload zone vs column mapping)
@@ -287,7 +290,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
     direction: 'asc',
   });
   const [visibleCols, setVisibleCols] = useLocalStorage<string[]>("visible_cols_v2", [
-    "status","structure","dte","legs","strategy","pnl","pnlpct","delta","gamma","theta","vega","rho","playbook"
+    "status","dte","strategy","pnl","pnlpct","delta","gamma","theta","vega","rho","playbook"
   ]);
   const [selectedExchange, setSelectedExchange] = React.useState<Exchange>('deribit');
   const [btcSpot, setBtcSpot] = React.useState<number | null>(null);
@@ -2261,9 +2264,13 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
               ? 'Playbooks'
               : typeof innerView === 'object' && innerView?.type === 'playbookDetail'
               ? 'Playbook'
+              : typeof innerView === 'object' && innerView?.type === 'structureDetail'
+              ? 'Structure'
               : 'Dashboard'
           }
           clientName={activeClientName}
+          clientOptions={clientOptions}
+          onClientChange={setSelectedClient}
           portfolioGreeks={portfolioGreeks}
         />
 
@@ -2300,6 +2307,22 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
             onOpenPlaybook={onOpenPlaybook ?? (() => {})}
           />
         )}
+        {typeof innerView === 'object' && innerView?.type === 'structureDetail' && (() => {
+          const pos = savedStructures.find((s) => s.id === innerView.id)
+          if (!pos) return <div className="flex-1 flex items-center justify-center text-text-secondary type-subhead">Structure not found.</div>
+          return (
+            <StructureDetailPage
+              embedded
+              position={pos}
+              marks={legMarks}
+              markLoading={markFetch.inProgress}
+              onBack={() => window.history.back()}
+              onArchive={handleArchiveStructure}
+              archiving={Boolean(archiving[pos.id])}
+              onRefreshMarks={() => fetchAllMarksForPositions([pos])}
+            />
+          )
+        })()}
 
         {/* ── Dashboard content (only when no inner view) ── */}
         {!innerView && <>
@@ -2442,6 +2465,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                               archiving={Boolean(archiving[p.id])}
                               clientScope={overlayClientScope}
                               onPlaybookOpen={handleOpenPlaybookDrawer}
+                              onViewDetails={onOpenStructureDetail ? (pos) => onOpenStructureDetail(pos.id) : undefined}
                             />
                           ))}
                           {savedStructureGroups.closed.length > 0 && (
@@ -2468,6 +2492,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                               onArchive={handleArchiveStructure}
                               archiving={Boolean(archiving[p.id])}
                               clientScope={overlayClientScope}
+                              onViewDetails={onOpenStructureDetail ? (pos) => onOpenStructureDetail(pos.id) : undefined}
                               onPlaybookOpen={handleOpenPlaybookDrawer}
                             />
                           ))}
@@ -2658,7 +2683,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
 
             {/* ─── KANBAN VIEW ────────────────────────────────────────────── */}
             {activeView === 'kanban' && (
-              <KanbanBoard positions={filteredSaved} marks={legMarks} />
+              <KanbanBoard positions={filteredSaved} marks={legMarks} onCardClick={onOpenStructureDetail ? (p) => onOpenStructureDetail(p.id) : undefined} />
             )}
 
             {/* ─── GANTT VIEW ─────────────────────────────────────────────── */}

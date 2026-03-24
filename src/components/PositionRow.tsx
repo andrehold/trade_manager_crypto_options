@@ -6,13 +6,9 @@ import {
   fmtPremium,
   fmtNumber,
   positionUnrealizedPnL,
-  legUnrealizedPnL,
   positionGreeks,
   fmtGreek,
-  getLegMarkRef,
-  formatInstrumentLabel,
   calculatePnlPct,
-  type LegMarkRef,
 } from '../utils'
 import { buildStructureChipSummary, buildStructureSummaryLines } from '../lib/positions/structureSummary'
 import { StructureEntryOverlay } from './StructureEntryOverlay'
@@ -35,6 +31,7 @@ type PositionRowProps = {
   archiving?: boolean
   clientScope: { activeClient: string | null; isAdmin: boolean }
   onPlaybookOpen?: (position: Position) => void
+  onViewDetails?: (position: Position) => void
 }
 
 function CellSpinner() {
@@ -72,17 +69,8 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   archiving = false,
   clientScope,
   onPlaybookOpen,
+  onViewDetails,
 }) => {
-  const fmtFourDecimals = React.useCallback(
-    (value: number) =>
-      value.toLocaleString(undefined, {
-        minimumFractionDigits: 4,
-        maximumFractionDigits: 4,
-      }),
-    [],
-  )
-
-  const [open, setOpen] = React.useState(false)
   const [showSaveOverlay, setShowSaveOverlay] = React.useState(false)
   const [showDetailOverlay, setShowDetailOverlay] = React.useState(false)
   const [showExportOverlay, setShowExportOverlay] = React.useState(false)
@@ -97,30 +85,6 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   const isUpdateMode = p.source === 'supabase'
   const isReadOnly = readOnly || isUpdateMode
   const canOpenOverlay = (!disableSave || isUpdateMode) && (!readOnly || isUpdateMode)
-  const hasMultipleExpiries = (p.expiries?.length ?? 0) > 1
-  const expirySummary = React.useMemo(() => {
-    if (!p.expiries || p.expiries.length <= 1) return p.expiryISO
-    return `${p.expiries[0]} (+${p.expiries.length - 1} more)`
-  }, [p.expiries, p.expiryISO])
-
-  const formatLegInstrument = React.useCallback(
-    (leg: Position['legs'][number], ref: LegMarkRef | null) => {
-      if (ref?.symbol) return ref.symbol
-      const expiryISO = leg.expiry ?? p.expiryISO
-      return formatInstrumentLabel(p.underlying, expiryISO, leg.strike, leg.optionType)
-    },
-    [p.expiryISO, p.underlying],
-  )
-
-  const legMarkData = React.useMemo(() => {
-    const map = new Map<string, { ref: LegMarkRef | null; mark: MarksMap[string] | undefined }>()
-    for (const leg of p.legs) {
-      const ref = getLegMarkRef(p, leg)
-      const mark = ref ? marks?.[ref.key] : undefined
-      map.set(leg.key, { ref, mark })
-    }
-    return map
-  }, [p, marks])
 
   const posUnrealized = React.useMemo(
     () => (marks ? positionUnrealizedPnL(p, marks) : 0),
@@ -174,17 +138,12 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   return (
     <>
       <tr className="tbl-row">
-        <td className="tbl-td">
-          <button onClick={() => setOpen((v) => !v)} className="text-muted">
-            {open ? '▾' : '▸'}
-          </button>
-        </td>
+        <td className="tbl-td" />
         {visibleCols.includes('status') && (
           <td className="tbl-td">
             <StatusBadge status={p.status} />
           </td>
         )}
-        {visibleCols.includes('structure') && <td className="tbl-td">{p.structureId}</td>}
         {visibleCols.includes('dte') && (
           <td className="tbl-td">
             <div className="flex flex-col leading-tight">
@@ -195,7 +154,6 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
             </div>
           </td>
         )}
-        {visibleCols.includes('legs') && <td className="tbl-td">{p.legsCount}</td>}
         {visibleCols.includes('strategy') && (
           <td className="tbl-td">
             {readOnly ? (
@@ -299,12 +257,12 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                 <div className="inline-flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setShowDetailOverlay(true)}
+                    onClick={() => onViewDetails ? onViewDetails(p) : setShowDetailOverlay(true)}
                     className="tbl-action-btn"
                     title="View transaction details"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    <span className="sr-only">Open detail overlay</span>
+                    <span className="sr-only">View structure details</span>
                   </button>
                   <button
                     type="button"
@@ -344,111 +302,6 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           )}
         </td>
       </tr>
-      {open && (
-        <tr className="bg-bg-surface-1-alpha">
-          <td />
-          <td colSpan={20} className="p-3">
-            <div className="grid md:grid-cols-3 gap-3">
-              <div className="bg-surface-card border rounded-xl p-3">
-                <div className="type-caption text-muted">Underlying</div>
-                <div className="type-subhead font-medium">{p.underlying}</div>
-                <div className="mt-2 type-caption text-muted">Expiry</div>
-                <div className="type-subhead font-medium">{expirySummary} ({p.dte} DTE)</div>
-                <div className="mt-2 type-caption text-muted">Exchange</div>
-                <div className="type-subhead font-medium capitalize">{p.exchange ?? '—'}</div>
-                <div className="mt-2 type-caption text-muted">Net Premium</div>
-                <div className="type-subhead font-medium flex items-center gap-2">
-                  <span>{fmtPremium(p.netPremium, p.underlying)}</span>
-                  {isClosed ? (
-                    <span className={p.realizedPnl < 0 ? 'text-status-danger' : 'text-status-success'}>
-                      / {fmtPremium(p.realizedPnl, p.underlying)}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-              <div className="bg-surface-card border rounded-xl p-3 md:col-span-2">
-                <div className="type-caption text-muted mb-2">Legs</div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full type-caption">
-                    <thead className="text-muted">
-                      <tr>
-                        <th className="text-left p-2">Leg</th>
-                        <th className="text-right p-2">Net Qty</th>
-                        <th className="text-right p-2">Realized PnL</th>
-                        <th className="text-right p-2">Net Premium / Lot</th>
-                        <th className="text-right p-2">Mark</th>
-                        <th className="text-right p-2">uPnL</th>
-                        <th className="text-right p-2">Fee</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {p.legs.map((l) => {
-                        const entry = legMarkData.get(l.key)
-                        const ref = entry?.ref ?? null
-                        const markInfo = entry?.mark
-                        const markPrice = markInfo?.price ?? null
-
-                        const totalAbsQty = l.trades.reduce((sum, t) => sum + Math.abs(t.amount ?? 0), 0)
-                        const premiumBasisQty = l.netPremiumBasisQty ?? totalAbsQty
-                        const netPremiumPerLot = premiumBasisQty > 0 ? l.netPremium / premiumBasisQty : null
-
-                        const markCell: React.ReactNode = !ref
-                          ? '—'
-                          : markPrice == null
-                          ? markLoading
-                            ? <CellSpinner />
-                            : '—'
-                          : fmtFourDecimals(markPrice)
-
-                        let unrealizedCell: React.ReactNode = '—'
-                        if (!ref) {
-                          unrealizedCell = '—'
-                        } else if (markPrice == null) {
-                          unrealizedCell = markLoading ? <CellSpinner /> : '—'
-                        } else {
-                          const multiplier = ref.exchange === 'coincall' ? markInfo?.multiplier : ref.defaultMultiplier
-                          const u = legUnrealizedPnL(l, markPrice, multiplier)
-                          unrealizedCell = (
-                            <span className={u < 0 ? 'text-status-danger' : 'text-status-success'}>
-                              {fmtPremium(u, p.underlying, 4)}
-                            </span>
-                          )
-                        }
-
-                        return (
-                          <React.Fragment key={l.key}>
-                            <tr className="border-t">
-                              <td className="p-2">
-                                {formatLegInstrument(l, ref)}
-                              </td>
-                              <td className="p-2 text-right font-mono tabular-nums">{fmtFourDecimals(l.qtyNet)}</td>
-                              <td className={`p-2 text-right font-mono tabular-nums ${l.realizedPnl < 0 ? 'text-status-danger' : 'text-status-success'}`}>
-                                {fmtPremium(l.realizedPnl, p.underlying, 4)}
-                              </td>
-                              <td className="p-2 text-right font-mono tabular-nums">
-                                {netPremiumPerLot != null ? fmtPremium(netPremiumPerLot, p.underlying, 4) : '—'}
-                              </td>
-                              <td className="p-2 text-right font-mono tabular-nums">{markCell}</td>
-                              <td className="p-2 text-right font-mono tabular-nums">{unrealizedCell}</td>
-                              <td className="p-2 text-right font-mono tabular-nums">
-                                {l.fees != null ? fmtPremium(l.fees, p.underlying, 4) : '—'}
-                              </td>
-                            </tr>
-                          </React.Fragment>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="mt-2 type-micro text-muted leading-snug">
-                  uPnL sums each open lot as (mark − entry price) × signed qty × multiplier. Fully offset legs report 0 to avoid
-                  mark noise when net size is flat.
-                </div>
-              </div>
-            </div>
-          </td>
-        </tr>
-      )}
       {canOpenOverlay && showSaveOverlay ? (
         <StructureEntryOverlay
           open={showSaveOverlay}

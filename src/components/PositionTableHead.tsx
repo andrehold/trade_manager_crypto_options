@@ -10,9 +10,7 @@ type ColumnDef = {
 
 const COLUMNS: ColumnDef[] = [
   { key: 'status', label: 'Status' },
-  { key: 'structure', label: 'Structure' },
   { key: 'dte', label: 'DTE/Since' },
-  { key: 'legs', label: 'Legs' },
   { key: 'strategy', label: 'Strategy' },
   { key: 'pnl', label: 'PnL' },
   { key: 'pnlpct', label: 'PnL %' },

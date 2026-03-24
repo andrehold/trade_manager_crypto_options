@@ -7,6 +7,7 @@ type ViewState =
   | { type: 'playbookDetail'; slug: string }
   | { type: 'assignLegs' }
   | { type: 'mapCSV' }
+  | { type: 'structureDetail'; id: string }
 
 function parseHash(hash: string | undefined | null): ViewState {
   if (!hash) return { type: 'dashboard' }
@@ -15,6 +16,7 @@ function parseHash(hash: string | undefined | null): ViewState {
   if (segments.length === 0) return { type: 'dashboard' }
   if (segments[0] === 'assign-legs') return { type: 'assignLegs' }
   if (segments[0] === 'map-csv') return { type: 'mapCSV' }
+  if (segments[0] === 'structure' && segments.length >= 2) return { type: 'structureDetail', id: decodeURIComponent(segments[1]) }
   if (segments[0] !== 'playbooks') return { type: 'dashboard' }
   if (segments.length === 1) return { type: 'playbookIndex' }
   return { type: 'playbookDetail', slug: segments[1] }
@@ -50,6 +52,7 @@ export default function App() {
   const goPlaybook = React.useCallback((slug: string) => navigate(`#/playbooks/${slug}`), [navigate])
   const goAssignLegs = React.useCallback(() => navigate('#/assign-legs'), [navigate])
   const goMapCSV = React.useCallback(() => navigate('#/map-csv'), [navigate])
+  const goStructureDetail = React.useCallback((id: string) => navigate(`#/structure/${encodeURIComponent(id)}`), [navigate])
   const goDashboard = React.useCallback(() => { window.location.hash = '' }, [])
 
   const innerView: InnerView | undefined =
@@ -57,6 +60,7 @@ export default function App() {
     view.type === 'assignLegs' ? 'assignLegs' :
     view.type === 'playbookIndex' ? 'playbookIndex' :
     view.type === 'playbookDetail' ? { type: 'playbookDetail', slug: view.slug } :
+    view.type === 'structureDetail' ? { type: 'structureDetail', id: view.id } :
     undefined
 
   return (
@@ -66,6 +70,7 @@ export default function App() {
       onOpenPlaybook={goPlaybook}
       onOpenAssignLegs={goAssignLegs}
       onOpenMapCSV={goMapCSV}
+      onOpenStructureDetail={goStructureDetail}
       onNavigateDashboard={goDashboard}
     />
   )
