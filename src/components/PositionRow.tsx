@@ -1,5 +1,5 @@
 import React from 'react'
-import { Download, Link as LinkIcon, Pencil, Plus, Save } from 'lucide-react'
+import { Download, Link as LinkIcon, Plus } from 'lucide-react'
 import { StatusBadge } from './StatusBadge'
 import {
   Position,
@@ -11,7 +11,6 @@ import {
   calculatePnlPct,
 } from '../utils'
 import { buildStructureChipSummary, buildStructureSummaryLines } from '../lib/positions/structureSummary'
-import { StructureEntryOverlay } from './StructureEntryOverlay'
 import { StructureDetailOverlay } from './StructureDetailOverlay'
 import { TradeJsonExportOverlay } from './TradeJsonExportOverlay'
 
@@ -71,7 +70,6 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   onPlaybookOpen,
   onViewDetails,
 }) => {
-  const [showSaveOverlay, setShowSaveOverlay] = React.useState(false)
   const [showDetailOverlay, setShowDetailOverlay] = React.useState(false)
   const [showExportOverlay, setShowExportOverlay] = React.useState(false)
   const statusTone =
@@ -87,13 +85,16 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
   const canOpenOverlay = (!disableSave || isUpdateMode) && (!readOnly || isUpdateMode)
 
   const posUnrealized = React.useMemo(
-    () => (marks ? positionUnrealizedPnL(p, marks) : 0),
+    () => (marks ? positionUnrealizedPnL(p, marks) : null),
     [marks, p]
   )
 
-  const posTotalPnl = p.realizedPnl + posUnrealized
+  const hasMarks = posUnrealized != null
+  const posTotalPnl = hasMarks ? p.realizedPnl + posUnrealized : null
 
   const { pnlPctBaseFallback, pnlPctSignedBasis } = React.useMemo(() => {
+    if (posTotalPnl == null) return { pnlPctBaseFallback: 0, pnlPctSignedBasis: null as number | null }
+
     const legsPremium = p.legs?.reduce((sum, leg) => sum + (Number.isFinite(leg.netPremium) ? leg.netPremium : 0), 0) ?? 0
 
     const premiumAbs = (() => {
@@ -102,15 +103,16 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
       return 0
     })()
 
-    return { pnlPctBaseFallback: premiumAbs, pnlPctSignedBasis: posTotalPnl }
+    return { pnlPctBaseFallback: premiumAbs, pnlPctSignedBasis: posTotalPnl as number | null }
   }, [p.legs, p.netPremium, posTotalPnl])
 
   const markAwarePnlPct = React.useMemo(() => {
+    if (pnlPctSignedBasis == null) return null
     return calculatePnlPct(pnlPctSignedBasis, p.legs ?? [], pnlPctBaseFallback)
   }, [p.legs, pnlPctBaseFallback, pnlPctSignedBasis])
 
   const structureGreeks = React.useMemo(
-    () => (marks ? positionGreeks(p, marks) : { delta: 0, gamma: 0, theta: 0, vega: 0, rho: 0 }),
+    () => (marks ? positionGreeks(p, marks) : null),
     [marks, p]
   )
 
@@ -195,12 +197,12 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           </td>
         )}
         {visibleCols.includes('pnl') && (
-          <td className={`tbl-td ${posTotalPnl < 0 ? 'text-status-danger' : 'text-status-success'}`}>
-            {fmtPremium(posTotalPnl, p.underlying)}
+          <td className={`tbl-td ${posTotalPnl != null && posTotalPnl < 0 ? 'text-status-danger' : posTotalPnl != null ? 'text-status-success' : 'text-muted'}`}>
+            {posTotalPnl != null ? fmtPremium(posTotalPnl, p.underlying) : '—'}
             <div className="type-caption text-muted">
               <span title="Realized">{fmtPremium(p.realizedPnl, p.underlying)}</span>
               {' + '}
-              <span title="Unrealized (from Marks)">{fmtPremium(posUnrealized, p.underlying)}</span>
+              <span title="Unrealized (from Marks)">{hasMarks ? fmtPremium(posUnrealized, p.underlying) : '—'}</span>
             </div>
           </td>
         )}
@@ -209,11 +211,11 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
             {markAwarePnlPct == null ? '—' : `${markAwarePnlPct.toFixed(2)}%`}
           </td>
         )}
-        {visibleCols.includes('delta') && <td className="tbl-td">{fmtNumber(structureGreeks.delta)}</td>}
-        {visibleCols.includes('gamma') && <td className="tbl-td">{fmtGreek(structureGreeks.gamma, 6)}</td>}
-        {visibleCols.includes('theta') && <td className="tbl-td">{fmtNumber(structureGreeks.theta)}</td>}
-        {visibleCols.includes('vega') && <td className="tbl-td">{fmtNumber(structureGreeks.vega)}</td>}
-        {visibleCols.includes('rho') && <td className="tbl-td">{fmtNumber(structureGreeks.rho)}</td>}
+        {visibleCols.includes('delta') && <td className="tbl-td">{structureGreeks ? fmtNumber(structureGreeks.delta) : '—'}</td>}
+        {visibleCols.includes('gamma') && <td className="tbl-td">{structureGreeks ? fmtGreek(structureGreeks.gamma, 6) : '—'}</td>}
+        {visibleCols.includes('theta') && <td className="tbl-td">{structureGreeks ? fmtNumber(structureGreeks.theta) : '—'}</td>}
+        {visibleCols.includes('vega') && <td className="tbl-td">{structureGreeks ? fmtNumber(structureGreeks.vega) : '—'}</td>}
+        {visibleCols.includes('rho') && <td className="tbl-td">{structureGreeks ? fmtNumber(structureGreeks.rho) : '—'}</td>}
         {visibleCols.includes('playbook') && (
           <td className="tbl-td">
             <button
@@ -266,15 +268,6 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowSaveOverlay(true)}
-                    className="tbl-action-btn"
-                    title="Update saved structure"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                    <span className="sr-only">Open update overlay</span>
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setShowExportOverlay(true)}
                     className="tbl-action-btn"
                     title="Export trade JSON"
@@ -285,16 +278,6 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
                 </div>
               ) : null}
             </div>
-          ) : canOpenOverlay ? (
-            <button
-              type="button"
-              onClick={() => setShowSaveOverlay(true)}
-              className="tbl-action-btn"
-              title="Open save overlay"
-            >
-              <Save className="h-3.5 w-3.5" />
-              <span className="sr-only">Open save overlay</span>
-            </button>
           ) : (
             <span className="tbl-badge tbl-badge-neutral">
               Save disabled
@@ -302,18 +285,6 @@ const PositionRowComponent: React.FC<PositionRowProps> = ({
           )}
         </td>
       </tr>
-      {canOpenOverlay && showSaveOverlay ? (
-        <StructureEntryOverlay
-          open={showSaveOverlay}
-          onClose={() => setShowSaveOverlay(false)}
-          position={p}
-          allPositions={allPositions}
-          onSaved={onSaved}
-          mode={isUpdateMode ? 'update' : 'create'}
-          existingPositionId={isUpdateMode ? p.id : undefined}
-          clientScope={clientScope}
-        />
-      ) : null}
       {showDetailOverlay ? (
         <StructureDetailOverlay
           open={showDetailOverlay}

@@ -25,6 +25,7 @@ import { DashboardHeader } from './components/DashboardHeader'
 import { ExpiryDatePicker } from './components/ExpiryDatePicker'
 import { ViewSelector, type ActiveView } from './components/ViewSelector'
 import { KanbanBoard } from './components/KanbanBoard'
+import { GanttTimeline } from './components/GanttTimeline'
 import { Spinner } from './components/Spinner'
 import { ColumnPicker } from './components/ColumnPicker'
 import { PositionTableHead } from './components/PositionTableHead'
@@ -1717,14 +1718,15 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
 
   // Combined expiry list: API-fetched dates take priority, augmented with derived ones
   const allExpiries = React.useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
     const seen = new Set<string>([...apiExpiries, ...derivedExpiries]);
-    return [...seen].sort();
+    return [...seen].filter((d) => d >= today).sort();
   }, [apiExpiries, derivedExpiries]);
 
   const openInstrumentRows = React.useMemo(() => {
     const instrumentMap = new Map<
       string,
-      { instrument: string; qtyNet: number; absPnl: number; greeks: Record<GreekKey, number> }
+      { instrument: string; qtyNet: number; absPnl: number; greeks: Record<GreekKey, number>; hasMarks: boolean; hasGreeks: boolean }
     >();
     for (const position of filteredSaved) {
       for (const leg of position.legs ?? []) {
@@ -1738,6 +1740,8 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
           qtyNet: 0,
           absPnl: 0,
           greeks: { delta: 0, gamma: 0, theta: 0, vega: 0, rho: 0 },
+          hasMarks: false,
+          hasGreeks: false,
         };
         current.qtyNet += qtyNet;
 
@@ -1747,11 +1751,13 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
           const multiplier = ref.exchange === 'coincall' ? mark?.multiplier : ref.defaultMultiplier;
           if (mark?.price != null) {
             current.absPnl += Math.abs(legUnrealizedPnL(leg, mark.price, multiplier));
+            current.hasMarks = true;
           }
           if (mark?.greeks) {
             for (const field of GREEK_SUMMARY_FIELDS) {
               current.greeks[field.key] += legGreekExposure(leg, mark.greeks[field.key] ?? undefined, multiplier);
             }
+            current.hasGreeks = true;
           }
         }
 
@@ -2532,10 +2538,10 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                             <tr key={row.instrument} className="border-t border-border-default">
                               <td className="p-3 font-medium text-text-primary">{row.instrument}</td>
                               <td className="p-3 text-right text-text-secondary">{formatQuantity(row.qtyNet)}</td>
-                              <td className="p-3 text-right text-text-secondary">{fmtPremium(row.absPnl)}</td>
+                              <td className="p-3 text-right text-text-secondary">{row.hasMarks ? fmtPremium(row.absPnl) : '—'}</td>
                               {GREEK_SUMMARY_FIELDS.map((field) => (
                                 <td key={field.key} className="p-3 text-right text-text-secondary">
-                                  {fmtGreek(row.greeks[field.key])}
+                                  {row.hasGreeks ? fmtGreek(row.greeks[field.key]) : '—'}
                                 </td>
                               ))}
                             </tr>
@@ -2688,11 +2694,12 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
 
             {/* ─── GANTT VIEW ─────────────────────────────────────────────── */}
             {activeView === 'gantt' && (
-              <div className="flex flex-col items-center justify-center h-64 gap-2">
-                <GanttChart className="w-8 h-8 text-text-disabled" />
-                <p className="type-subhead font-medium text-text-tertiary">Gantt chart</p>
-                <p className="type-caption text-text-disabled">Coming soon</p>
-              </div>
+              <GanttTimeline
+                positions={filteredSaved}
+                marks={legMarks}
+                expiries={allExpiries}
+                onCardClick={onOpenStructureDetail ? (p) => onOpenStructureDetail(p.id) : undefined}
+              />
             )}
 
           </div>

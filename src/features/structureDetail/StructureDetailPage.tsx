@@ -64,13 +64,14 @@ export function StructureDetailPage({
   const [activeTab, setActiveTab] = React.useState('positions')
 
   const posUnrealized = React.useMemo(
-    () => (marks ? positionUnrealizedPnL(p, marks) : 0),
+    () => (marks ? positionUnrealizedPnL(p, marks) : null),
     [marks, p],
   )
-  const posTotalPnl = p.realizedPnl + posUnrealized
+  const hasMarks = posUnrealized != null
+  const posTotalPnl = hasMarks ? p.realizedPnl + posUnrealized : null
 
   const greeks = React.useMemo(
-    () => (marks ? positionGreeks(p, marks) : { delta: 0, gamma: 0, theta: 0, vega: 0, rho: 0 }),
+    () => (marks ? positionGreeks(p, marks) : null),
     [marks, p],
   )
 
@@ -165,14 +166,16 @@ export function StructureDetailPage({
                 </span>
               </DetailItem>
               <DetailItem label="Total PnL">
-                <span className={posTotalPnl < 0 ? 'text-status-danger' : 'text-status-success'}>
-                  {fmtPremium(posTotalPnl, p.underlying)}
-                </span>
+                {posTotalPnl != null ? (
+                  <span className={posTotalPnl < 0 ? 'text-status-danger' : 'text-status-success'}>
+                    {fmtPremium(posTotalPnl, p.underlying)}
+                  </span>
+                ) : '—'}
               </DetailItem>
-              <DetailItem label="Delta (Δ)">{fmtNumber(greeks.delta)}</DetailItem>
-              <DetailItem label="Gamma (Γ)">{fmtGreek(greeks.gamma, 6)}</DetailItem>
-              <DetailItem label="Theta (Θ)">{fmtNumber(greeks.theta)}</DetailItem>
-              <DetailItem label="Vega (V)">{fmtNumber(greeks.vega)}</DetailItem>
+              <DetailItem label="Delta (Δ)">{greeks ? fmtNumber(greeks.delta) : '—'}</DetailItem>
+              <DetailItem label="Gamma (Γ)">{greeks ? fmtGreek(greeks.gamma, 6) : '—'}</DetailItem>
+              <DetailItem label="Theta (Θ)">{greeks ? fmtNumber(greeks.theta) : '—'}</DetailItem>
+              <DetailItem label="Vega (V)">{greeks ? fmtNumber(greeks.vega) : '—'}</DetailItem>
             </div>
           </div>
         </div>
