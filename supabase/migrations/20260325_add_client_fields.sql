@@ -1,0 +1,6 @@
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS contact_name text;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS contact_email text;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS mandate text;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS phone text;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS notes text;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active';

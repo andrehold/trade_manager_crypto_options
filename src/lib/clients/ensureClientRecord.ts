@@ -20,6 +20,15 @@ async function lookupClientId(
   return { ok: true, clientId }
 }
 
+export type ClientFields = {
+  contact_name?: string
+  contact_email?: string
+  mandate?: string
+  phone?: string
+  notes?: string
+  status?: 'active' | 'inactive'
+}
+
 type EnsureResult = { ok: true; clientId: string } | { ok: false; error: string }
 
 function isUniqueViolation(error: PostgrestError): boolean {
@@ -29,6 +38,7 @@ function isUniqueViolation(error: PostgrestError): boolean {
 export async function ensureClientRecord(
   client: SupabaseClient,
   clientName: string,
+  extra?: ClientFields,
 ): Promise<EnsureResult> {
   const normalized = clientName.trim()
   if (!normalized) {
@@ -43,9 +53,16 @@ export async function ensureClientRecord(
     return { ok: true, clientId: existing.clientId }
   }
 
+  const payload: Record<string, string> = { client_name: normalized }
+  if (extra) {
+    for (const [k, v] of Object.entries(extra)) {
+      if (v !== undefined && v !== '') payload[k] = v
+    }
+  }
+
   const { data, error } = await client
     .from('clients')
-    .insert({ client_name: normalized })
+    .insert(payload)
     .select('client_id')
     .single()
 

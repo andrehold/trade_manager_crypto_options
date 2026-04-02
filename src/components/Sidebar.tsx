@@ -15,13 +15,14 @@ import {
 } from 'lucide-react'
 import { Toggle } from './Toggle'
 
-export type SidebarNavKey = 'dashboard' | 'playbooks' | 'assignLegs' | 'mapCSV'
+export type SidebarNavKey = 'dashboard' | 'clientDashboard' | 'playbooks' | 'assignLegs' | 'mapCSV'
 
 export interface SidebarProps {
   collapsed: boolean
   onToggle: () => void
   activeNav?: SidebarNavKey
   onNavigateDashboard?: () => void
+  onNavigateClientDashboard?: () => void
   onNavigatePlaybooks?: () => void
   onNavigateAssignLegs?: () => void
   onNavigateMapCSV?: () => void
@@ -50,6 +51,7 @@ export function Sidebar({
   onToggle,
   activeNav = 'dashboard',
   onNavigateDashboard,
+  onNavigateClientDashboard,
   onNavigatePlaybooks,
   onNavigateAssignLegs,
   onNavigateMapCSV,
@@ -67,6 +69,7 @@ export function Sidebar({
 }: SidebarProps) {
   const navItems: NavItemDef[] = [
     { key: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', onClick: onNavigateDashboard },
+    { key: 'clientDashboard', icon: UserCircle, label: 'Client Dashboard', onClick: onNavigateClientDashboard },
     { key: 'playbooks', icon: BookOpen, label: 'Playbooks', onClick: onNavigatePlaybooks },
     { key: 'assignLegs', icon: GitMerge, label: 'Assign Legs', onClick: onNavigateAssignLegs },
     { key: 'mapCSV', icon: FileSpreadsheet, label: 'Map CSV', onClick: onNavigateMapCSV },

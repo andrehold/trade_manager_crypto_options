@@ -152,6 +152,20 @@ Used on light overlays/modals (e.g. login card) that appear over the dark dashbo
 Responds to OS-level dark mode preference. Overrides the base `@theme` tokens with dark equivalents.
 `.scheme-light` resets these back to light values.
 
+## Layout Primitives
+
+### Page Card
+
+Every full-page view rendered inside the main content area **must** be wrapped in a page card. This provides consistent visual containment across all feature pages.
+
+```
+bg-bg-surface-1 rounded-2xl border border-border-default
+```
+
+Add `overflow-hidden` when the card contains tables or scrollable content. Add `p-6` (or `p-5`) for inner padding when content is not edge-to-edge.
+
+Used in: `MapCSVPage`, `StructureDetailPage`, `ClientDashboardPage`, `AddClientPage`.
+
 ## Rules
 
 1. **Never use raw color classes** in `.tsx` files: no `bg-zinc-*`, `text-slate-*`, `border-zinc-*`, or hex values.

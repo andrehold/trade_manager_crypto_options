@@ -61,11 +61,15 @@ import { AssignLegsPage } from './features/assignLegs/AssignLegsPage'
 import { PlaybookIndexPage } from './features/playbooks/PlaybookIndexPage'
 import { StrategyPlaybookPage } from './features/playbooks/StrategyPlaybookPage'
 import { StructureDetailPage } from './features/structureDetail/StructureDetailPage'
+import { ClientDashboardPage } from './features/clientDashboard/ClientDashboardPage'
+import ClientManagementPage from './features/clients/ClientManagementPage'
 
 export type InnerView =
   | 'mapCSV'
   | 'assignLegs'
   | 'playbookIndex'
+  | 'clientDashboard'
+  | 'addClient'
   | { type: 'playbookDetail'; slug: string }
   | { type: 'structureDetail'; id: string }
 
@@ -129,11 +133,13 @@ type DashboardAppProps = {
   onOpenAssignLegs?: () => void
   onOpenMapCSV?: () => void
   onOpenStructureDetail?: (id: string) => void
+  onNavigateClientDashboard?: () => void
+  onNavigateAddClient?: () => void
   onNavigateDashboard?: () => void
   innerView?: InnerView
 }
 
-export default function DashboardApp({ onOpenPlaybookIndex, onOpenPlaybook, onOpenAssignLegs, onOpenMapCSV, onOpenStructureDetail, onNavigateDashboard, innerView }: DashboardAppProps = {}) {
+export default function DashboardApp({ onOpenPlaybookIndex, onOpenPlaybook, onOpenAssignLegs, onOpenMapCSV, onOpenStructureDetail, onNavigateClientDashboard, onNavigateAddClient, onNavigateDashboard, innerView }: DashboardAppProps = {}) {
   React.useEffect(() => { devQuickTests(); }, []);
 
   // Tracks which sub-step of the mapCSV flow is active (upload zone vs column mapping)
@@ -362,45 +368,18 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, supabase]);
 
-  const handleAddClient = React.useCallback(async () => {
-    if (!isAdmin) {
-      alert('Client management is restricted to admin users.');
-      return;
-    }
-    const nextName = prompt('Client name');
-    const trimmed = nextName?.trim();
-    if (!trimmed) return;
+  const handleAddClient = React.useCallback(() => {
+    if (onNavigateAddClient) onNavigateAddClient();
+  }, [onNavigateAddClient]);
 
-    let isNewClient = false;
+  const handleClientAdded = React.useCallback((name: string) => {
     setClientOptions((prev) => {
-      if (prev.includes(trimmed)) return prev;
-      isNewClient = true;
-      return [...prev, trimmed];
+      if (prev.includes(name)) return prev;
+      return [...prev, name];
     });
-    setSelectedClient(trimmed);
-
-    if (!isNewClient) return;
-
-    if (!supabase) {
-      console.warn('Supabase is not configured; skipping client database sync.');
-      return;
-    }
-
-    if (!user) {
-      alert('Sign in to Supabase to sync new clients.');
-      return;
-    }
-
-    const { error } = await supabase
-      .from('clients')
-      .insert({ client_name: trimmed })
-      .select('client_id')
-      .single();
-
-    if (error && error.code !== '23505') {
-      alert(`Failed to add client to database: ${error.message}`);
-    }
-  }, [isAdmin, setClientOptions, setSelectedClient, supabase, user]);
+    setSelectedClient(name);
+    if (onNavigateDashboard) onNavigateDashboard();
+  }, [setClientOptions, setSelectedClient, onNavigateDashboard]);
 
   const toOptionalNumber = React.useCallback((value: any) => {
     if (value === null || value === undefined) return null;
@@ -2238,8 +2217,9 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((c) => !c)}
-        activeNav={innerView === 'mapCSV' ? 'mapCSV' : innerView === 'assignLegs' ? 'assignLegs' : (innerView === 'playbookIndex' || (typeof innerView === 'object' && innerView?.type === 'playbookDetail')) ? 'playbooks' : 'dashboard'}
+        activeNav={innerView === 'mapCSV' ? 'mapCSV' : innerView === 'assignLegs' ? 'assignLegs' : innerView === 'clientDashboard' ? 'clientDashboard' : (innerView === 'playbookIndex' || (typeof innerView === 'object' && innerView?.type === 'playbookDetail')) ? 'playbooks' : 'dashboard'}
         onNavigateDashboard={onNavigateDashboard}
+        onNavigateClientDashboard={onNavigateClientDashboard}
         onNavigatePlaybooks={onOpenPlaybookIndex}
         onNavigateAssignLegs={onOpenAssignLegs}
         onNavigateMapCSV={onOpenMapCSV}
@@ -2268,6 +2248,10 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
               ? 'Assign Legs'
               : innerView === 'playbookIndex'
               ? 'Playbooks'
+              : innerView === 'clientDashboard'
+              ? 'Client Dashboard'
+              : innerView === 'addClient'
+              ? 'Add Client'
               : typeof innerView === 'object' && innerView?.type === 'playbookDetail'
               ? 'Playbook'
               : typeof innerView === 'object' && innerView?.type === 'structureDetail'
@@ -2313,6 +2297,23 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
             onOpenPlaybook={onOpenPlaybook ?? (() => {})}
           />
         )}
+        {innerView === 'clientDashboard' && (() => {
+          const clientPositions = savedStructures.filter(
+            (s) => s.clientName === activeClientName && !s.archived
+          )
+          return (
+            <ClientDashboardPage
+              clientName={activeClientName}
+              positions={clientPositions}
+              marks={legMarks}
+              markLoading={markFetch.inProgress}
+              onRefreshMarks={() => fetchAllMarksForPositions(clientPositions)}
+              strategyRunning={false}
+              onToggleStrategy={() => window.alert('Strategy start/stop not yet implemented.')}
+              onOpenStructureDetail={onOpenStructureDetail}
+            />
+          )
+        })()}
         {typeof innerView === 'object' && innerView?.type === 'structureDetail' && (() => {
           const pos = savedStructures.find((s) => s.id === innerView.id)
           if (!pos) return <div className="flex-1 flex items-center justify-center text-text-secondary type-subhead">Structure not found.</div>
@@ -2329,6 +2330,15 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
             />
           )
         })()}
+
+        {innerView === 'addClient' && (
+          <ClientManagementPage
+            supabase={supabase}
+            isAdmin={isAdmin}
+            onClientAdded={handleClientAdded}
+            onBack={() => window.history.back()}
+          />
+        )}
 
         {/* ── Dashboard content (only when no inner view) ── */}
         {!innerView && <>

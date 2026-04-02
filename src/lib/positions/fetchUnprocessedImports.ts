@@ -17,7 +17,7 @@ export async function fetchUnprocessedImports(
 ): Promise<FetchUnprocessedImportsResult> {
   let query = client
     .from('unprocessed_imports')
-    .select('id, instrument, side, amount, price, fee, timestamp, trade_id, order_id, client_name, exchange')
+    .select('id, instrument, side, amount, price, fee, timestamp, trade_id, order_id, client_name, exchange, raw')
     .order('timestamp', { ascending: false })
 
   if (options.clientName) {
@@ -41,10 +41,12 @@ export async function fetchUnprocessedImports(
   const rows: TxnRow[] = data.map((row: any) => {
     const exchange = (row.exchange ?? options.exchange ?? 'deribit') as Exchange
     const parsed = parseInstrumentByExchange(exchange, row.instrument ?? '')
+    const rawAction = row.raw?.action as string | undefined
 
     return {
       instrument: row.instrument ?? '',
       side: row.side ?? 'buy',
+      action: rawAction || undefined,
       amount: Number(row.amount) || 0,
       price: Number(row.price) || 0,
       fee: row.fee != null ? Number(row.fee) : undefined,
