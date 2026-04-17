@@ -19,7 +19,8 @@ import {
 } from './utils'
 import { PositionRow } from './components/PositionRow'
 import { PlaybookDrawer } from './components/PlaybookDrawer'
-import { dbGetTicker, dbGetInstruments } from './lib/venues/deribit'
+import { dbGetTicker, dbGetInstruments, dbGetInstrumentsByExpiry, type ChainInstrument, type DeribitTickerResult } from './lib/venues/deribit'
+import { OptionsChain } from './components/OptionsChain'
 import { fetchDeribitMarks } from './lib/venues/fetchLiveMarks'
 import { DashboardHeader } from './components/DashboardHeader'
 import { ExpiryDatePicker } from './components/ExpiryDatePicker'
@@ -30,7 +31,7 @@ import { Spinner } from './components/Spinner'
 import { ColumnPicker } from './components/ColumnPicker'
 import { PositionTableHead } from './components/PositionTableHead'
 import { SortHeader } from './components/SortHeader'
-import { RefreshCw, TrendingUp, Upload, GanttChart, Inbox } from 'lucide-react'
+import { RefreshCw, TrendingUp, Upload, GanttChart, Inbox, HardDrive } from 'lucide-react'
 import { Button } from './components/ui'
 import {
   archiveStructure,
@@ -69,6 +70,7 @@ export type InnerView =
   | 'mapCSV'
   | 'assignLegs'
   | 'reconcile'
+  | 'optionsChain'
   | 'playbookIndex'
   | 'clientDashboard'
   | 'addClient'
@@ -135,6 +137,7 @@ type DashboardAppProps = {
   onOpenAssignLegs?: () => void
   onOpenMapCSV?: () => void
   onOpenReconcile?: () => void
+  onOpenOptionsChain?: () => void
   onOpenStructureDetail?: (id: string) => void
   onNavigateClientDashboard?: () => void
   onNavigateAddClient?: () => void
@@ -142,7 +145,7 @@ type DashboardAppProps = {
   innerView?: InnerView
 }
 
-export default function DashboardApp({ onOpenPlaybookIndex, onOpenPlaybook, onOpenAssignLegs, onOpenMapCSV, onOpenReconcile, onOpenStructureDetail, onNavigateClientDashboard, onNavigateAddClient, onNavigateDashboard, innerView }: DashboardAppProps = {}) {
+export default function DashboardApp({ onOpenPlaybookIndex, onOpenPlaybook, onOpenAssignLegs, onOpenMapCSV, onOpenReconcile, onOpenOptionsChain, onOpenStructureDetail, onNavigateClientDashboard, onNavigateAddClient, onNavigateDashboard, innerView }: DashboardAppProps = {}) {
   React.useEffect(() => { devQuickTests(); }, []);
 
   // Tracks which sub-step of the mapCSV flow is active (upload zone vs column mapping)
@@ -150,6 +153,42 @@ export default function DashboardApp({ onOpenPlaybookIndex, onOpenPlaybook, onOp
   React.useEffect(() => {
     if (innerView !== 'mapCSV') setMapCsvStep('upload');
   }, [innerView]);
+
+  // ── Options Chain state ──
+  const [chainExpiry, setChainExpiry] = React.useState<string | null>(null);
+  const [chainInstruments, setChainInstruments] = React.useState<ChainInstrument[]>([]);
+  const [chainTickers, setChainTickers] = React.useState<Map<string, DeribitTickerResult>>(new Map());
+  const [chainLoading, setChainLoading] = React.useState(false);
+  const [chainLastUpdated, setChainLastUpdated] = React.useState<Date | null>(null);
+
+  const loadChainExpiry = React.useCallback(async (expiry: string) => {
+    setChainLoading(true);
+    try {
+      const instruments = await dbGetInstrumentsByExpiry(expiry);
+      setChainInstruments(instruments);
+      const entries = await Promise.all(
+        instruments.map(async (inst) => {
+          const ticker = await dbGetTicker(inst.instrument_name);
+          return ticker ? ([inst.instrument_name, ticker] as [string, DeribitTickerResult]) : null;
+        })
+      );
+      const map = new Map<string, DeribitTickerResult>();
+      for (const e of entries) { if (e) map.set(e[0], e[1]); }
+      setChainTickers(map);
+      setChainLastUpdated(new Date());
+    } finally {
+      setChainLoading(false);
+    }
+  }, []);
+
+  const handleSelectChainExpiry = React.useCallback((expiry: string) => {
+    setChainExpiry(expiry);
+    void loadChainExpiry(expiry);
+  }, [loadChainExpiry]);
+
+  const handleRefreshChain = React.useCallback(() => {
+    if (chainExpiry) void loadChainExpiry(chainExpiry);
+  }, [chainExpiry, loadChainExpiry]);
 
   const { user, loading: authLoading, supabaseConfigured } = useAuth();
   const { isAdmin, clientName: lockedClientName } = React.useMemo(
@@ -2220,12 +2259,13 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((c) => !c)}
-        activeNav={innerView === 'mapCSV' ? 'mapCSV' : innerView === 'assignLegs' ? 'assignLegs' : innerView === 'clientDashboard' ? 'clientDashboard' : (innerView === 'playbookIndex' || (typeof innerView === 'object' && innerView?.type === 'playbookDetail')) ? 'playbooks' : 'dashboard'}
+        activeNav={innerView === 'mapCSV' ? 'mapCSV' : innerView === 'assignLegs' ? 'assignLegs' : innerView === 'optionsChain' ? 'optionsChain' : innerView === 'clientDashboard' ? 'clientDashboard' : (innerView === 'playbookIndex' || (typeof innerView === 'object' && innerView?.type === 'playbookDetail')) ? 'playbooks' : 'dashboard'}
         onNavigateDashboard={onNavigateDashboard}
         onNavigateClientDashboard={onNavigateClientDashboard}
         onNavigatePlaybooks={onOpenPlaybookIndex}
         onNavigateAssignLegs={onOpenAssignLegs}
         onNavigateMapCSV={onOpenMapCSV}
+        onNavigateOptionsChain={onOpenOptionsChain}
         user={user}
         btcSpot={btcSpot}
         btcSpotUpdatedAt={btcSpotUpdatedAt}
@@ -2251,6 +2291,8 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
               ? 'Assign Legs'
               : innerView === 'reconcile'
               ? 'Reconcile Positions'
+              : innerView === 'optionsChain'
+              ? 'Options Chain'
               : innerView === 'playbookIndex'
               ? 'Playbooks'
               : innerView === 'clientDashboard'
@@ -2294,6 +2336,22 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
             strategies={pendingStrategyOptions}
           />
         )}
+        {innerView === 'optionsChain' && (
+          <div className="flex flex-col flex-1 min-h-0 bg-surface-page">
+            <OptionsChain
+              expiries={allExpiries}
+              selectedExpiry={chainExpiry}
+              onSelectExpiry={handleSelectChainExpiry}
+              instruments={chainInstruments}
+              tickers={chainTickers}
+              positions={savedStructures}
+              loading={chainLoading}
+              lastUpdated={chainLastUpdated}
+              onRefresh={handleRefreshChain}
+            />
+          </div>
+        )}
+
         {innerView === 'playbookIndex' && (
           <PlaybookIndexPage
             embedded
@@ -2588,7 +2646,12 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                 {/* Section 3: Exchange Positions */}
                 <div className="border-b border-border-default">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
-                    <span className="type-subhead font-semibold text-text-secondary">Exchange Positions</span>
+                    <span className="type-subhead font-semibold text-text-secondary flex items-center gap-1.5">
+                      Exchange Positions
+                      <span title="Stored in browser localStorage only — not synced to the database. Data will be lost if browser cache is cleared.">
+                        <HardDrive size={12} className="text-amber-400 shrink-0" />
+                      </span>
+                    </span>
                     <div className="flex items-center gap-3">
                       <span className="type-caption text-text-tertiary">
                         {exchangePositions.length ? `${exchangePositions.length} loaded` : 'None'}
@@ -2673,7 +2736,12 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
                 {positions.length > 0 && (
                   <div>
                     <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
-                      <span className="type-subhead font-semibold text-text-secondary">Live Positions</span>
+                      <span className="type-subhead font-semibold text-text-secondary flex items-center gap-1.5">
+                        Live Positions
+                        <span title="Stored in browser localStorage only — not synced to the database. Data will be lost if browser cache is cleared.">
+                          <HardDrive size={12} className="text-amber-400 shrink-0" />
+                        </span>
+                      </span>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="min-w-full type-subhead">

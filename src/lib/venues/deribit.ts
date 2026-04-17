@@ -70,6 +70,46 @@ export async function dbGetInstruments(currency = 'BTC'): Promise<string[]> {
   }
 }
 
+export type ChainInstrument = {
+  instrument_name: string;
+  strike: number;
+  option_type: 'call' | 'put';
+};
+
+/**
+ * Fetch all option instruments for a specific expiry date (ISO "YYYY-MM-DD").
+ * Returns sorted by strike ascending.
+ */
+export async function dbGetInstrumentsByExpiry(
+  expiry: string,
+  currency = 'BTC',
+): Promise<ChainInstrument[]> {
+  try {
+    const url = `${BASE}/public/get_instruments?currency=${encodeURIComponent(currency)}&kind=option&expired=false`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const json = await res.json();
+    const instruments: Array<{
+      instrument_name?: string;
+      expiration_timestamp?: number;
+      strike?: number;
+      option_type?: string;
+    }> = json?.result ?? [];
+
+    const result: ChainInstrument[] = [];
+    for (const inst of instruments) {
+      if (!inst.expiration_timestamp || !inst.instrument_name || inst.strike == null) continue;
+      const iso = new Date(inst.expiration_timestamp).toISOString().slice(0, 10);
+      if (iso !== expiry) continue;
+      const option_type = inst.option_type === 'put' ? 'put' : 'call';
+      result.push({ instrument_name: inst.instrument_name, strike: inst.strike, option_type });
+    }
+    return result.sort((a, b) => a.strike - b.strike);
+  } catch {
+    return [];
+  }
+}
+
 /**
  * High-level helper: best available price + greeks.
  * Price preference: mark_price -> mid(bid/ask) -> last_price.

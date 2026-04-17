@@ -12,10 +12,11 @@ import {
   Bitcoin,
   Plus,
   UserCircle,
+  BarChart2,
 } from 'lucide-react'
 import { Toggle } from './Toggle'
 
-export type SidebarNavKey = 'dashboard' | 'clientDashboard' | 'playbooks' | 'assignLegs' | 'mapCSV'
+export type SidebarNavKey = 'dashboard' | 'clientDashboard' | 'playbooks' | 'assignLegs' | 'mapCSV' | 'optionsChain'
 
 export interface SidebarProps {
   collapsed: boolean
@@ -26,6 +27,7 @@ export interface SidebarProps {
   onNavigatePlaybooks?: () => void
   onNavigateAssignLegs?: () => void
   onNavigateMapCSV?: () => void
+  onNavigateOptionsChain?: () => void
   user: { email?: string | null } | null
   btcSpot: number | null
   btcSpotUpdatedAt: Date | null
@@ -55,6 +57,7 @@ export function Sidebar({
   onNavigatePlaybooks,
   onNavigateAssignLegs,
   onNavigateMapCSV,
+  onNavigateOptionsChain,
   user,
   btcSpot,
   btcSpotUpdatedAt,
@@ -70,6 +73,7 @@ export function Sidebar({
   const navItems: NavItemDef[] = [
     { key: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', onClick: onNavigateDashboard },
     { key: 'clientDashboard', icon: UserCircle, label: 'Client Dashboard', onClick: onNavigateClientDashboard },
+    { key: 'optionsChain', icon: BarChart2, label: 'Options Chain', onClick: onNavigateOptionsChain },
     { key: 'playbooks', icon: BookOpen, label: 'Playbooks', onClick: onNavigatePlaybooks },
     { key: 'assignLegs', icon: GitMerge, label: 'Assign Legs', onClick: onNavigateAssignLegs },
     { key: 'mapCSV', icon: FileSpreadsheet, label: 'Map CSV', onClick: onNavigateMapCSV },
