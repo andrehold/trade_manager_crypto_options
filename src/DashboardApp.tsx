@@ -2348,6 +2348,7 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
               loading={chainLoading}
               lastUpdated={chainLastUpdated}
               onRefresh={handleRefreshChain}
+              btcSpot={btcSpot}
             />
           </div>
         )}
