@@ -67,11 +67,13 @@ function SortableLegChip({
   exchange,
   onRemove,
   className: extraClassName,
+  showRemaining,
 }: {
   legItem: LegItem
   exchange: Exchange
   onRemove?: () => void
   className?: string
+  showRemaining?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: legItem.id,
@@ -134,6 +136,15 @@ function SortableLegChip({
           </button>
         )}
       </div>
+
+      {/* Reconcile mode: remaining / original size */}
+      {showRemaining && legItem.originalAmount != null && legItem.originalAmount !== row.amount && (
+        <div className="mt-1">
+          <span className="inline-flex items-center gap-1 bg-amber-500/15 border border-amber-500/30 rounded px-1.5 py-0.5 type-caption text-amber-300">
+            {qty} / {legItem.originalAmount} remaining
+          </span>
+        </div>
+      )}
 
       {/* Divider */}
       <div className="border-t border-border-faint my-2" />
@@ -205,11 +216,13 @@ function DraggableLegChip({
   exchange,
   onExclude,
   className: extraClassName,
+  showRemaining,
 }: {
   legItem: LegItem
   exchange: Exchange
   onExclude?: () => void
   className?: string
+  showRemaining?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: legItem.id,
@@ -298,6 +311,15 @@ function DraggableLegChip({
       {premium !== 0 && (
         <div>
           <PremiumBadge value={premium} />
+        </div>
+      )}
+
+      {/* Reconcile mode: remaining / original size */}
+      {showRemaining && legItem.originalAmount != null && legItem.originalAmount !== row.amount && (
+        <div className="mt-1">
+          <span className="inline-flex items-center gap-1 bg-amber-500/15 border border-amber-500/30 rounded px-1.5 py-0.5 type-caption text-amber-300">
+            {qty} / {legItem.originalAmount} remaining
+          </span>
         </div>
       )}
     </div>
@@ -607,6 +629,75 @@ export function AssignLegsPage({ onBack, embedded }: { onBack: () => void; embed
   return <AssignLegsPageInner {...ctx} onBack={onBack} embedded={embedded} />
 }
 
+/* ── Split Modal for reconcile mode ── */
+function SplitModal({
+  legItem,
+  targetLabel,
+  onConfirm,
+  onCancel,
+}: {
+  legItem: LegItem
+  targetLabel: string
+  onConfirm: (qty: number) => void
+  onCancel: () => void
+}) {
+  const remaining = legItem.row.amount
+  const [qty, setQty] = React.useState(String(remaining))
+  const numQty = parseFloat(qty)
+  const isValid = !isNaN(numQty) && numQty > 0 && numQty <= remaining
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="bg-bg-surface-1 border border-border-strong rounded-2xl shadow-xl max-w-sm w-full mx-4 p-5">
+        <h4 className="type-body font-semibold text-text-primary mb-3">
+          Split & Assign
+        </h4>
+        <p className="type-caption text-text-secondary mb-1">
+          {legItem.row.side === 'buy' ? 'Long' : 'Short'}{' '}
+          <span className="font-mono font-medium text-text-primary">{legItem.row.instrument}</span>
+        </p>
+        <p className="type-caption text-text-muted mb-3">
+          Avg price: {legItem.row.price} &middot; Remaining: {remaining}
+        </p>
+        <div className="mb-4">
+          <label className="type-caption text-text-secondary block mb-1">
+            Assign how many to <span className="font-medium text-text-primary">{targetLabel}</span>?
+          </label>
+          <input
+            type="number"
+            step="any"
+            min={0}
+            max={remaining}
+            value={qty}
+            onChange={(e) => setQty(e.target.value)}
+            className="w-full bg-bg-surface-2 border border-border-strong rounded-lg px-3 py-2 type-body text-text-primary focus:outline-none focus:border-border-accent"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && isValid) onConfirm(numQty)
+              if (e.key === 'Escape') onCancel()
+            }}
+          />
+        </div>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="px-3 py-1.5 rounded-lg type-caption text-text-secondary hover:bg-bg-surface-2 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => isValid && onConfirm(numQty)}
+            disabled={!isValid}
+            className="px-3 py-1.5 rounded-lg type-caption font-medium bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Assign {isValid ? numQty : ''}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function AssignLegsPageInner({
   rows,
   noImportRows = [],
@@ -618,6 +709,7 @@ function AssignLegsPageInner({
   onCancel,
   onBack,
   embedded,
+  mode,
 }: {
   rows: TxnRow[]
   noImportRows?: TxnRow[]
@@ -629,7 +721,9 @@ function AssignLegsPageInner({
   onCancel: () => void
   onBack: () => void
   embedded?: boolean
+  mode?: 'import' | 'reconcile'
 }) {
+  const isReconcileMode = mode === 'reconcile'
   // Use DB strategies when available, fall back to hardcoded STRUCTURE_TYPES
   const strategyTypes = useMemo(() => {
     if (strategies.length > 0) {
@@ -641,9 +735,17 @@ function AssignLegsPageInner({
   const [activeTab, setActiveTab] = useState<'open' | 'no_import' | 'unprocessed' | 'processed'>('open')
   const [importing, setImporting] = useState(false)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const [activeDragSourceContainer, setActiveDragSourceContainer] = useState<string | null>(null)
   const [newStructureType, setNewStructureType] = useState<string>('IC')
   const [backlogPage, setBacklogPage] = useState(0)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  // Reconcile mode: pending split
+  const [pendingSplit, setPendingSplit] = useState<{
+    itemId: string
+    targetContainerId: string
+    targetLabel: string
+  } | null>(null)
+  const [splitCounter, setSplitCounter] = useState(0)
   const [filterFutureOnly, setFilterFutureOnly] = useState(false)
   const [filterAction, setFilterAction] = useState<'open' | 'close' | null>(null)
   const [backlogSortDir, setBacklogSortDir] = useState<'asc' | 'desc'>('asc')
@@ -679,7 +781,12 @@ function AssignLegsPageInner({
     // All rows start in the backlog — user manually creates structures
     sorted.forEach((row, idx) => {
       const id = generateLegId(row, idx)
-      itemsById[id] = { id, row, included: true }
+      const item: LegItem = { id, row, included: true }
+      if (isReconcileMode) {
+        item.originalAmount = row.amount
+        item.sourceRowKey = row.trade_id ?? `source-${idx}`
+      }
+      itemsById[id] = item
       containers[CONTAINER_BACKLOG].push(id)
     })
 
@@ -763,7 +870,9 @@ function AssignLegsPageInner({
 
   /* ── drag handlers ── */
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveDragId(event.active.id as string)
+    const id = event.active.id as string
+    setActiveDragId(id)
+    setActiveDragSourceContainer(findContainer(id, board))
   }
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -775,19 +884,110 @@ function AssignLegsPageInner({
     if (!targetContainerId) return
     const srcContainerId = findContainer(activeId, board)
     if (!srcContainerId || srcContainerId === targetContainerId) return
+
+    // In reconcile mode, don't move backlog items during hover — the split modal
+    // handles the actual assignment at drag end. Allow intra-structure moves freely.
+    if (
+      isReconcileMode &&
+      activeDragSourceContainer === CONTAINER_BACKLOG &&
+      targetContainerId !== CONTAINER_BACKLOG &&
+      targetContainerId !== CONTAINER_EXCLUDED
+    ) return
+
     moveItem(activeId, targetContainerId)
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     setActiveDragId(null)
+    const dragSource = activeDragSourceContainer
+    setActiveDragSourceContainer(null)
     if (!over) return
     const activeId = active.id as string
     const overId = over.id as string
     const targetContainerId = containerIds.has(overId) ? overId : findContainer(overId, board)
     if (!targetContainerId) return
+
+    // In reconcile mode, dropping a backlog item onto a structure opens the split modal.
+    // (hover-moves were suppressed so the item is still in backlog at this point)
+    if (
+      isReconcileMode &&
+      dragSource === CONTAINER_BACKLOG &&
+      targetContainerId !== CONTAINER_BACKLOG &&
+      targetContainerId !== CONTAINER_EXCLUDED
+    ) {
+      const targetLabel =
+        targetContainerId === CONTAINER_NEW_STRUCTURE
+          ? 'New Structure'
+          : targetContainerId.startsWith('saved:')
+          ? (savedStructureInfos.find((s) => `saved:${s.id}` === targetContainerId)?.label ?? 'Saved Structure')
+          : board.structureMeta[targetContainerId]?.type
+          ? `Structure (${board.structureMeta[targetContainerId].type})`
+          : 'Structure'
+      setPendingSplit({ itemId: activeId, targetContainerId, targetLabel })
+      return
+    }
+
     moveItem(activeId, targetContainerId)
   }
+
+  /* ── reconcile mode: handle split confirm ── */
+  const handleSplitConfirm = useCallback(
+    (qty: number) => {
+      if (!pendingSplit) return
+      const { itemId, targetContainerId } = pendingSplit
+      setPendingSplit(null)
+
+      setBoard((prev) => {
+        const item = prev.itemsById[itemId]
+        if (!item) return prev
+        const remaining = item.row.amount - qty
+        const next = {
+          ...prev,
+          itemsById: { ...prev.itemsById },
+          containers: { ...prev.containers },
+        }
+        for (const k of Object.keys(next.containers)) {
+          next.containers[k] = [...next.containers[k]]
+        }
+
+        // Create split item for the target
+        const splitId = `${itemId}:split-${splitCounter}`
+        const splitItem: LegItem = {
+          id: splitId,
+          row: { ...item.row, amount: qty },
+          included: true,
+          originalAmount: item.originalAmount,
+          sourceRowKey: item.sourceRowKey,
+        }
+
+        if (remaining <= 0.000001) {
+          // Fully assigned — remove from backlog, add split to target
+          next.containers[CONTAINER_BACKLOG] = next.containers[CONTAINER_BACKLOG].filter(
+            (id) => id !== itemId,
+          )
+          delete next.itemsById[itemId]
+        } else {
+          // Partially assigned — reduce backlog item's amount
+          next.itemsById[itemId] = {
+            ...item,
+            row: { ...item.row, amount: remaining },
+          }
+        }
+
+        // Add split to target container
+        next.itemsById[splitId] = splitItem
+        if (!next.containers[targetContainerId]) {
+          next.containers[targetContainerId] = []
+        }
+        next.containers[targetContainerId].push(splitId)
+
+        return next
+      })
+      setSplitCounter((c) => c + 1)
+    },
+    [pendingSplit, splitCounter],
+  )
 
   /* ── derived data ── */
   const backlogItems = (board.containers[CONTAINER_BACKLOG] ?? []).map((id) => board.itemsById[id])
@@ -1019,11 +1219,21 @@ function AssignLegsPageInner({
   }
 
   /* ── validation message ── */
+  // In reconcile mode, count backlog items that still have remaining size > 0
+  const unassignedReconcileCount = isReconcileMode
+    ? (board.containers[CONTAINER_BACKLOG] ?? []).filter((id) => {
+        const item = board.itemsById[id]
+        return item && item.row.amount > 0
+      }).length
+    : 0
+
   const validationMsg = (() => {
     const parts: string[] = []
     if (newStructureCount > 0)
       parts.push(`Drag the ${newStructureCount} leg${newStructureCount !== 1 ? 's' : ''} out of 'New Structure' or click Save Structure before importing`)
-    return parts.length > 0 ? parts.join(', ') : null
+    if (isReconcileMode && unassignedReconcileCount > 0)
+      parts.push(`${unassignedReconcileCount} position${unassignedReconcileCount !== 1 ? 's' : ''} not fully assigned — unassigned lots will be saved as standalone legs`)
+    return parts.length > 0 ? parts.join('. ') : null
   })()
 
   /* ═════════════════════ RENDER ═════════════════════ */
@@ -1043,6 +1253,11 @@ function AssignLegsPageInner({
         )}
         {!embedded && (
           <h3 className="type-subhead font-semibold text-text-primary tracking-tight">Assign Legs to Structures</h3>
+        )}
+        {isReconcileMode && (
+          <span className="inline-flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 rounded-lg px-2.5 py-1 type-caption text-amber-300 font-medium">
+            Reconcile Mode — drag legs to split across structures
+          </span>
         )}
         <div className="flex gap-2">
           {([
@@ -1203,7 +1418,7 @@ function AssignLegsPageInner({
                       </p>
                     ) : (
                       visibleBacklogItems.map((item) => (
-                        <DraggableLegChip key={item.id} legItem={item} exchange={exchange} onExclude={() => handleExcludeItem(item.id)} className="w-full min-w-0 flex-none" />
+                        <DraggableLegChip key={item.id} legItem={item} exchange={exchange} onExclude={() => handleExcludeItem(item.id)} className="w-full min-w-0 flex-none" showRemaining={isReconcileMode} />
                       ))
                     )}
                   </div>
@@ -1457,6 +1672,16 @@ function AssignLegsPageInner({
           </div>
         )}
       </div>
+
+      {/* ── Reconcile Split Modal ── */}
+      {pendingSplit && board.itemsById[pendingSplit.itemId] && (
+        <SplitModal
+          legItem={board.itemsById[pendingSplit.itemId]}
+          targetLabel={pendingSplit.targetLabel}
+          onConfirm={handleSplitConfirm}
+          onCancel={() => setPendingSplit(null)}
+        />
+      )}
 
     </div>
   )

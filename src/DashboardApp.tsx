@@ -62,11 +62,13 @@ import { PlaybookIndexPage } from './features/playbooks/PlaybookIndexPage'
 import { StrategyPlaybookPage } from './features/playbooks/StrategyPlaybookPage'
 import { StructureDetailPage } from './features/structureDetail/StructureDetailPage'
 import { ClientDashboardPage } from './features/clientDashboard/ClientDashboardPage'
+import { ReconcilePage } from './features/reconcile/ReconcilePage'
 import ClientManagementPage from './features/clients/ClientManagementPage'
 
 export type InnerView =
   | 'mapCSV'
   | 'assignLegs'
+  | 'reconcile'
   | 'playbookIndex'
   | 'clientDashboard'
   | 'addClient'
@@ -132,6 +134,7 @@ type DashboardAppProps = {
   onOpenPlaybook?: (slug: string) => void
   onOpenAssignLegs?: () => void
   onOpenMapCSV?: () => void
+  onOpenReconcile?: () => void
   onOpenStructureDetail?: (id: string) => void
   onNavigateClientDashboard?: () => void
   onNavigateAddClient?: () => void
@@ -139,7 +142,7 @@ type DashboardAppProps = {
   innerView?: InnerView
 }
 
-export default function DashboardApp({ onOpenPlaybookIndex, onOpenPlaybook, onOpenAssignLegs, onOpenMapCSV, onOpenStructureDetail, onNavigateClientDashboard, onNavigateAddClient, onNavigateDashboard, innerView }: DashboardAppProps = {}) {
+export default function DashboardApp({ onOpenPlaybookIndex, onOpenPlaybook, onOpenAssignLegs, onOpenMapCSV, onOpenReconcile, onOpenStructureDetail, onNavigateClientDashboard, onNavigateAddClient, onNavigateDashboard, innerView }: DashboardAppProps = {}) {
   React.useEffect(() => { devQuickTests(); }, []);
 
   // Tracks which sub-step of the mapCSV flow is active (upload zone vs column mapping)
@@ -2246,6 +2249,8 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
               ? (mapCsvStep === 'mapping' ? 'Mapping' : 'Import CSV')
               : innerView === 'assignLegs'
               ? 'Assign Legs'
+              : innerView === 'reconcile'
+              ? 'Reconcile Positions'
               : innerView === 'playbookIndex'
               ? 'Playbooks'
               : innerView === 'clientDashboard'
@@ -2279,6 +2284,14 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
           <AssignLegsPage
             embedded
             onBack={() => window.history.back()}
+          />
+        )}
+        {innerView === 'reconcile' && (
+          <ReconcilePage
+            embedded
+            onBack={() => window.history.back()}
+            onOpenAssignLegs={onOpenAssignLegs}
+            strategies={pendingStrategyOptions}
           />
         )}
         {innerView === 'playbookIndex' && (
@@ -2380,6 +2393,16 @@ const [showImportedOverlay, setShowImportedOverlay] = React.useState(false);
               title="Import CSV trade data"
             >
               Import
+            </Button>
+
+            {/* Reconcile */}
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onOpenReconcile}
+              title="Reconcile positions from Deribit CSV snapshot"
+            >
+              Reconcile
             </Button>
 
             {/* Process Backlog */}

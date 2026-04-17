@@ -7,6 +7,10 @@ export type LegItem = {
   id: string
   row: TxnRow
   included: boolean
+  /** Reconcile mode: original full size from CSV (before any splits) */
+  originalAmount?: number
+  /** Reconcile mode: groups splits that originated from the same CSV row */
+  sourceRowKey?: string
 }
 
 export type BoardState = {

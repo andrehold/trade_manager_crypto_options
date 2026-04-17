@@ -6,6 +6,8 @@ export type ProcessedRowInfo = {
   source: 'structure' | 'unprocessed_imports'
 }
 
+export type AssignLegsMode = 'import' | 'reconcile'
+
 export type AssignLegsContext = {
   rows: TxnRow[]
   noImportRows: TxnRow[]
@@ -15,6 +17,8 @@ export type AssignLegsContext = {
   strategies: StrategyOption[]
   onConfirm: (rows: TxnRow[], unprocessedRows?: TxnRow[]) => void | Promise<void>
   onCancel: () => void
+  /** When 'reconcile', enables leg-splitting and hides irrelevant tabs */
+  mode?: AssignLegsMode
 }
 
 let store: AssignLegsContext | null = null
