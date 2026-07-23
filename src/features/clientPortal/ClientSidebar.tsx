@@ -39,7 +39,7 @@ export function ClientSidebar({
   clientName, program, active, setupStatus, onNavigate, onSignOut,
 }: { clientName: string; program: string; active: PortalPage; setupStatus: SetupStatus; onNavigate: (page: PortalPage) => void; onSignOut: () => void }) {
   return (
-    <aside className="flex h-screen w-[244px] shrink-0 flex-col border-r border-border-default bg-bg-surface-0/70">
+    <aside className="flex h-screen w-[244px] shrink-0 flex-col border-r border-border-default bg-bg-elevated">
       <div className="flex items-center gap-3 border-b border-border-default px-4 py-4">
         <div className="grid h-9 w-9 place-items-center rounded-xl border border-accent-500/40 bg-bg-surface-2 type-subhead font-bold text-accent-400">
           {clientName.slice(0, 2).toUpperCase()}
