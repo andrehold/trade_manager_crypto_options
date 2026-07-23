@@ -8,9 +8,10 @@ import { ConfirmationTable } from '../../components/ConfirmationTable'
 import { Spinner } from '../../components/Spinner'
 import { DataTable, type Column } from '../../components/ui'
 import {
-  fmtPremium, positionUnrealizedPnL, positionGreeks, fmtNumber, fmtGreek,
+  fmtPremium, fmtNumber, fmtGreek,
   type Position, type MarksMap,
 } from '../../utils'
+import { portfolioSummary, positionSummaryRows, type PositionSummaryRow } from '../clientPortal/portfolio'
 
 type ClientDashboardPageProps = {
   clientName: string
@@ -38,23 +39,6 @@ function DetailItem({ label, children }: { label: string; children: React.ReactN
   )
 }
 
-type PositionSummaryRow = {
-  id: string
-  strategy: string
-  underlying: string
-  expiry: string
-  dte: number
-  status: Position['status']
-  netPremium: number
-  realizedPnl: number
-  unrealizedPnl: number | null
-  delta: number | null
-  gamma: number | null
-  theta: number | null
-  vega: number | null
-  asset: string
-}
-
 export function ClientDashboardPage({
   clientName,
   positions,
@@ -68,68 +52,10 @@ export function ClientDashboardPage({
   const [activeTab, setActiveTab] = React.useState('positions')
 
   // Aggregate portfolio KPIs
-  const portfolio = React.useMemo(() => {
-    let totalEquity = 0
-    let totalRealized = 0
-    let totalUnrealized = 0
-    let hasAnyMarks = false
-    let delta = 0, gamma = 0, theta = 0, vega = 0
-
-    for (const p of positions) {
-      totalEquity += p.netPremium
-      totalRealized += p.realizedPnl
-      if (marks) {
-        const uPnl = positionUnrealizedPnL(p, marks)
-        if (uPnl != null) {
-          totalUnrealized += uPnl
-          hasAnyMarks = true
-        }
-        const g = positionGreeks(p, marks)
-        if (g) {
-          delta += g.delta
-          gamma += g.gamma
-          theta += g.theta
-          vega += g.vega
-        }
-      }
-    }
-
-    const totalPnl = hasAnyMarks ? totalRealized + totalUnrealized : null
-    const pnlPct = totalPnl != null && Math.abs(totalEquity) > 0
-      ? (totalPnl / Math.abs(totalEquity)) * 100
-      : null
-
-    // Use first position's program/exchange as representative
-    const programName = positions.find(p => p.programName)?.programName ?? '—'
-    const exchange = positions.find(p => p.exchange)?.exchange ?? '—'
-    const asset = positions[0]?.underlying ?? 'BTC'
-
-    return { totalEquity, totalPnl, totalRealized, pnlPct, programName, exchange, asset, delta, gamma, theta, vega, hasAnyMarks }
-  }, [positions, marks])
+  const portfolio = React.useMemo(() => portfolioSummary(positions, marks), [positions, marks])
 
   // Build position summary rows
-  const positionRows = React.useMemo<PositionSummaryRow[]>(() => {
-    return positions.map(p => {
-      const uPnl = marks ? positionUnrealizedPnL(p, marks) : null
-      const g = marks ? positionGreeks(p, marks) : null
-      return {
-        id: p.id,
-        strategy: p.strategy ?? p.structureId ?? p.underlying,
-        underlying: p.underlying,
-        expiry: p.expiryISO,
-        dte: p.dte,
-        status: p.status,
-        netPremium: p.netPremium,
-        realizedPnl: p.realizedPnl,
-        unrealizedPnl: uPnl,
-        delta: g?.delta ?? null,
-        gamma: g?.gamma ?? null,
-        theta: g?.theta ?? null,
-        vega: g?.vega ?? null,
-        asset: p.underlying,
-      }
-    })
-  }, [positions, marks])
+  const positionRows = React.useMemo(() => positionSummaryRows(positions, marks), [positions, marks])
 
   const positionColumns = React.useMemo<Column<PositionSummaryRow>[]>(() => [
     {
