@@ -804,7 +804,7 @@ export function ClientSidebar({
   clientName, program, active, setupStatus, onNavigate, onSignOut,
 }: { clientName: string; program: string; active: PortalPage; setupStatus: SetupStatus; onNavigate: (page: PortalPage) => void; onSignOut: () => void }) {
   return (
-    <aside className="flex h-screen w-[244px] shrink-0 flex-col border-r border-border-default bg-bg-surface-0/70">
+    <aside className="flex h-screen w-[244px] shrink-0 flex-col border-r border-border-default bg-bg-elevated">
       <div className="flex items-center gap-3 border-b border-border-default px-4 py-4">
         <div className="grid h-9 w-9 place-items-center rounded-xl border border-accent-500/40 bg-bg-surface-2 type-subhead font-bold text-accent-400">
           {clientName.slice(0, 2).toUpperCase()}
@@ -905,7 +905,7 @@ import type { Door } from './routing'
 export function LoginDoor({ role }: { role: Door }) {
   const admin = role === 'admin'
   return (
-    <div className={`grid min-h-screen place-items-center px-5 py-8 ${admin ? 'bg-bg-surface-0' : 'bg-bg-surface-0'}`}>
+    <div className="grid min-h-screen place-items-center px-5 py-8 bg-bg-canvas">
       <div className="w-full max-w-[400px] rounded-2xl border border-border-default bg-bg-surface-1 p-7 shadow-xl">
         <div className="mb-5 flex items-center gap-3">
           <span className={`grid h-9 w-9 place-items-center rounded-xl ${admin ? 'bg-status-warning' : 'bg-accent-500'}`}>
@@ -1064,7 +1064,7 @@ export function DashboardPage({ positions, marks, setupStatus, onNavigate }: {
           {SETUP_LABELS.map(({ key, label }) => {
             const done = setupStatus[key]
             return (
-              <button key={key} type="button" onClick={() => onNavigate(key === 'tradingKey' ? 'keys' : key === 'riskLimits' ? 'risk' : key)} className="flex items-center gap-2 rounded-lg border border-border-default bg-bg-surface-0 px-3 py-2 type-caption text-text-secondary hover:bg-bg-surface-2">
+              <button key={key} type="button" onClick={() => onNavigate(key === 'tradingKey' ? 'keys' : key === 'riskLimits' ? 'risk' : key)} className="flex items-center gap-2 rounded-lg border border-border-default bg-bg-canvas px-3 py-2 type-caption text-text-secondary hover:bg-bg-surface-2">
                 {done ? <Check className="h-3.5 w-3.5 text-status-success" /> : <AlertCircle className="h-3.5 w-3.5 text-status-warning" />}
                 {label}
               </button>
@@ -1317,13 +1317,13 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const navigate = React.useCallback((p: PortalPage) => { window.location.hash = portalHash(p) }, [])
 
   return (
-    <div className="flex min-h-screen bg-bg-surface-0">
+    <div className="flex min-h-screen bg-bg-canvas">
       <ClientSidebar
         clientName={clientName} program={program} active={page}
         setupStatus={setupStatus} onNavigate={navigate} onSignOut={onSignOut}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex flex-wrap items-center gap-3 border-b border-border-default bg-bg-surface-0/80 px-6 py-3 backdrop-blur">
+        <header className="sticky top-0 z-30 flex flex-wrap items-center gap-3 border-b border-border-default bg-bg-canvas/80 px-6 py-3 backdrop-blur">
           <div className="type-subhead font-semibold text-text-primary">{PAGE_TITLES[page]}</div>
           <div className="flex-1" />
           <ActivationControl active={active} setupStatus={setupStatus} onToggle={() => setActive((v) => !v)} />
@@ -1470,7 +1470,7 @@ export function RootRouter() {
 
   let content: React.ReactNode
   if (loading) {
-    content = <div className="grid min-h-screen place-items-center bg-bg-surface-0"><Spinner className="h-6 w-6" /></div>
+    content = <div className="grid min-h-screen place-items-center bg-bg-canvas"><Spinner className="h-6 w-6" /></div>
   } else if (!user) {
     // Unauthenticated: admin door falls through to the existing admin app (which shows its own login);
     // every other entry (client door, or a #/portal/* deep link) shows the branded client login.
