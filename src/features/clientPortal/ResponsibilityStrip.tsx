@@ -9,7 +9,7 @@ export function ResponsibilityStrip({ onOpenAudit }: { onOpenAudit: () => void }
         <strong className="text-text-primary">investment decisions</strong>. This software executes only the parameters you set — it provides no advice or recommendation.
       </span>
       <button type="button" onClick={onOpenAudit} className="type-caption font-semibold text-accent-400 hover:underline whitespace-nowrap">
-        View attestations &amp; audit log →
+        View attestations &amp; audit log <span aria-hidden="true">→</span>
       </button>
     </div>
   )

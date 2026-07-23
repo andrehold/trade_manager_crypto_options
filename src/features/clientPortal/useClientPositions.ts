@@ -19,7 +19,7 @@ export function useClientPositions(clientName: string | null) {
         const result = await fetchSavedStructures(getSupabaseClient(), { clientName, isAdmin: false })
         if (ignore) return
         if (result.ok) setPositions(result.positions)
-        else setError(result.error ?? 'Failed to load positions')
+        else setError(result.error)
       } catch (e) {
         if (!ignore) setError(e instanceof Error ? e.message : 'Failed to load positions')
       } finally {

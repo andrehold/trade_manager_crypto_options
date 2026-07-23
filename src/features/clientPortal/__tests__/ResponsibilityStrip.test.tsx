@@ -11,5 +11,6 @@ describe('ResponsibilityStrip', () => {
     expect(screen.getByText(/no advice or recommendation/i)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /audit log/i }))
     expect(onOpenAudit).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('button', { name: /close|dismiss/i })).toBeNull()
   })
 })
