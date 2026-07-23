@@ -1387,7 +1387,7 @@ git commit -m "feat(client-portal): compose portal shell + client positions hook
 
 Create `src/features/clientPortal/__tests__/RootRouter.test.tsx`:
 ```tsx
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 const authState = { user: null as unknown, loading: false, supabaseConfigured: true }
@@ -1398,7 +1398,16 @@ vi.mock('../LoginDoor', () => ({ LoginDoor: ({ role }: { role: string }) => <div
 
 import { RootRouter } from '@/RootRouter'
 
-beforeEach(() => { window.location.hash = ''; authState.user = null; authState.loading = false })
+beforeEach(() => {
+  window.location.hash = ''
+  authState.user = null
+  authState.loading = false
+  // Non-empty allowlist so resolveClientAccess does NOT treat everyone as admin.
+  // vi.stubEnv is the reliable way to override import.meta.env across modules under Vitest
+  // (a plain `import.meta.env.X = ...` mutation does NOT propagate to access.ts's call-time read).
+  vi.stubEnv('VITE_SUPABASE_ADMIN_EMAILS', 'admin@obsidiandesk.com')
+})
+afterEach(() => { vi.unstubAllEnvs() })
 
 describe('RootRouter', () => {
   it('shows the client login door when unauthenticated on the client door', () => {
@@ -1420,12 +1429,7 @@ describe('RootRouter', () => {
 })
 ```
 
-> Note: admin detection depends on `resolveClientAccess`, which treats an **empty** `VITE_SUPABASE_ADMIN_EMAILS` allowlist as "everyone is admin". In the test env that variable is unset, so to exercise the non-admin path the second test relies on the door being `client` and the user having a `client_name` but... set `VITE_SUPABASE_ADMIN_EMAILS` for the test run: create `.env.test` with `VITE_SUPABASE_ADMIN_EMAILS=admin@obsidiandesk.com` and add `envDir`/mode handling, OR (simpler) in the test file set `import.meta.env.VITE_SUPABASE_ADMIN_EMAILS = 'admin@obsidiandesk.com'` inside `beforeEach`. Use the latter.
-
-Add to `beforeEach`:
-```ts
-;(import.meta as unknown as { env: Record<string, string> }).env.VITE_SUPABASE_ADMIN_EMAILS = 'admin@obsidiandesk.com'
-```
+> Note: admin detection depends on `resolveClientAccess`, which treats an **empty** `VITE_SUPABASE_ADMIN_EMAILS` allowlist as "everyone is admin". In the test env that variable is unset, so the non-admin branch would otherwise resolve to admin. The `beforeEach` above uses **`vi.stubEnv('VITE_SUPABASE_ADMIN_EMAILS', 'admin@obsidiandesk.com')`** (with `vi.unstubAllEnvs()` in `afterEach`) to set a non-empty allowlist that does not contain the test user's email — so `client@x.com` resolves as a non-admin client. A plain `import.meta.env.X = ...` mutation is NOT sufficient here: `access.ts` reads `import.meta.env.VITE_SUPABASE_ADMIN_EMAILS` from its own module scope and does not observe the mutation; only `vi.stubEnv` reliably overrides it across modules.
 
 - [ ] **Step 2: Run test to verify it fails**
 
