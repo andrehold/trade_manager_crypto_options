@@ -8,7 +8,9 @@ import { DashboardPage } from './pages/DashboardPage'
 import { PositionsPage } from './pages/PositionsPage'
 import { useClientPositions } from './useClientPositions'
 import { parsePortalPage, portalHash, type PortalPage } from './routing'
-import { EMPTY_SETUP_STATUS } from './setupStatus'
+import { RiskPage } from './risk/RiskPage'
+import { DEFAULT_RISK_LIMITS, type RiskLimits } from './risk/riskLimits'
+import { EMPTY_SETUP_STATUS, type SetupStatus } from './setupStatus'
 
 const PAGE_TITLES: Record<PortalPage, string> = {
   dashboard: 'Dashboard', positions: 'Positions', appropriateness: 'Appropriateness',
@@ -22,7 +24,12 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const page = parsePortalPage(hash)
   const [active, setActive] = React.useState(false)
   const { positions, loading, error, reload } = useClientPositions(clientName)
-  const setupStatus = EMPTY_SETUP_STATUS
+  const [setupStatus, setSetupStatus] = React.useState<SetupStatus>(EMPTY_SETUP_STATUS)
+  const [riskLimits, setRiskLimits] = React.useState<RiskLimits>(DEFAULT_RISK_LIMITS)
+  const applyRiskLimits = React.useCallback((next: RiskLimits) => {
+    setRiskLimits(next)
+    setSetupStatus((s) => ({ ...s, riskLimits: true }))
+  }, [])
 
   const navigate = React.useCallback((p: PortalPage) => { window.location.hash = portalHash(p) }, [])
 
@@ -40,7 +47,9 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
         </header>
         <ResponsibilityStrip onOpenAudit={() => navigate('audit')} />
         <main className="mx-auto w-full max-w-[1140px] flex-1 px-6 py-6">
-          {(page === 'dashboard' || page === 'positions') ? (
+          {page === 'risk' ? (
+            <RiskPage limits={riskLimits} onApply={applyRiskLimits} />
+          ) : (page === 'dashboard' || page === 'positions') ? (
             error ? (
               <div className="rounded-2xl border border-status-danger/30 bg-status-danger/10 p-6 text-center">
                 <p className="type-subhead text-status-danger">Could not load your positions.</p>

@@ -33,4 +33,14 @@ describe('ClientPortalShell', () => {
     await userEvent.click(screen.getByRole('button', { name: /retry/i }))
     expect(reload).toHaveBeenCalledOnce()
   })
+
+  it('renders the Risk page and flips the risk setup status on apply', async () => {
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/risk" onSignOut={() => {}} />)
+    expect(screen.getByRole('heading', { name: /risk & deployment/i })).toBeInTheDocument()
+    // Risk sidebar item shows the amber "attention" dot before applying (no check)
+    await userEvent.click(screen.getAllByRole('button', { name: /apply deployment/i })[0])
+    // After applying, the activation control's outstanding list no longer includes "Risk limits"
+    const activate = screen.getByRole('button', { name: /activate/i })
+    expect(activate.getAttribute('title') ?? '').not.toMatch(/risk limits/i)
+  })
 })
