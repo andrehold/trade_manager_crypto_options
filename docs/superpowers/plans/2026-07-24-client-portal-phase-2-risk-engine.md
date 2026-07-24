@@ -685,7 +685,7 @@ describe('RiskPage', () => {
     expect(screen.getByText(/total value locked/i)).toBeInTheDocument()
     expect(screen.getByText('Delta Cash')).toBeInTheDocument()
     expect(screen.getByText('Gamma Cash')).toBeInTheDocument()
-    expect(screen.getByText(/on breach/i)).toBeInTheDocument()
+    expect(screen.getByText('on breach → rebalance')).toBeInTheDocument()
     expect(screen.getByText(/spot \+10%/i)).toBeInTheDocument()
   })
 
