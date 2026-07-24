@@ -25,4 +25,9 @@ describe('RiskPage', () => {
     expect(onApply).toHaveBeenCalledTimes(1)
     expect(onApply.mock.calls[0][0].capitalTvlBtc).toBeCloseTo(0.05)
   })
+
+  it('derives greek descriptors from the applied limits', () => {
+    render(<RiskPage limits={{ ...DEFAULT_RISK_LIMITS, gammaFloor: -15 }} onApply={() => {}} />)
+    expect(screen.getByText(/-15% < Γ%/)).toBeInTheDocument()
+  })
 })

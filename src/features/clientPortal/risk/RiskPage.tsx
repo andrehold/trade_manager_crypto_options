@@ -6,6 +6,7 @@ import { LimitGauge, TwoStageGauge } from './LimitGauge'
 import { StressMatrix } from './StressMatrix'
 
 const pctFmt = (n: number) => `${n > 0 ? '+' : ''}${n}%`
+const sp = pctFmt
 
 function Card({ title, sub, right, children, onApply, applyLabel }: {
   title: string; sub?: string; right?: React.ReactNode; children: React.ReactNode; onApply: () => void; applyLabel: string
@@ -121,8 +122,8 @@ export function RiskPage({ limits, onApply }: { limits: RiskLimits; onApply: (ne
             <Reading value={r.deltaPct} status={bandStatus(r.deltaPct, dBand.min, dBand.max)} />
           </div>
           <div className="mt-2.5 flex flex-wrap gap-2 font-mono text-[11px]">
-            <span className={`rounded-lg border px-2.5 py-1 ${regime === 'long' ? 'border-accent-500/40 bg-accent-500/15 text-accent-400' : 'border-border-default text-text-tertiary'}`}>Γ &gt; 0 → ±60%</span>
-            <span className={`rounded-lg border px-2.5 py-1 ${regime === 'short' ? 'border-accent-500/40 bg-accent-500/15 text-accent-400' : 'border-border-default text-text-tertiary'}`}>Γ &lt; 0 → ±10% · active</span>
+            <span className={`rounded-lg border px-2.5 py-1 ${regime === 'long' ? 'border-accent-500/40 bg-accent-500/15 text-accent-400' : 'border-border-default text-text-tertiary'}`}>Γ &gt; 0 → {sp(limits.deltaLongGamma.min)} … {sp(limits.deltaLongGamma.max)}{regime === 'long' ? ' · active' : ''}</span>
+            <span className={`rounded-lg border px-2.5 py-1 ${regime === 'short' ? 'border-accent-500/40 bg-accent-500/15 text-accent-400' : 'border-border-default text-text-tertiary'}`}>Γ &lt; 0 → {sp(limits.deltaShortGamma.min)} … {sp(limits.deltaShortGamma.max)}{regime === 'short' ? ' · active' : ''}</span>
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
             <BoundInput label="Γ<0 min" value={draft.deltaShortGamma.min} onChange={(n) => patch({ deltaShortGamma: { ...draft.deltaShortGamma, min: n } })} />
@@ -134,7 +135,7 @@ export function RiskPage({ limits, onApply }: { limits: RiskLimits; onApply: (ne
         <Row>
           <div className="flex flex-wrap items-center gap-2">
             <span className="type-subhead font-semibold text-text-primary">Gamma Cash <span className="font-normal text-text-tertiary">(per 1% move)</span></span>
-            <span className="font-mono text-[11px] text-text-secondary">−10% &lt; Γ% &lt; 0%</span>
+            <span className="font-mono text-[11px] text-text-secondary">{sp(limits.gammaFloor)} &lt; Γ% &lt; {sp(limits.gammaCap)}</span>
             <Reading value={r.gammaPct} status={bandStatus(r.gammaPct, limits.gammaFloor, limits.gammaCap)} />
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -147,7 +148,7 @@ export function RiskPage({ limits, onApply }: { limits: RiskLimits; onApply: (ne
         <Row>
           <div className="flex flex-wrap items-center gap-2">
             <span className="type-subhead font-semibold text-text-primary">Vega Cash <span className="font-normal text-text-tertiary">(per 1% IV)</span></span>
-            <span className="font-mono text-[11px] text-text-secondary">−0.5% &lt; V% &lt; +0.5%</span>
+            <span className="font-mono text-[11px] text-text-secondary">{sp(limits.vega.min)} &lt; V% &lt; {sp(limits.vega.max)}</span>
             <Reading value={r.vegaPct} status={bandStatus(r.vegaPct, limits.vega.min, limits.vega.max)} />
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -160,7 +161,7 @@ export function RiskPage({ limits, onApply }: { limits: RiskLimits; onApply: (ne
         <Row>
           <div className="flex flex-wrap items-center gap-2">
             <span className="type-subhead font-semibold text-text-primary">Theta Cash</span>
-            <span className="font-mono text-[11px] text-text-secondary">−2% &lt; Θ%</span>
+            <span className="font-mono text-[11px] text-text-secondary">{sp(limits.thetaFloor)} &lt; Θ%</span>
             <Reading value={r.thetaPct} status={bandStatus(r.thetaPct, limits.thetaFloor, tHi)} />
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
