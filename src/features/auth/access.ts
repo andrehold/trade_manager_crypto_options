@@ -74,8 +74,11 @@ export function resolveClientAccess(user: User | null): ClientAccess {
     ? ((user?.app_metadata as Record<string, unknown>).role as string)
     : null
   const roleIsAdmin = role ? role.trim().toLowerCase() === 'admin' : false
-  const allowlistEmpty = allowlist.length === 0
-  const isAdmin = roleIsAdmin || allowlistEmpty || allowlist.includes(userEmail ?? '')
+  // Fail closed: admin only when the user's app_metadata role is "admin" or the
+  // user's email is explicitly in VITE_SUPABASE_ADMIN_EMAILS. An empty/unset
+  // allowlist grants NOBODY admin (so a missing env var never exposes the admin
+  // desk to clients). Configure the allowlist (or set role=admin) to grant admin.
+  const isAdmin = roleIsAdmin || allowlist.includes(userEmail ?? '')
   const clientName = extractClientNameFromUser(user)
   const clientId = extractClientIdFromUser(user)
   return { isAdmin, clientName, clientId }
