@@ -28,7 +28,7 @@ function matches(e: AuditEvent, f: Filter): boolean {
 
 export function AuditLogPage({ events }: { events: AuditEvent[] }) {
   const [filter, setFilter] = React.useState<Filter>('all')
-  const shown = events.filter((e) => matches(e, filter))
+  const shown = events.filter((e) => matches(e, filter)).sort((a, b) => b.ts.localeCompare(a.ts))
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-2">
@@ -54,7 +54,7 @@ export function AuditLogPage({ events }: { events: AuditEvent[] }) {
             : shown.map((e) => (
               <div key={e.id} className="grid grid-cols-[176px_110px_128px_1fr] gap-3.5 border-t border-border-default px-4 py-2.5 font-mono text-xs first:border-t-0" style={{ minWidth: 640 }}>
                 <span className="text-text-tertiary">{e.ts.replace('T', ' ').replace(/\.\d+Z$/, 'Z')}</span>
-                <span className={e.actor === 'system' ? 'text-text-faint' : 'text-text-secondary'}>{e.actor === 'system' ? 'system' : 'R.Quandt'}</span>
+                <span className={e.actor === 'system' ? 'text-text-faint' : 'text-text-secondary'}>{e.actor === 'system' ? 'system' : 'R. Quandt'}</span>
                 <span className={`font-semibold ${TYPE_COLOR[e.type] ?? 'text-text-secondary'}`}>{e.type}</span>
                 <span className="truncate text-text-secondary">{e.detail}</span>
               </div>
