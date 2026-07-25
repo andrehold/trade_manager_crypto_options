@@ -17,6 +17,7 @@ import { KeysPage } from './pages/KeysPage'
 import { UpdatesPage } from './pages/UpdatesPage'
 import { AuditLogPage } from './pages/AuditLogPage'
 import { newEvent, SEED_AUDIT_EVENTS, type AuditEvent, type AuditType } from './audit'
+import { SAMPLE_POSITIONS, SAMPLE_MARKS } from './sampleData'
 
 const PAGE_TITLES: Record<PortalPage, string> = {
   dashboard: 'Dashboard', positions: 'Positions', appropriateness: 'Appropriateness',
@@ -30,6 +31,11 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const page = parsePortalPage(hash)
   const [active, setActive] = React.useState(false)
   const { positions, loading, error, reload } = useClientPositions(clientName)
+  // Fall back to clearly-labeled illustrative positions when the client has none yet,
+  // so the Dashboard/Positions pages demonstrate the UI instead of sitting empty.
+  const usingSample = !loading && !error && positions.length === 0
+  const shownPositions = usingSample ? SAMPLE_POSITIONS : positions
+  const shownMarks = usingSample ? SAMPLE_MARKS : undefined
   const [setupStatus, setSetupStatus] = React.useState<SetupStatus>(EMPTY_SETUP_STATUS)
   const [riskLimits, setRiskLimits] = React.useState<RiskLimits>(DEFAULT_RISK_LIMITS)
   const [auditEvents, setAuditEvents] = React.useState<AuditEvent[]>(SEED_AUDIT_EVENTS)
@@ -103,10 +109,20 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
               </div>
             ) : loading ? (
               <div className="grid place-items-center py-20"><Spinner className="h-6 w-6" /></div>
-            ) : page === 'positions' ? (
-              <PositionsPage positions={positions} onModify={(id) => appendAudit('POSITION', `modify requested · ${id}`)} onClose={(id) => appendAudit('POSITION', `manual close · ${id} · client override`)} />
             ) : (
-              <DashboardPage positions={positions} setupStatus={setupStatus} onNavigate={navigate} />
+              <div className="flex flex-col gap-4">
+                {usingSample && (
+                  <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border-default bg-bg-surface-2 px-4 py-2.5 type-caption text-text-secondary">
+                    <span className="rounded-full bg-status-info/15 px-2 py-0.5 text-[10.5px] font-semibold text-status-info">Sample data</span>
+                    Illustrative positions shown because no live positions are loaded yet — they update to your own once positions are available.
+                  </div>
+                )}
+                {page === 'positions' ? (
+                  <PositionsPage positions={shownPositions} marks={shownMarks} onModify={(id) => appendAudit('POSITION', `modify requested · ${id}`)} onClose={(id) => appendAudit('POSITION', `manual close · ${id} · client override`)} />
+                ) : (
+                  <DashboardPage positions={shownPositions} marks={shownMarks} setupStatus={setupStatus} onNavigate={navigate} />
+                )}
+              </div>
             )
           ) : (
             <div className="rounded-2xl border border-border-default bg-bg-surface-1 p-8 text-center type-subhead text-text-secondary">
