@@ -93,7 +93,7 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
           ) : page === 'updates' ? (
             <UpdatesPage onApprove={approveUpdate} />
           ) : page === 'audit' ? (
-            <AuditLogPage events={auditEvents} />
+            <AuditLogPage events={auditEvents} clientName={clientName} />
           ) : (page === 'dashboard' || page === 'positions') ? (
             error ? (
               <div className="rounded-2xl border border-status-danger/30 bg-status-danger/10 p-6 text-center">
