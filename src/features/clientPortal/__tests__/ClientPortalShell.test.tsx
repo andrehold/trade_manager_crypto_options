@@ -43,4 +43,24 @@ describe('ClientPortalShell', () => {
     const activate = screen.getByRole('button', { name: /activate/i })
     expect(activate.getAttribute('title') ?? '').not.toMatch(/risk limits/i)
   })
+
+  it('renders the audit log with seed entries', () => {
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/audit" onSignOut={() => {}} />)
+    expect(screen.getByRole('heading', { name: /audit log/i })).toBeInTheDocument()
+    expect(screen.getByText(/self-assessment completed & signed/i)).toBeInTheDocument()
+  })
+
+  it('enables activation after all four setup preconditions are met', async () => {
+    const base = { clientName: 'TwoPrime', program: 'Obsidian Core', onSignOut: () => {} }
+    const { rerender } = render(<ClientPortalShell {...base} hash="#/portal/appropriateness" />)
+    for (const cb of screen.getAllByRole('checkbox')) await userEvent.click(cb)
+    await userEvent.click(screen.getByRole('button', { name: /sign & complete/i }))
+    rerender(<ClientPortalShell {...base} hash="#/portal/strategy" />)
+    await userEvent.click(screen.getByRole('button', { name: /apply selection/i }))
+    rerender(<ClientPortalShell {...base} hash="#/portal/keys" />)
+    await userEvent.click(screen.getByRole('button', { name: /add key/i }))
+    rerender(<ClientPortalShell {...base} hash="#/portal/risk" />)
+    await userEvent.click(screen.getAllByRole('button', { name: /apply deployment/i })[0])
+    expect(screen.getByRole('button', { name: /^activate$/i })).toBeEnabled()
+  })
 })
