@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildSeries, equitySeries } from '../series'
+import { buildSeries, equitySeries, pnlSeries, greekSeries } from '../series'
 import type { PortfolioSummary } from '../../portfolio'
 
 const summary = (over: Partial<PortfolioSummary> = {}): PortfolioSummary => ({
@@ -26,5 +26,30 @@ describe('equitySeries', () => {
   it('ends at the summary equity', () => {
     const s = equitySeries(summary())
     expect(s[s.length - 1].v).toBe(0.0262)
+  })
+})
+
+describe('pnlSeries', () => {
+  it('ends at the summary totalPnl and has 30 points', () => {
+    const s = pnlSeries(summary({ totalPnl: 0.0081 }))
+    expect(s).toHaveLength(30)
+    expect(s[s.length - 1].v).toBe(0.0081)
+  })
+  it('ends at 0 when totalPnl is null', () => {
+    const s = pnlSeries(summary({ totalPnl: null }))
+    expect(s[s.length - 1].v).toBe(0)
+  })
+})
+
+describe('greekSeries', () => {
+  it('ends at the given value and has 30 points', () => {
+    const s = greekSeries('delta', 2.5)
+    expect(s).toHaveLength(30)
+    expect(s[s.length - 1].v).toBe(2.5)
+  })
+  it('is deterministic across two calls', () => {
+    const a = greekSeries('delta', 2.5)
+    const b = greekSeries('delta', 2.5)
+    expect(a).toEqual(b)
   })
 })
