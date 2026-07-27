@@ -22,7 +22,7 @@ export function LoginDoor({ role }: { role: Door }) {
             {admin ? 'admin.obsidiandesk.com' : 'app.obsidiandesk.com/login'}
           </span>
         </div>
-        <SupabaseLogin />
+        <SupabaseLogin role="client" />
         {!admin && (
           <p className="mt-4 rounded-lg border border-border-default bg-bg-surface-2 px-3 py-2.5 type-caption text-text-secondary">
             You control the software as a tool: you self-assess appropriateness, set every parameter, hold the exchange keys, and can deactivate at any time. It provides <strong className="text-text-primary">no advice</strong> or recommendation.

@@ -1,6 +1,8 @@
 import {
   positionUnrealizedPnL, positionGreeks,
-  type Position, type MarksMap,
+  getLegMarkRef, legUnrealizedPnL, legGreekExposure, daysTo,
+  toDeribitInstrument, toCoincallSymbol,
+  type Position, type Leg, type MarksMap,
 } from '@/utils'
 
 export type PortfolioSummary = {
@@ -61,6 +63,60 @@ export function portfolioSummary(positions: Position[], marks?: MarksMap): Portf
   const asset = positions[0]?.underlying ?? 'BTC'
 
   return { totalEquity, totalPnl, totalRealized, pnlPct, programName, exchange, asset, delta, gamma, theta, vega, hasAnyMarks }
+}
+
+export type LegSummaryRow = {
+  id: string
+  option: string
+  underlying: string
+  expiry: string
+  dte: number
+  netPremium: number
+  realizedPnl: number
+  unrealizedPnl: number | null
+  delta: number | null
+  asset: string
+}
+
+/** Venue-aware instrument name for a single leg, e.g. "BTC-31JUL26-54000-P". */
+function legInstrument(p: Position, leg: Leg): string {
+  const expiry = leg.expiry ?? p.expiryISO
+  const exchange = leg.exchange ?? p.exchange
+  if (exchange === 'coincall') return toCoincallSymbol(p.underlying, expiry, leg.strike, leg.optionType)
+  return toDeribitInstrument(p.underlying, expiry, leg.strike, leg.optionType)
+}
+
+/** Credit convention: short legs (sign -1) collect premium, long legs pay it — sums to position.netPremium. */
+function legNetPremium(leg: Leg): number {
+  return (leg.openLots ?? []).reduce((acc, lot) => acc - lot.sign * lot.qty * lot.price, 0)
+}
+
+/** One row per individual option across all positions (a "position" from the client's view). */
+export function legSummaryRows(positions: Position[], marks?: MarksMap): LegSummaryRow[] {
+  const rows: LegSummaryRow[] = []
+  for (const p of positions) {
+    for (const leg of p.legs) {
+      const expiry = leg.expiry ?? p.expiryISO
+      const ref = marks ? getLegMarkRef(p, leg) : null
+      const info = ref ? marks?.[ref.key] : undefined
+      const multiplier = ref?.exchange === 'coincall' ? info?.multiplier : ref?.defaultMultiplier
+      const unrealizedPnl = info?.price != null ? legUnrealizedPnL(leg, info.price, multiplier) : null
+      const delta = info?.greeks?.delta != null ? legGreekExposure(leg, info.greeks.delta, multiplier) : null
+      rows.push({
+        id: leg.key,
+        option: legInstrument(p, leg),
+        underlying: p.underlying,
+        expiry,
+        dte: daysTo(expiry),
+        netPremium: legNetPremium(leg),
+        realizedPnl: leg.realizedPnl,
+        unrealizedPnl,
+        delta,
+        asset: p.underlying,
+      })
+    }
+  }
+  return rows
 }
 
 export function positionSummaryRows(positions: Position[], marks?: MarksMap): PositionSummaryRow[] {

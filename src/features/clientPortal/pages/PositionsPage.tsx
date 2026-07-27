@@ -1,21 +1,19 @@
 import React from 'react'
 import { DataTable, type Column } from '@/components/ui'
 import { Button } from '@/components/ui/Button'
-import { StatusBadge } from '@/components/StatusBadge'
 import { fmtPremium, fmtNumber, type Position, type MarksMap } from '@/utils'
-import { positionSummaryRows, type PositionSummaryRow } from '../portfolio'
+import { legSummaryRows, type LegSummaryRow } from '../portfolio'
 
 export function PositionsPage({ positions, marks, onModify, onClose }: {
   positions: Position[]; marks?: MarksMap; onModify: (id: string) => void; onClose: (id: string) => void
 }) {
-  const rows = React.useMemo(() => positionSummaryRows(positions, marks), [positions, marks])
+  const rows = React.useMemo(() => legSummaryRows(positions, marks), [positions, marks])
 
-  const columns: Column<PositionSummaryRow>[] = React.useMemo(() => [
-    { key: 'strategy', header: 'Structure', render: (r) => <span className="font-medium text-text-primary">{r.strategy}</span> },
+  const columns: Column<LegSummaryRow>[] = React.useMemo(() => [
+    { key: 'option', header: 'Option', render: (r) => <span className="font-medium text-text-primary">{r.option}</span> },
     { key: 'underlying', header: 'Underlying', render: (r) => r.underlying },
     { key: 'expiry', header: 'Expiry', render: (r) => r.expiry },
     { key: 'dte', header: 'DTE', align: 'right', render: (r) => r.dte },
-    { key: 'status', header: 'Status', render: (r) => <StatusBadge status={r.status} /> },
     { key: 'netPremium', header: 'Net Prem', align: 'right', render: (r) => fmtPremium(r.netPremium, r.asset) },
     { key: 'realizedPnl', header: 'Real. PnL', align: 'right', render: (r) => <span className={r.realizedPnl < 0 ? 'text-status-danger' : 'text-status-success'}>{fmtPremium(r.realizedPnl, r.asset)}</span> },
     { key: 'unrealizedPnl', header: 'uPnL', align: 'right', render: (r) => r.unrealizedPnl == null ? '—' : <span className={r.unrealizedPnl < 0 ? 'text-status-danger' : 'text-status-success'}>{fmtPremium(r.unrealizedPnl, r.asset)}</span> },

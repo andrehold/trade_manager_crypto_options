@@ -5,11 +5,24 @@ import { Button } from '@/components/ui/Button';
 import { Surface } from '@/components/ui/Surface';
 import { Eye, EyeOff, LogIn, Zap } from 'lucide-react';
 
-const DEV_EMAIL = import.meta.env.VITE_DEV_EMAIL as string | undefined;
-const DEV_PASSWORD = import.meta.env.VITE_DEV_PASSWORD as string | undefined;
-const hasDevCreds = !!(DEV_EMAIL && DEV_PASSWORD);
+// Dev-fill credentials, keyed by which login door is showing. The admin desk and
+// the client portal need different accounts (a client must NOT be in the admin
+// allowlist), so each door prefills its own pair. These only autofill the form —
+// the account itself must exist in Supabase.
+const DEV_CREDS = {
+  admin: {
+    email: import.meta.env.VITE_DEV_EMAIL as string | undefined,
+    password: import.meta.env.VITE_DEV_PASSWORD as string | undefined,
+  },
+  client: {
+    email: import.meta.env.VITE_DEV_CLIENT_EMAIL as string | undefined,
+    password: import.meta.env.VITE_DEV_CLIENT_PASSWORD as string | undefined,
+  },
+} as const;
 
-export function SupabaseLogin() {
+export function SupabaseLogin({ role = 'admin' }: { role?: 'admin' | 'client' } = {}) {
+  const devCreds = DEV_CREDS[role];
+  const hasDevCreds = !!(devCreds.email && devCreds.password);
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
@@ -105,13 +118,13 @@ export function SupabaseLogin() {
             type="button"
             disabled={submitting}
             onClick={() => {
-              setEmail(DEV_EMAIL!);
-              setPassword(DEV_PASSWORD!);
+              setEmail(devCreds.email!);
+              setPassword(devCreds.password!);
             }}
             className="flex items-center gap-1.5 self-center rounded-full bg-amber-500/15 border border-amber-500/25 px-3 py-1 text-caption font-medium text-amber-400 transition-colors hover:bg-amber-500/25 disabled:opacity-45"
           >
             <Zap className="h-3 w-3" />
-            Dev fill
+            Dev fill · {role}
           </button>
         )}
       </form>
