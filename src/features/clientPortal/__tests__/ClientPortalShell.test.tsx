@@ -3,6 +3,17 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useClientPositions } from '../useClientPositions'
 
+// Recharts' ResponsiveContainer measures 0×0 in jsdom; give it a fixed size.
+vi.mock('recharts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('recharts')>()
+  return {
+    ...actual,
+    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
+      <div style={{ width: 600, height: 200 }}>{children}</div>
+    ),
+  }
+})
+
 vi.mock('../useClientPositions')
 const mockedHook = vi.mocked(useClientPositions)
 
