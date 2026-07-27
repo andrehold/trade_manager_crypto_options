@@ -1,6 +1,13 @@
 import { Check, AlertCircle } from 'lucide-react'
 import { fmtPremium, type Position, type MarksMap } from '@/utils'
 import { portfolioSummary } from '../portfolio'
+import { denominationFor } from '../dashboard/denomination'
+import { illustrativeMargin } from '../dashboard/marginModel'
+import { GreeksStrip } from '../components/GreeksStrip'
+import { MarginUsageCard } from '../components/MarginUsageCard'
+import { EquityChart } from '../components/charts/EquityChart'
+import { PnlChart } from '../components/charts/PnlChart'
+import { GreekCharts } from '../components/charts/GreekCharts'
 import type { SetupStatus } from '../setupStatus'
 import type { PortalPage } from '../routing'
 
@@ -20,10 +27,21 @@ function Kpi({ label, value, tone }: { label: string; value: string; tone?: 'pos
   )
 }
 
+function SectionHead({ title, meta }: { title: string; meta?: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <h2 className="type-subhead font-semibold text-text-primary">{title}</h2>
+      {meta && <span className="type-caption uppercase tracking-wide text-text-tertiary">{meta}</span>}
+    </div>
+  )
+}
+
 export function DashboardPage({ positions, marks, setupStatus, onNavigate }: {
   positions: Position[]; marks?: MarksMap; setupStatus: SetupStatus; onNavigate: (page: PortalPage) => void
 }) {
   const s = portfolioSummary(positions, marks)
+  const denom = denominationFor(s)
+  const margin = illustrativeMargin(s, denom)
   const pnl = s.totalPnl
   return (
     <div className="flex flex-col gap-5">
@@ -31,12 +49,37 @@ export function DashboardPage({ positions, marks, setupStatus, onNavigate }: {
         <h1 className="type-title-l font-bold text-text-primary">Dashboard</h1>
         <p className="mt-1 type-subhead text-text-secondary">Your portfolio at a glance. Everything here runs on the parameters you set.</p>
       </div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+
+      <div data-testid="kpi-row" className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Kpi label="Equity" value={fmtPremium(s.totalEquity, s.asset)} />
         <Kpi label="PnL" value={pnl != null ? fmtPremium(pnl, s.asset) : '—'} tone={pnl != null ? (pnl < 0 ? 'neg' : 'pos') : undefined} />
         <Kpi label="PnL %" value={s.pnlPct != null ? `${s.pnlPct.toFixed(2)}%` : '—'} tone={s.pnlPct != null ? (s.pnlPct < 0 ? 'neg' : 'pos') : undefined} />
         <Kpi label="Open positions" value={String(positions.length)} />
       </div>
+
+      <div className="flex flex-col gap-3">
+        <SectionHead title="Portfolio Greeks" meta="live · net exposure" />
+        <GreeksStrip summary={s} denom={denom} />
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <SectionHead title="Margin Usage" meta="initial margin utilization" />
+        <MarginUsageCard margin={margin} />
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <SectionHead title="Performance" meta="last 30 days" />
+        <div className="grid gap-3 md:grid-cols-2">
+          <EquityChart summary={s} denom={denom} />
+          <PnlChart summary={s} denom={denom} />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <SectionHead title="Greek Exposure Over Time" meta="one panel per greek · last 30 days" />
+        <GreekCharts summary={s} denom={denom} />
+      </div>
+
       <div className="rounded-2xl border border-border-default bg-bg-surface-1 p-5">
         <div className="type-caption uppercase tracking-wide text-text-tertiary">Setup status</div>
         <div className="mt-3 flex flex-wrap gap-2.5">
