@@ -49,6 +49,14 @@ describe('dashboard charts', () => {
     expect(screen.queryByTestId('pnl-chart')).not.toBeInTheDocument()
   })
 
+  it('GreekCharts honors theta digits (1 decimal) instead of the fmtNumber 2-decimal cap', () => {
+    // theta=-0.0001234 * spotUsd(100000) = -12.34 -> digits=1 should render "-12.3", not "-12.34"
+    const wide: PortfolioSummary = { ...summary, theta: -0.0001234 }
+    render(<GreekCharts summary={wide} denom={denom} />)
+    expect(screen.getByText(/−12\.3(?!\d)/)).toBeInTheDocument()
+    expect(screen.queryByText(/−12\.34/)).not.toBeInTheDocument()
+  })
+
   it('GreekCharts shows an honest placeholder when there are no live marks', () => {
     const noMarks: PortfolioSummary = {
       ...summary, hasAnyMarks: false, delta: 0, gamma: 0, theta: 0, vega: 0, totalPnl: null,

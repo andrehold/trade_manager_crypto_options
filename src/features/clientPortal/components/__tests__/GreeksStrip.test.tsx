@@ -29,4 +29,12 @@ describe('GreeksStrip', () => {
     expect(screen.queryByText(/\+0\.0000/)).not.toBeInTheDocument()
     expect(screen.getAllByText('—').length).toBe(4)
   })
+
+  it('honors vega/theta digits (1 decimal) instead of the fmtNumber 2-decimal cap', () => {
+    // vega=0.0001234 * spotUsd(100000) = 12.34 -> digits=1 should render "+12.3", not "+12.34"
+    const wide: PortfolioSummary = { ...summary, vega: 0.0001234 }
+    render(<GreeksStrip summary={wide} denom={denominationFor(wide)} />)
+    expect(screen.getByText('+12.3')).toBeInTheDocument()
+    expect(screen.queryByText('+12.34')).not.toBeInTheDocument()
+  })
 })

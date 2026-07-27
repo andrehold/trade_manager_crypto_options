@@ -1,4 +1,4 @@
-import { fmtGreek, fmtNumber } from '@/utils'
+import { fmtGreek } from '@/utils'
 import type { PortfolioSummary } from '../../portfolio'
 import type { DashboardDenomination } from '../../dashboard/denomination'
 import { greekDisplays, type GreekTone } from '../../dashboard/greeksDisplay'
@@ -16,7 +16,7 @@ const SWATCH: Record<GreekTone, string> = {
 function fmtGreekValue(value: number, digits: number): string {
   const sign = value < 0 ? '−' : '+'
   const abs = Math.abs(value)
-  const body = digits >= 4 ? fmtGreek(abs, digits) : fmtNumber(abs)
+  const body = digits >= 4 ? fmtGreek(abs, digits) : abs.toLocaleString(undefined, { maximumFractionDigits: digits })
   return `${sign}${body}`
 }
 
