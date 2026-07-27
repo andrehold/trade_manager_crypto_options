@@ -47,6 +47,8 @@ describe('DashboardPage', () => {
     expect(within(kpiRow).getByText('Equity')).toBeInTheDocument()
     expect(within(kpiRow).getByText('Open positions')).toBeInTheDocument()
     expect(screen.getByText('Setup status')).toBeInTheDocument()
+    // A specific setup item label renders inside the Setup status card.
+    expect(screen.getByText('Appropriateness signed')).toBeInTheDocument()
     // No Margin Balance KPI tile — the margin balance amount only appears inside the margin card.
     expect(within(kpiRow).queryByText('Margin Balance')).toBeNull()
   })
