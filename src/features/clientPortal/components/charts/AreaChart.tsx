@@ -18,6 +18,10 @@ type Props = {
 export function AreaChart({ data, color, height = 176, zeroBaseline, formatValue, testId }: Props) {
   const gid = useId().replace(/:/g, '')
   const crossesZero = zeroBaseline && data.some((d) => d.v < 0) && data.some((d) => d.v > 0)
+  const zeroDomain: [number, number] = [
+    Math.min(0, ...data.map((d) => d.v)),
+    Math.max(0, ...data.map((d) => d.v)),
+  ]
   return (
     <div data-testid={testId} style={{ width: '100%', height }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -30,7 +34,7 @@ export function AreaChart({ data, color, height = 176, zeroBaseline, formatValue
           </defs>
           <CartesianGrid stroke={CHART_COLORS.grid} vertical={false} />
           <XAxis dataKey="t" hide />
-          <YAxis hide domain={zeroBaseline ? ['auto', 'auto'] : ['dataMin', 'dataMax']} />
+          <YAxis hide domain={zeroBaseline ? zeroDomain : ['dataMin', 'dataMax']} />
           {crossesZero && <ReferenceLine y={0} stroke={CHART_COLORS.zero} strokeDasharray="3 3" />}
           <Tooltip
             cursor={{ stroke: 'rgba(255,255,255,0.28)' }}
@@ -41,6 +45,7 @@ export function AreaChart({ data, color, height = 176, zeroBaseline, formatValue
           <Area
             type="monotone" dataKey="v" stroke={color} strokeWidth={2}
             fill={`url(#${gid})`} dot={false}
+            baseValue={zeroBaseline ? 0 : undefined}
             activeDot={{ r: 3.5, fill: color, stroke: '#101013', strokeWidth: 1.5 }}
           />
         </RAreaChart>
