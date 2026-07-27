@@ -36,7 +36,7 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
       recharts:
-        specifier: ^2.15.4
+        specifier: ^2.12.7
         version: 2.15.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       zod:
         specifier: ^4.1.12
