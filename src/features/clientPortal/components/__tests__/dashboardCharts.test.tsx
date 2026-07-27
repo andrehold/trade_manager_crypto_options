@@ -41,4 +41,20 @@ describe('dashboard charts', () => {
     }
     expect(screen.getByTestId('greek-chart-delta')).toBeInTheDocument()
   })
+
+  it('PnlChart shows an honest placeholder when there is no PnL yet', () => {
+    const noPnl: PortfolioSummary = { ...summary, totalPnl: null, hasAnyMarks: false }
+    render(<PnlChart summary={noPnl} denom={denom} />)
+    expect(screen.getByText(/awaiting live marks/i)).toBeInTheDocument()
+    expect(screen.queryByTestId('pnl-chart')).not.toBeInTheDocument()
+  })
+
+  it('GreekCharts shows an honest placeholder when there are no live marks', () => {
+    const noMarks: PortfolioSummary = {
+      ...summary, hasAnyMarks: false, delta: 0, gamma: 0, theta: 0, vega: 0, totalPnl: null,
+    }
+    render(<GreekCharts summary={noMarks} denom={denom} />)
+    expect(screen.getAllByText(/awaiting live marks/i).length).toBe(4)
+    expect(screen.queryByTestId('greek-chart-delta')).not.toBeInTheDocument()
+  })
 })

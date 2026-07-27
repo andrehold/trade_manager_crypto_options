@@ -30,14 +30,25 @@ export function GreekCharts({ summary, denom }: { summary: PortfolioSummary; den
             <span className={`inline-block h-2 w-2 rounded-sm ${SWATCH[g.tone]}`} />
             {g.label}
           </div>
-          <div className={`mt-1.5 type-subhead font-bold ${g.value < 0 ? 'text-status-danger' : 'text-status-success'}`}>
-            {fmtGreekValue(g.value, g.digits)} <span className="type-caption font-medium text-text-tertiary">{g.unit}</span>
-          </div>
-          <AreaChart
-            data={greekSeries(g.key, g.value)} color={TONE_HEX[g.tone]} height={82}
-            zeroBaseline={g.key === 'delta' || g.key === 'theta'}
-            formatValue={(v) => fmtGreekValue(v, g.digits)} testId={`greek-chart-${g.key}`}
-          />
+          {summary.hasAnyMarks ? (
+            <>
+              <div className={`mt-1.5 type-subhead font-bold ${g.value < 0 ? 'text-status-danger' : 'text-status-success'}`}>
+                {fmtGreekValue(g.value, g.digits)} <span className="type-caption font-medium text-text-tertiary">{g.unit}</span>
+              </div>
+              <AreaChart
+                data={greekSeries(g.key, g.value)} color={TONE_HEX[g.tone]} height={82}
+                zeroBaseline={g.key === 'delta' || g.key === 'theta'}
+                formatValue={(v) => fmtGreekValue(v, g.digits)} testId={`greek-chart-${g.key}`}
+              />
+            </>
+          ) : (
+            <>
+              <div className="mt-1.5 type-subhead font-bold text-text-tertiary">
+                — <span className="type-caption font-medium text-text-tertiary">{g.unit}</span>
+              </div>
+              <div className="mt-2 type-caption text-text-tertiary">Awaiting live marks</div>
+            </>
+          )}
         </div>
       ))}
     </div>

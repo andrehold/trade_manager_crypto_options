@@ -28,9 +28,13 @@ export function GreeksStrip({ summary, denom }: { summary: PortfolioSummary; den
             </div>
             <div className="min-w-0">
               <div className="type-caption uppercase tracking-wide text-text-tertiary">{g.label}</div>
-              <div className={`type-subhead font-bold ${g.value < 0 ? 'text-status-danger' : 'text-status-success'}`}>
-                {fmtValue(g.value, g.digits)}
-              </div>
+              {summary.hasAnyMarks ? (
+                <div className={`type-subhead font-bold ${g.value < 0 ? 'text-status-danger' : 'text-status-success'}`}>
+                  {fmtValue(g.value, g.digits)}
+                </div>
+              ) : (
+                <div className="type-subhead font-bold text-text-tertiary">—</div>
+              )}
               <div className="type-caption text-text-tertiary">{g.unit}</div>
             </div>
           </div>

@@ -20,4 +20,13 @@ describe('GreeksStrip', () => {
     expect(screen.getByText(/BTC equivalent/)).toBeInTheDocument()
     expect(screen.getAllByText(/USD per/).length).toBe(2)
   })
+
+  it('shows an em-dash for each greek value when there are no live marks', () => {
+    const noMarks: PortfolioSummary = {
+      ...summary, hasAnyMarks: false, delta: 0, gamma: 0, theta: 0, vega: 0, totalPnl: null,
+    }
+    render(<GreeksStrip summary={noMarks} denom={denominationFor(noMarks)} />)
+    expect(screen.queryByText(/\+0\.0000/)).not.toBeInTheDocument()
+    expect(screen.getAllByText('—').length).toBe(4)
+  })
 })
