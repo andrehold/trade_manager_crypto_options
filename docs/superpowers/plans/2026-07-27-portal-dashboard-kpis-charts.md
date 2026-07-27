@@ -1030,7 +1030,7 @@ git commit -m "feat(portal): IM-utilization margin usage card"
 ```tsx
 // src/features/clientPortal/pages/__tests__/DashboardPage.test.tsx
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { DashboardPage } from '../DashboardPage'
 import { SAMPLE_POSITIONS, SAMPLE_MARKS } from '../../sampleData'
 import { EMPTY_SETUP_STATUS } from '../../setupStatus'
@@ -1072,11 +1072,14 @@ describe('DashboardPage', () => {
         setupStatus={EMPTY_SETUP_STATUS} onNavigate={() => {}}
       />,
     )
-    expect(screen.getByText('Equity')).toBeInTheDocument()
-    expect(screen.getByText('Open positions')).toBeInTheDocument()
+    // Scope the KPI assertions to the KPI row — "Equity"/"Margin Balance" text also
+    // appears in the charts / margin card, so a page-wide query would be ambiguous.
+    const kpiRow = screen.getByTestId('kpi-row')
+    expect(within(kpiRow).getByText('Equity')).toBeInTheDocument()
+    expect(within(kpiRow).getByText('Open positions')).toBeInTheDocument()
     expect(screen.getByText('Setup status')).toBeInTheDocument()
-    // No Margin Balance KPI tile — margin balance only appears inside the margin card.
-    expect(screen.queryByText('Margin Balance')).toBeNull()
+    // No Margin Balance KPI tile — the margin balance amount only appears inside the margin card.
+    expect(within(kpiRow).queryByText('Margin Balance')).toBeNull()
   })
 })
 ```
@@ -1144,7 +1147,7 @@ export function DashboardPage({ positions, marks, setupStatus, onNavigate }: {
         <p className="mt-1 type-subhead text-text-secondary">Your portfolio at a glance. Everything here runs on the parameters you set.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div data-testid="kpi-row" className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Kpi label="Equity" value={fmtPremium(s.totalEquity, s.asset)} />
         <Kpi label="PnL" value={pnl != null ? fmtPremium(pnl, s.asset) : '—'} tone={pnl != null ? (pnl < 0 ? 'neg' : 'pos') : undefined} />
         <Kpi label="PnL %" value={s.pnlPct != null ? `${s.pnlPct.toFixed(2)}%` : '—'} tone={s.pnlPct != null ? (s.pnlPct < 0 ? 'neg' : 'pos') : undefined} />
