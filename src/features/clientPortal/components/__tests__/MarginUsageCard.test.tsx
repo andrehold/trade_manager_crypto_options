@@ -12,7 +12,7 @@ describe('MarginUsageCard', () => {
   it('leads with the IM utilization percent and lists the amounts in the margin currency', () => {
     render(<MarginUsageCard margin={margin} />)
     expect(screen.getByText('31%')).toBeInTheDocument()
-    expect(screen.getByText(/Initial Margin/)).toBeInTheDocument()
+    expect(screen.getByText('Initial Margin Utilization')).toBeInTheDocument()
     expect(screen.getByText(/2,620 USDC/)).toBeInTheDocument()
     expect(screen.getByText(/1,802 USDC/)).toBeInTheDocument()
   })

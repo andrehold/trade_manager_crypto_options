@@ -20,10 +20,12 @@ export function MarginUsageCard({ margin }: { margin: MarginUsage }) {
     <div className="rounded-2xl border border-border-default bg-bg-surface-1 p-5">
       <div className="grid gap-6 md:grid-cols-[1.4fr_1fr] md:items-center">
         <div>
-          <div className="type-caption uppercase tracking-wide text-text-tertiary">IM Utilization</div>
+          <div className="type-caption uppercase tracking-wide text-text-tertiary">Initial Margin Utilization</div>
           <div className={`mt-1.5 type-title-m font-bold ${margin.zone === 'high' ? 'text-status-danger' : 'text-text-primary'}`}>{pct}%</div>
           <div
             data-testid="im-gauge" data-zone={margin.zone}
+            role="meter" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}
+            aria-label="Initial margin utilization"
             className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-bg-surface-3"
           >
             <div className={`h-full rounded-full ${FILL[margin.zone]}`} style={{ width: `${Math.min(100, pct)}%` }} />
