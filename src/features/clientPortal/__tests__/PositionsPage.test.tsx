@@ -26,6 +26,6 @@ describe('PositionsPage', () => {
     const closeButtons = screen.getAllByRole('button', { name: /^close$/i })
     expect(closeButtons).toHaveLength(2)
     await userEvent.click(closeButtons[0])
-    expect(onClose).toHaveBeenCalledWith('p1-54000-P')
+    expect(onClose).toHaveBeenCalledWith('p1')
   })
 })
