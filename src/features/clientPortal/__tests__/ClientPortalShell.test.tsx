@@ -74,4 +74,11 @@ describe('ClientPortalShell', () => {
     await userEvent.click(screen.getAllByRole('button', { name: /apply deployment/i })[0])
     expect(screen.getByRole('button', { name: /^activate$/i })).toBeEnabled()
   })
+
+  it('flags a position as Modified after the client clicks Modify', async () => {
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/positions" onSignOut={() => {}} />)
+    expect(screen.queryByText('Modified')).toBeNull()
+    await userEvent.click(screen.getAllByRole('button', { name: /^modify$/i })[0])
+    expect(screen.getAllByText('Modified').length).toBeGreaterThan(0)
+  })
 })

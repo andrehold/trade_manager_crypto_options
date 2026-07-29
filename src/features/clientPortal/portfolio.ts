@@ -67,6 +67,7 @@ export function portfolioSummary(positions: Position[], marks?: MarksMap): Portf
 
 export type LegSummaryRow = {
   id: string
+  positionId: string
   option: string
   underlying: string
   expiry: string
@@ -104,6 +105,7 @@ export function legSummaryRows(positions: Position[], marks?: MarksMap): LegSumm
       const delta = info?.greeks?.delta != null ? legGreekExposure(leg, info.greeks.delta, multiplier) : null
       rows.push({
         id: leg.key,
+        positionId: p.id,
         option: legInstrument(p, leg),
         underlying: p.underlying,
         expiry,

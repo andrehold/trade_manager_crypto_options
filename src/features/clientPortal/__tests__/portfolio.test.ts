@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { portfolioSummary, positionSummaryRows } from '../portfolio'
+import { portfolioSummary, positionSummaryRows, legSummaryRows } from '../portfolio'
 import type { Position } from '@/utils'
 
 function pos(partial: Partial<Position>): Position {
@@ -31,5 +31,22 @@ describe('positionSummaryRows', () => {
     expect(rows[0].strategy).toBe('Iron Condor')
     expect(rows[0].unrealizedPnl).toBeNull()
     expect(rows[0].delta).toBeNull()
+  })
+})
+
+describe('legSummaryRows', () => {
+  it('threads the parent positionId onto every leg row', () => {
+    const p = pos({
+      id: 'pos-42',
+      legs: [{
+        key: 'pos-42-90000-P', strike: 90000, optionType: 'P',
+        openLots: [{ qty: 1, price: 0.004, sign: -1 }], realizedPnl: 0, netPremium: 0,
+        qtyNet: -1, trades: [], expiry: '2025-12-14',
+      }],
+    })
+    const rows = legSummaryRows([p])
+    expect(rows).toHaveLength(1)
+    expect(rows[0].positionId).toBe('pos-42')
+    expect(rows[0].id).toBe('pos-42-90000-P')
   })
 })

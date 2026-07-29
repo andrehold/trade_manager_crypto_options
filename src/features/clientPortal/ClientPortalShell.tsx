@@ -7,6 +7,7 @@ import { ResponsibilityStrip } from './ResponsibilityStrip'
 import { DashboardPage } from './pages/DashboardPage'
 import { PositionsPage } from './pages/PositionsPage'
 import { useClientPositions } from './useClientPositions'
+import { usePositionInterventions } from './usePositionInterventions'
 import { parsePortalPage, portalHash, type PortalPage } from './routing'
 import { RiskPage } from './risk/RiskPage'
 import { DEFAULT_RISK_LIMITS, type RiskLimits } from './risk/riskLimits'
@@ -31,6 +32,7 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const page = parsePortalPage(hash)
   const [active, setActive] = React.useState(false)
   const { positions, loading, error, reload } = useClientPositions(clientName)
+  const { interventions, record } = usePositionInterventions(clientName)
   // Fall back to clearly-labeled illustrative positions when the client has none yet,
   // so the Dashboard/Positions pages demonstrate the UI instead of sitting empty.
   const usingSample = !loading && !error && positions.length === 0
@@ -118,7 +120,19 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
                   </div>
                 )}
                 {page === 'positions' ? (
-                  <PositionsPage positions={shownPositions} marks={shownMarks} onModify={(id) => appendAudit('POSITION', `modify requested · ${id}`)} onClose={(id) => appendAudit('POSITION', `manual close · ${id} · client override`)} />
+                  <PositionsPage
+                    positions={shownPositions}
+                    marks={shownMarks}
+                    interventions={interventions}
+                    onModify={(positionId) => {
+                      record(positionId, 'modify', { persist: !usingSample })
+                      appendAudit('POSITION', `modify requested · ${positionId}`)
+                    }}
+                    onClose={(positionId) => {
+                      record(positionId, 'close', { persist: !usingSample })
+                      appendAudit('POSITION', `manual close · ${positionId} · client override`)
+                    }}
+                  />
                 ) : (
                   <DashboardPage positions={shownPositions} marks={shownMarks} setupStatus={setupStatus} onNavigate={navigate} />
                 )}

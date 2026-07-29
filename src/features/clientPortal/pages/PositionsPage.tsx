@@ -2,15 +2,31 @@ import React from 'react'
 import { DataTable, type Column } from '@/components/ui'
 import { Button } from '@/components/ui/Button'
 import { fmtPremium, fmtNumber, type Position, type MarksMap } from '@/utils'
+import type { InterventionMap } from '@/lib/positions/interventions'
+import { InterventionBadge } from '../components/InterventionBadge'
 import { legSummaryRows, type LegSummaryRow } from '../portfolio'
 
-export function PositionsPage({ positions, marks, onModify, onClose }: {
-  positions: Position[]; marks?: MarksMap; onModify: (id: string) => void; onClose: (id: string) => void
+const EMPTY_INTERVENTIONS: InterventionMap = new Map()
+
+export function PositionsPage({ positions, marks, interventions = EMPTY_INTERVENTIONS, onModify, onClose }: {
+  positions: Position[]; marks?: MarksMap; interventions?: InterventionMap
+  onModify: (positionId: string) => void; onClose: (positionId: string) => void
 }) {
   const rows = React.useMemo(() => legSummaryRows(positions, marks), [positions, marks])
 
   const columns: Column<LegSummaryRow>[] = React.useMemo(() => [
-    { key: 'option', header: 'Option', render: (r) => <span className="font-medium text-text-primary">{r.option}</span> },
+    {
+      key: 'option', header: 'Option',
+      render: (r) => {
+        const iv = interventions.get(r.positionId)
+        return (
+          <span className="inline-flex items-center">
+            <span className="font-medium text-text-primary">{r.option}</span>
+            {iv && <InterventionBadge intervention={iv} />}
+          </span>
+        )
+      },
+    },
     { key: 'underlying', header: 'Underlying', render: (r) => r.underlying },
     { key: 'expiry', header: 'Expiry', render: (r) => r.expiry },
     { key: 'dte', header: 'DTE', align: 'right', render: (r) => r.dte },
@@ -22,12 +38,12 @@ export function PositionsPage({ positions, marks, onModify, onClose }: {
       key: 'control', header: 'Control', align: 'right',
       render: (r) => (
         <div className="flex justify-end gap-2">
-          <Button size="sm" variant="ghost" onClick={() => onModify(r.id)}>Modify</Button>
-          <Button size="sm" variant="danger" onClick={() => onClose(r.id)}>Close</Button>
+          <Button size="sm" variant="ghost" onClick={() => onModify(r.positionId)}>Modify</Button>
+          <Button size="sm" variant="danger" onClick={() => onClose(r.positionId)}>Close</Button>
         </div>
       ),
     },
-  ], [onModify, onClose])
+  ], [interventions, onModify, onClose])
 
   return (
     <div className="flex flex-col gap-5">
