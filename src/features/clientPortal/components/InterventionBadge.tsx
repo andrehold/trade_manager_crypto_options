@@ -1,4 +1,3 @@
-import React from 'react'
 import type { PositionIntervention } from '@/lib/positions/interventions'
 
 const SOURCE_ACTION_LABELS: Record<string, string> = {
@@ -27,7 +26,7 @@ export function formatInterventionTooltip(intervention: PositionIntervention): s
 export function InterventionBadge({ intervention }: { intervention: PositionIntervention }) {
   return (
     <span
-      className="ml-2 inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-[10.5px] font-semibold text-amber-600 cursor-help"
+      className="ml-2 inline-flex items-center rounded-full bg-status-warning/15 px-2 py-0.5 text-[10.5px] font-semibold text-status-warning cursor-help"
       title={formatInterventionTooltip(intervention)}
     >
       Modified
