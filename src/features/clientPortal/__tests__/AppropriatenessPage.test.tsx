@@ -17,6 +17,6 @@ describe('AppropriatenessPage', () => {
     for (const cb of screen.getAllByRole('checkbox')) await userEvent.click(cb)
     expect(sign).toBeEnabled()
     await userEvent.click(sign)
-    expect(onSign).toHaveBeenCalledOnce()
+    expect(onSign).toHaveBeenCalledWith(expect.objectContaining({ attestations: [true, true, true] }))
   })
 })

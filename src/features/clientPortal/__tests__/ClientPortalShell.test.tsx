@@ -17,6 +17,14 @@ vi.mock('recharts', async (importOriginal) => {
 vi.mock('../useClientPositions')
 const mockedHook = vi.mocked(useClientPositions)
 
+vi.mock('../useSetupPersistence', () => ({
+  useSetupPersistence: vi.fn(() => ({
+    loaded: true, appropriatenessSigned: false, selectedStrategy: null,
+    saveAppropriateness: vi.fn(async () => ({ ok: true })),
+    saveStrategy: vi.fn(async () => ({ ok: true })),
+  })),
+}))
+
 beforeEach(() => {
   mockedHook.mockReturnValue({ positions: [], loading: false, error: null, reload: vi.fn() })
 })
@@ -80,5 +88,21 @@ describe('ClientPortalShell', () => {
     expect(screen.queryByText('Modified')).toBeNull()
     await userEvent.click(screen.getAllByRole('button', { name: /^modify$/i })[0])
     expect(screen.getAllByText('Modified').length).toBeGreaterThan(0)
+  })
+
+  it('seeds the appropriateness precondition from persisted state on load', async () => {
+    const mod = await import('../useSetupPersistence')
+    // mockReturnValue (not -Once): the shell calls the hook on every render, and the
+    // seeding effect's setSetupStatus triggers a re-render — a one-shot override would
+    // fall back to the unsigned default on that next call and immediately undo the seed.
+    // The real hook stays stable across re-renders (it's backed by useState), so this
+    // matches actual behavior rather than weakening the assertion.
+    vi.mocked(mod.useSetupPersistence).mockReturnValue({
+      loaded: true, appropriatenessSigned: true, selectedStrategy: 'Range Condor',
+      saveAppropriateness: vi.fn(async () => ({ ok: true })),
+      saveStrategy: vi.fn(async () => ({ ok: true })),
+    })
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/appropriateness" onSignOut={() => {}} />)
+    await screen.findByText(/completed & signed/i)
   })
 })

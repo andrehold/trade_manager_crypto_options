@@ -8,6 +8,8 @@ import { DashboardPage } from './pages/DashboardPage'
 import { PositionsPage } from './pages/PositionsPage'
 import { useClientPositions } from './useClientPositions'
 import { usePositionInterventions } from './usePositionInterventions'
+import { useSetupPersistence } from './useSetupPersistence'
+import { type AppropriatenessInput } from '@/lib/clientPortal/appropriatenessRepo'
 import { parsePortalPage, portalHash, type PortalPage } from './routing'
 import { RiskPage } from './risk/RiskPage'
 import { DEFAULT_RISK_LIMITS, type RiskLimits } from './risk/riskLimits'
@@ -33,6 +35,13 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const [active, setActive] = React.useState(false)
   const { positions, loading, error, reload } = useClientPositions(clientName)
   const { interventions, record } = usePositionInterventions(clientName)
+  const persistence = useSetupPersistence(clientName)
+  const [persistError, setPersistError] = React.useState<string | null>(null)
+  React.useEffect(() => {
+    if (!persistence.loaded) return
+    setSetupStatus((s) => ({ ...s, appropriateness: persistence.appropriatenessSigned, strategy: !!persistence.selectedStrategy }))
+    if (persistence.selectedStrategy) setStrategy(persistence.selectedStrategy)
+  }, [persistence.loaded, persistence.appropriatenessSigned, persistence.selectedStrategy])
   // Fall back to clearly-labeled illustrative positions when the client has none yet,
   // so the Dashboard/Positions pages demonstrate the UI instead of sitting empty.
   const usingSample = !loading && !error && positions.length === 0
@@ -50,15 +59,22 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
     setSetupStatus((s) => ({ ...s, riskLimits: true }))
     appendAudit('RISK_PARAM', 'risk & greek limits applied')
   }, [appendAudit])
-  const signAppropriateness = React.useCallback(() => {
+  const signAppropriateness = React.useCallback(async (payload: { answers: number[]; attestations: boolean[] }) => {
+    const input: AppropriatenessInput = { answers: payload.answers, attestations: payload.attestations, signedName: clientName }
+    const r = await persistence.saveAppropriateness(input)
+    if (!r.ok) { setPersistError(r.error ?? 'Could not save your assessment. Please try again.'); return }
+    setPersistError(null)
     setSetupStatus((s) => ({ ...s, appropriateness: true }))
     appendAudit('APPROPRIATENESS', 'self-assessment completed & signed')
-  }, [appendAudit])
-  const selectStrategy = React.useCallback((name: string) => {
+  }, [persistence, appendAudit, clientName])
+  const selectStrategy = React.useCallback(async (name: string) => {
+    const r = await persistence.saveStrategy(name)
+    if (!r.ok) { setPersistError(r.error ?? 'Could not save your strategy selection. Please try again.'); return }
+    setPersistError(null)
     setStrategy(name)
     setSetupStatus((s) => ({ ...s, strategy: true }))
     appendAudit('STRATEGY', `selected module "${name}"`)
-  }, [appendAudit])
+  }, [persistence, appendAudit])
   const addTradingKey = React.useCallback((label: string) => {
     setSetupStatus((s) => ({ ...s, tradingKey: true }))
     appendAudit('API_KEY', `added ${label} · scope trade,read · no-withdraw`)
@@ -90,6 +106,11 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
         </header>
         <ResponsibilityStrip onOpenAudit={() => navigate('audit')} />
         <main className="mx-auto w-full max-w-[1140px] flex-1 px-6 py-6">
+          {persistError && (
+            <div className="mb-4 rounded-xl border border-status-danger/30 bg-status-danger/10 px-4 py-2.5 type-caption text-status-danger">
+              {persistError}
+            </div>
+          )}
           {page === 'risk' ? (
             <RiskPage limits={riskLimits} onApply={applyRisk} />
           ) : page === 'appropriateness' ? (

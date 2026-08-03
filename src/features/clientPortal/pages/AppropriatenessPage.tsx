@@ -15,7 +15,7 @@ const ATTESTATIONS = [
   'I retain sole responsibility for the investment decision and for regulatory compliance.',
 ]
 
-export function AppropriatenessPage({ signed, onSign }: { signed: boolean; onSign: () => void }) {
+export function AppropriatenessPage({ signed, onSign }: { signed: boolean; onSign: (payload: { answers: number[]; attestations: boolean[] }) => void }) {
   const [answers, setAnswers] = React.useState<number[]>(QUESTIONS.map((q) => q.answer))
   const [checked, setChecked] = React.useState<boolean[]>(ATTESTATIONS.map(() => false))
   const allAttested = checked.every(Boolean)
@@ -64,7 +64,7 @@ export function AppropriatenessPage({ signed, onSign }: { signed: boolean; onSig
           ))}
           <div className="mt-1 flex items-center justify-between border-t border-border-default pt-3">
             <span className="font-mono type-caption text-text-tertiary">signed by R. Quandt · on completion</span>
-            <Button variant="primary" size="sm" disabled={!allAttested} onClick={onSign}>Sign &amp; complete assessment</Button>
+            <Button variant="primary" size="sm" disabled={!allAttested} onClick={() => onSign({ answers, attestations: checked })}>Sign &amp; complete assessment</Button>
           </div>
         </div>
       </div>
