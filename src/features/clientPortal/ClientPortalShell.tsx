@@ -36,12 +36,6 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const { positions, loading, error, reload } = useClientPositions(clientName)
   const { interventions, record } = usePositionInterventions(clientName)
   const persistence = useSetupPersistence(clientName)
-  const [persistError, setPersistError] = React.useState<string | null>(null)
-  React.useEffect(() => {
-    if (!persistence.loaded) return
-    setSetupStatus((s) => ({ ...s, appropriateness: persistence.appropriatenessSigned, strategy: !!persistence.selectedStrategy }))
-    if (persistence.selectedStrategy) setStrategy(persistence.selectedStrategy)
-  }, [persistence.loaded, persistence.appropriatenessSigned, persistence.selectedStrategy])
   // Fall back to clearly-labeled illustrative positions when the client has none yet,
   // so the Dashboard/Positions pages demonstrate the UI instead of sitting empty.
   const usingSample = !loading && !error && positions.length === 0
@@ -51,6 +45,13 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const [riskLimits, setRiskLimits] = React.useState<RiskLimits>(DEFAULT_RISK_LIMITS)
   const [auditEvents, setAuditEvents] = React.useState<AuditEvent[]>(SEED_AUDIT_EVENTS)
   const [strategy, setStrategy] = React.useState<string | null>(null)
+  const [persistError, setPersistError] = React.useState<string | null>(null)
+  // Seed the two persisted preconditions from the DB once the fetch resolves.
+  React.useEffect(() => {
+    if (!persistence.loaded) return
+    setSetupStatus((s) => ({ ...s, appropriateness: persistence.appropriatenessSigned, strategy: !!persistence.selectedStrategy }))
+    if (persistence.selectedStrategy) setStrategy(persistence.selectedStrategy)
+  }, [persistence.loaded, persistence.appropriatenessSigned, persistence.selectedStrategy])
   const appendAudit = React.useCallback((type: AuditType, detail: string, actor: 'client' | 'system' = 'client') => {
     setAuditEvents((evs) => [newEvent(type, detail, actor), ...evs])
   }, [])
@@ -66,7 +67,7 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
     setPersistError(null)
     setSetupStatus((s) => ({ ...s, appropriateness: true }))
     appendAudit('APPROPRIATENESS', 'self-assessment completed & signed')
-  }, [persistence, appendAudit, clientName])
+  }, [persistence.saveAppropriateness, appendAudit, clientName])
   const selectStrategy = React.useCallback(async (name: string) => {
     const r = await persistence.saveStrategy(name)
     if (!r.ok) { setPersistError(r.error ?? 'Could not save your strategy selection. Please try again.'); return }
@@ -74,7 +75,7 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
     setStrategy(name)
     setSetupStatus((s) => ({ ...s, strategy: true }))
     appendAudit('STRATEGY', `selected module "${name}"`)
-  }, [persistence, appendAudit])
+  }, [persistence.saveStrategy, appendAudit])
   const addTradingKey = React.useCallback((label: string) => {
     setSetupStatus((s) => ({ ...s, tradingKey: true }))
     appendAudit('API_KEY', `added ${label} · scope trade,read · no-withdraw`)

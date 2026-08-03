@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useClientPositions } from '../useClientPositions'
+import { useSetupPersistence } from '../useSetupPersistence'
 
 // Recharts' ResponsiveContainer measures 0×0 in jsdom; give it a fixed size.
 vi.mock('recharts', async (importOriginal) => {
@@ -17,16 +18,18 @@ vi.mock('recharts', async (importOriginal) => {
 vi.mock('../useClientPositions')
 const mockedHook = vi.mocked(useClientPositions)
 
-vi.mock('../useSetupPersistence', () => ({
-  useSetupPersistence: vi.fn(() => ({
-    loaded: true, appropriatenessSigned: false, selectedStrategy: null,
-    saveAppropriateness: vi.fn(async () => ({ ok: true })),
-    saveStrategy: vi.fn(async () => ({ ok: true })),
-  })),
-}))
+vi.mock('../useSetupPersistence', () => ({ useSetupPersistence: vi.fn() }))
+
+const baseSetupPersistence = {
+  loaded: true, appropriatenessSigned: false, selectedStrategy: null,
+  saveAppropriateness: vi.fn(async () => ({ ok: true })),
+  saveStrategy: vi.fn(async () => ({ ok: true })),
+}
 
 beforeEach(() => {
   mockedHook.mockReturnValue({ positions: [], loading: false, error: null, reload: vi.fn() })
+  // Reset the persistence mock every test so a per-test override never leaks forward.
+  vi.mocked(useSetupPersistence).mockReturnValue(baseSetupPersistence)
 })
 
 import { ClientPortalShell } from '../ClientPortalShell'
@@ -91,13 +94,10 @@ describe('ClientPortalShell', () => {
   })
 
   it('seeds the appropriateness precondition from persisted state on load', async () => {
-    const mod = await import('../useSetupPersistence')
-    // mockReturnValue (not -Once): the shell calls the hook on every render, and the
-    // seeding effect's setSetupStatus triggers a re-render — a one-shot override would
-    // fall back to the unsigned default on that next call and immediately undo the seed.
-    // The real hook stays stable across re-renders (it's backed by useState), so this
-    // matches actual behavior rather than weakening the assertion.
-    vi.mocked(mod.useSetupPersistence).mockReturnValue({
+    // Stable override (reset by beforeEach): the shell calls the hook every render and the
+    // seeding effect triggers a re-render, so the returned object must stay stable — matching
+    // the real hook (backed by useState) rather than weakening the assertion.
+    vi.mocked(useSetupPersistence).mockReturnValue({
       loaded: true, appropriatenessSigned: true, selectedStrategy: 'Range Condor',
       saveAppropriateness: vi.fn(async () => ({ ok: true })),
       saveStrategy: vi.fn(async () => ({ ok: true })),
