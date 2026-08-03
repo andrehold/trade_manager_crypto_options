@@ -86,3 +86,16 @@ select email,
 from auth.users
 where email = 'client@example.com';
 ```
+
+## Admin DB access (client-portal persistence)
+
+Client-portal tables (`appropriateness_assessments`, `strategy_selections`, …) use per-client RLS.
+A client can only read/write their own rows. For an **admin** to read all clients' rows via RLS, the
+admin user must carry `app_metadata.role = 'admin'` — the `VITE_SUPABASE_ADMIN_EMAILS` allowlist is
+browser-only and invisible to Postgres. Set it in the Supabase SQL editor:
+
+```sql
+update auth.users
+set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"admin"}'::jsonb
+where email = 'you@example.com';
+```
