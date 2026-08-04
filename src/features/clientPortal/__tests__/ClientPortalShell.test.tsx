@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useClientPositions } from '../useClientPositions'
 import { useSetupPersistence } from '../useSetupPersistence'
+import { DEFAULT_RISK_LIMITS } from '../risk/riskLimits'
 
 // Recharts' ResponsiveContainer measures 0×0 in jsdom; give it a fixed size.
 vi.mock('recharts', async (importOriginal) => {
@@ -121,5 +122,29 @@ describe('ClientPortalShell', () => {
     expect(await screen.findByText(/network down/i)).toBeInTheDocument()
     // Precondition not flipped: the header pill still reads "Not completed".
     expect(screen.getByText(/not completed/i)).toBeInTheDocument()
+  })
+
+  it('seeds the risk precondition from persisted risk limits on load', async () => {
+    vi.mocked(useSetupPersistence).mockReturnValue({
+      ...baseSetupPersistence, savedRiskLimits: DEFAULT_RISK_LIMITS,
+    })
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/risk" onSignOut={() => {}} />)
+    // With the risk precondition seeded, the disabled activate button's outstanding list omits "Risk limits".
+    await waitFor(() => {
+      const activate = screen.getByRole('button', { name: /^activate$/i })
+      expect(activate.getAttribute('title') ?? '').not.toMatch(/risk limits/i)
+    })
+  })
+
+  it('shows an error banner and does not flip the risk precondition when the save fails', async () => {
+    vi.mocked(useSetupPersistence).mockReturnValue({
+      ...baseSetupPersistence, saveRiskLimits: vi.fn(async () => ({ ok: false, error: 'risk save failed' })),
+    })
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/risk" onSignOut={() => {}} />)
+    await userEvent.click(screen.getAllByRole('button', { name: /apply deployment/i })[0])
+    expect(await screen.findByText(/risk save failed/i)).toBeInTheDocument()
+    // Precondition not flipped: the activate button still lists "Risk limits" as outstanding.
+    const activate = screen.getByRole('button', { name: /^activate$/i })
+    expect(activate.getAttribute('title') ?? '').toMatch(/risk limits/i)
   })
 })

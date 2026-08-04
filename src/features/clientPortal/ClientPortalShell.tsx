@@ -42,26 +42,36 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const shownPositions = usingSample ? SAMPLE_POSITIONS : positions
   const shownMarks = usingSample ? SAMPLE_MARKS : undefined
   const [setupStatus, setSetupStatus] = React.useState<SetupStatus>(EMPTY_SETUP_STATUS)
-  const [riskLimits, setRiskLimits] = React.useState<RiskLimits>(DEFAULT_RISK_LIMITS)
+  const [riskLimits, setRiskLimits] = React.useState<RiskLimits | null>(null)
+  const effectiveLimits = riskLimits ?? DEFAULT_RISK_LIMITS
   const [auditEvents, setAuditEvents] = React.useState<AuditEvent[]>(SEED_AUDIT_EVENTS)
   const [strategy, setStrategy] = React.useState<string | null>(null)
   const [persistError, setPersistError] = React.useState<string | null>(null)
-  // Seed the two persisted preconditions from the DB once the fetch resolves. Promote-only
+  // Seed the three persisted preconditions from the DB once the fetch resolves. Promote-only
   // (`s.x || …`) so a precondition the client set locally before the fetch resolved is never
   // reverted by a stale "no record" seed.
   React.useEffect(() => {
     if (!persistence.loaded) return
-    setSetupStatus((s) => ({ ...s, appropriateness: s.appropriateness || persistence.appropriatenessSigned, strategy: s.strategy || !!persistence.selectedStrategy }))
+    setSetupStatus((s) => ({
+      ...s,
+      appropriateness: s.appropriateness || persistence.appropriatenessSigned,
+      strategy: s.strategy || !!persistence.selectedStrategy,
+      riskLimits: s.riskLimits || !!persistence.savedRiskLimits,
+    }))
     if (persistence.selectedStrategy) setStrategy((cur) => cur ?? persistence.selectedStrategy)
-  }, [persistence.loaded, persistence.appropriatenessSigned, persistence.selectedStrategy])
+    if (persistence.savedRiskLimits) setRiskLimits((cur) => cur ?? persistence.savedRiskLimits)
+  }, [persistence.loaded, persistence.appropriatenessSigned, persistence.selectedStrategy, persistence.savedRiskLimits])
   const appendAudit = React.useCallback((type: AuditType, detail: string, actor: 'client' | 'system' = 'client') => {
     setAuditEvents((evs) => [newEvent(type, detail, actor), ...evs])
   }, [])
-  const applyRisk = React.useCallback((next: RiskLimits) => {
+  const applyRisk = React.useCallback(async (next: RiskLimits) => {
+    const r = await persistence.saveRiskLimits(next)
+    if (!r.ok) { setPersistError(r.error ?? 'Could not save your risk limits. Please try again.'); return }
+    setPersistError(null)
     setRiskLimits(next)
     setSetupStatus((s) => ({ ...s, riskLimits: true }))
     appendAudit('RISK_PARAM', 'risk & greek limits applied')
-  }, [appendAudit])
+  }, [persistence.saveRiskLimits, appendAudit])
   const signAppropriateness = React.useCallback(async (payload: { answers: number[]; attestations: boolean[] }) => {
     const input: AppropriatenessInput = { answers: payload.answers, attestations: payload.attestations, signedName: clientName }
     const r = await persistence.saveAppropriateness(input)
@@ -115,7 +125,7 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
             </div>
           )}
           {page === 'risk' ? (
-            <RiskPage limits={riskLimits} onApply={applyRisk} />
+            <RiskPage limits={effectiveLimits} onApply={applyRisk} />
           ) : page === 'appropriateness' ? (
             <AppropriatenessPage signed={setupStatus.appropriateness} onSign={signAppropriateness} />
           ) : page === 'strategy' ? (
