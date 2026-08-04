@@ -46,11 +46,13 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const [auditEvents, setAuditEvents] = React.useState<AuditEvent[]>(SEED_AUDIT_EVENTS)
   const [strategy, setStrategy] = React.useState<string | null>(null)
   const [persistError, setPersistError] = React.useState<string | null>(null)
-  // Seed the two persisted preconditions from the DB once the fetch resolves.
+  // Seed the two persisted preconditions from the DB once the fetch resolves. Promote-only
+  // (`s.x || …`) so a precondition the client set locally before the fetch resolved is never
+  // reverted by a stale "no record" seed.
   React.useEffect(() => {
     if (!persistence.loaded) return
-    setSetupStatus((s) => ({ ...s, appropriateness: persistence.appropriatenessSigned, strategy: !!persistence.selectedStrategy }))
-    if (persistence.selectedStrategy) setStrategy(persistence.selectedStrategy)
+    setSetupStatus((s) => ({ ...s, appropriateness: s.appropriateness || persistence.appropriatenessSigned, strategy: s.strategy || !!persistence.selectedStrategy }))
+    if (persistence.selectedStrategy) setStrategy((cur) => cur ?? persistence.selectedStrategy)
   }, [persistence.loaded, persistence.appropriatenessSigned, persistence.selectedStrategy])
   const appendAudit = React.useCallback((type: AuditType, detail: string, actor: 'client' | 'system' = 'client') => {
     setAuditEvents((evs) => [newEvent(type, detail, actor), ...evs])
