@@ -21,9 +21,10 @@ const mockedHook = vi.mocked(useClientPositions)
 vi.mock('../useSetupPersistence', () => ({ useSetupPersistence: vi.fn() }))
 
 const baseSetupPersistence = {
-  loaded: true, appropriatenessSigned: false, selectedStrategy: null,
+  loaded: true, appropriatenessSigned: false, selectedStrategy: null, savedRiskLimits: null,
   saveAppropriateness: vi.fn(async () => ({ ok: true })),
   saveStrategy: vi.fn(async () => ({ ok: true })),
+  saveRiskLimits: vi.fn(async () => ({ ok: true })),
 }
 
 beforeEach(() => {
@@ -98,9 +99,10 @@ describe('ClientPortalShell', () => {
     // seeding effect triggers a re-render, so the returned object must stay stable — matching
     // the real hook (backed by useState) rather than weakening the assertion.
     vi.mocked(useSetupPersistence).mockReturnValue({
-      loaded: true, appropriatenessSigned: true, selectedStrategy: 'Range Condor',
+      loaded: true, appropriatenessSigned: true, selectedStrategy: 'Range Condor', savedRiskLimits: null,
       saveAppropriateness: vi.fn(async () => ({ ok: true })),
       saveStrategy: vi.fn(async () => ({ ok: true })),
+      saveRiskLimits: vi.fn(async () => ({ ok: true })),
     })
     render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/appropriateness" onSignOut={() => {}} />)
     await screen.findByText(/completed & signed/i)
@@ -108,9 +110,10 @@ describe('ClientPortalShell', () => {
 
   it('shows an error banner and does not sign when the save fails', async () => {
     vi.mocked(useSetupPersistence).mockReturnValue({
-      loaded: true, appropriatenessSigned: false, selectedStrategy: null,
+      loaded: true, appropriatenessSigned: false, selectedStrategy: null, savedRiskLimits: null,
       saveAppropriateness: vi.fn(async () => ({ ok: false, error: 'network down' })),
       saveStrategy: vi.fn(async () => ({ ok: true })),
+      saveRiskLimits: vi.fn(async () => ({ ok: true })),
     })
     render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/appropriateness" onSignOut={() => {}} />)
     for (const cb of screen.getAllByRole('checkbox')) await userEvent.click(cb)
