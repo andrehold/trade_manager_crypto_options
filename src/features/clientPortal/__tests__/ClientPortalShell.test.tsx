@@ -125,8 +125,14 @@ describe('ClientPortalShell', () => {
   })
 
   it('seeds the risk precondition from persisted risk limits on load', async () => {
+    // netDeltaMaxPct: 37 is distinctive (default is 10, and no other RiskLimits field defaults
+    // to 37) and RiskPage renders it both as text ("|Δ| ≤ 37% TVL") and as the "Net delta cap"
+    // input's value, so finding it proves riskLimits was actually set to the persisted object —
+    // not left null and silently falling back to DEFAULT_RISK_LIMITS (which the precondition
+    // check alone can't distinguish).
+    const seededRiskLimits = { ...DEFAULT_RISK_LIMITS, netDeltaMaxPct: 37 }
     vi.mocked(useSetupPersistence).mockReturnValue({
-      ...baseSetupPersistence, savedRiskLimits: DEFAULT_RISK_LIMITS,
+      ...baseSetupPersistence, savedRiskLimits: seededRiskLimits,
     })
     render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/risk" onSignOut={() => {}} />)
     // With the risk precondition seeded, the disabled activate button's outstanding list omits "Risk limits".
@@ -134,6 +140,9 @@ describe('ClientPortalShell', () => {
       const activate = screen.getByRole('button', { name: /^activate$/i })
       expect(activate.getAttribute('title') ?? '').not.toMatch(/risk limits/i)
     })
+    // The seeded *values* were restored (not just the precondition flag): the distinctive
+    // netDeltaMaxPct surfaces in the "Net delta cap" input.
+    expect(screen.getByLabelText('Net delta cap')).toHaveValue(37)
   })
 
   it('shows an error banner and does not flip the risk precondition when the save fails', async () => {
