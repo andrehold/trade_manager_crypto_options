@@ -11,27 +11,37 @@ vi.mock('@/lib/clientPortal/appropriatenessRepo', () => ({
 vi.mock('@/lib/clientPortal/riskLimitsRepo', () => ({
   fetchLatestRiskLimits: vi.fn(), saveRiskLimits: vi.fn(),
 }))
+vi.mock('@/lib/clientPortal/exchangeKeysRepo', () => ({
+  fetchActiveKeys: vi.fn(), addExchangeKey: vi.fn(), revokeExchangeKey: vi.fn(),
+}))
 
 import { fetchLatestStrategy, saveStrategy } from '@/lib/clientPortal/strategyRepo'
 import { fetchLatestAppropriateness, saveAppropriateness } from '@/lib/clientPortal/appropriatenessRepo'
 import { fetchLatestRiskLimits, saveRiskLimits as saveRiskLimitsRepo } from '@/lib/clientPortal/riskLimitsRepo'
+import { fetchActiveKeys, addExchangeKey as addKeyRepo, revokeExchangeKey as revokeKeyRepo } from '@/lib/clientPortal/exchangeKeysRepo'
 import { DEFAULT_RISK_LIMITS } from '@/features/clientPortal/risk/riskLimits'
 import { useSetupPersistence } from '../useSetupPersistence'
 
 const fApp = vi.mocked(fetchLatestAppropriateness)
 const fStr = vi.mocked(fetchLatestStrategy)
 const fRisk = vi.mocked(fetchLatestRiskLimits)
+const fKeys = vi.mocked(fetchActiveKeys)
 const sApp = vi.mocked(saveAppropriateness)
 const sStr = vi.mocked(saveStrategy)
 const sRisk = vi.mocked(saveRiskLimitsRepo)
+const aKey = vi.mocked(addKeyRepo)
+const rKey = vi.mocked(revokeKeyRepo)
 
 beforeEach(() => {
   fApp.mockResolvedValue({ ok: true, record: null })
   fStr.mockResolvedValue({ ok: true, module: null })
   fRisk.mockResolvedValue({ ok: true, limits: null })
+  fKeys.mockResolvedValue({ ok: true, keys: [] })
   sApp.mockResolvedValue({ ok: true, record: { signedName: 'R', validUntil: null, ts: 't' } })
   sStr.mockResolvedValue({ ok: true })
   sRisk.mockResolvedValue({ ok: true })
+  aKey.mockResolvedValue({ ok: true, keyRef: 'kref-1' })
+  rKey.mockResolvedValue({ ok: true })
 })
 
 describe('useSetupPersistence', () => {
@@ -72,6 +82,29 @@ describe('useSetupPersistence', () => {
     await waitFor(() => expect(result.current.loaded).toBe(true))
     const r = await result.current.saveRiskLimits(DEFAULT_RISK_LIMITS)
     expect(sRisk).toHaveBeenCalledWith(expect.anything(), 'TwoPrime', DEFAULT_RISK_LIMITS)
+    expect(r).toEqual({ ok: true })
+  })
+
+  it('seeds activeKeys from a fetched fold', async () => {
+    fKeys.mockResolvedValue({ ok: true, keys: [{ keyRef: 'a', venue: 'Deribit', label: 'main', fingerprint: null, scopes: 'trade,read', noWithdrawal: true, ts: '1' }] })
+    const { result } = renderHook(() => useSetupPersistence('TwoPrime'))
+    await waitFor(() => expect(result.current.loaded).toBe(true))
+    expect(result.current.activeKeys.map((k) => k.keyRef)).toEqual(['a'])
+  })
+
+  it('addExchangeKey delegates to the repo and returns its result', async () => {
+    const { result } = renderHook(() => useSetupPersistence('TwoPrime'))
+    await waitFor(() => expect(result.current.loaded).toBe(true))
+    const r = await result.current.addExchangeKey({ venue: 'Deribit', label: 'main', fingerprint: null, noWithdrawal: true })
+    expect(aKey).toHaveBeenCalledWith(expect.anything(), 'TwoPrime', { venue: 'Deribit', label: 'main', fingerprint: null, noWithdrawal: true })
+    expect(r).toEqual({ ok: true, keyRef: 'kref-1' })
+  })
+
+  it('revokeExchangeKey delegates to the repo and returns its result', async () => {
+    const { result } = renderHook(() => useSetupPersistence('TwoPrime'))
+    await waitFor(() => expect(result.current.loaded).toBe(true))
+    const r = await result.current.revokeExchangeKey('a')
+    expect(rKey).toHaveBeenCalledWith(expect.anything(), 'TwoPrime', 'a')
     expect(r).toEqual({ ok: true })
   })
 })
