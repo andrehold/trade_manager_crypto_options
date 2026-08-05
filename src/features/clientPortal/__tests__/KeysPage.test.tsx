@@ -27,6 +27,12 @@ describe('KeysPage', () => {
     expect(onAddKey).toHaveBeenCalledWith({ venue: 'Deribit', label: 'Deribit — main', fingerprint: null, noWithdrawal: true })
   })
 
+  it('bounds the fingerprint input to 12 characters so it cannot hold a full API key', async () => {
+    render(<KeysPage keys={[]} onAddKey={() => {}} onRevokeKey={() => {}} />)
+    await userEvent.click(screen.getByRole('button', { name: /add key/i }))
+    expect(screen.getByLabelText('Fingerprint (optional)')).toHaveAttribute('maxlength', '12')
+  })
+
   it('renders an active key and revokes it by keyRef', async () => {
     const onRevokeKey = vi.fn()
     render(<KeysPage keys={[KEY]} onAddKey={() => {}} onRevokeKey={onRevokeKey} />)

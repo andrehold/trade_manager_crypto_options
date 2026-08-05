@@ -62,7 +62,7 @@ export function KeysPage({ keys, onAddKey, onRevokeKey }: {
               <input className={field} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Deribit — main" />
             </label>
             <label className="flex flex-col gap-1 type-caption text-text-tertiary">Fingerprint (optional)
-              <input className={field} value={fingerprint} onChange={(e) => setFingerprint(e.target.value)} placeholder="last 6 chars" />
+              <input className={field} value={fingerprint} onChange={(e) => setFingerprint(e.target.value)} placeholder="last 6 chars" maxLength={12} />
             </label>
           </div>
           <label className="flex items-center gap-2 type-caption text-text-secondary">

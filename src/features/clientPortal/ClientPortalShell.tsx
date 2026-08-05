@@ -107,10 +107,11 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
     const r = await persistence.revokeExchangeKey(keyRef)
     if (!r.ok) { setPersistError(r.error ?? 'Could not revoke your key. Please try again.'); return }
     setPersistError(null)
+    const revoked = (exchangeKeys ?? []).find((k) => k.keyRef === keyRef)
     const next = (exchangeKeys ?? []).filter((k) => k.keyRef !== keyRef)
     setExchangeKeys(next)
     setSetupStatus((s) => ({ ...s, tradingKey: next.length > 0 }))
-    appendAudit('API_KEY', `revoked exchange key`)
+    appendAudit('API_KEY', revoked ? `revoked ${revoked.venue} key "${revoked.label}"` : `revoked exchange key "${keyRef}"`)
   }, [persistence.revokeExchangeKey, exchangeKeys, appendAudit])
   const approveUpdate = React.useCallback((ver: string) => {
     appendAudit('UPDATE', `reviewed & approved ${ver} → installed`)

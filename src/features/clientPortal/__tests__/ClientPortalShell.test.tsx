@@ -206,4 +206,19 @@ describe('ClientPortalShell', () => {
     const activateAfter = screen.getByRole('button', { name: /^activate$/i })
     expect(activateAfter.getAttribute('title') ?? '').toMatch(/trading api key/i)
   })
+
+  it('shows an error banner and keeps the key when the revoke fails', async () => {
+    vi.mocked(useSetupPersistence).mockReturnValue({
+      ...baseSetupPersistence,
+      activeKeys: [{ keyRef: 'r1', venue: 'Deribit', label: 'Only — key', fingerprint: null, scopes: 'trade,read', noWithdrawal: true, ts: '1' }],
+      revokeExchangeKey: vi.fn(async () => ({ ok: false, error: 'revoke failed' })),
+    })
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/keys" onSignOut={() => {}} />)
+    await userEvent.click(screen.getByRole('button', { name: /revoke/i }))
+    expect(await screen.findByText(/revoke failed/i)).toBeInTheDocument()
+    // Key retained, precondition NOT demoted (activate title still doesn't list it as outstanding).
+    expect(screen.getByText('Only — key')).toBeInTheDocument()
+    const activate = screen.getByRole('button', { name: /^activate$/i })
+    expect(activate.getAttribute('title') ?? '').not.toMatch(/trading api key/i)
+  })
 })
