@@ -5,6 +5,7 @@ import { fetchLatestAppropriateness, saveAppropriateness as saveApprRow, type Ap
 import { fetchLatestRiskLimits, saveRiskLimits as saveRiskLimitsRow } from '@/lib/clientPortal/riskLimitsRepo'
 import { fetchActiveKeys, addExchangeKey as addKeyRow, revokeExchangeKey as revokeKeyRow, type ExchangeKey, type AddKeyInput } from '@/lib/clientPortal/exchangeKeysRepo'
 import { fetchActivationState, saveActivation as saveActivationRow } from '@/lib/clientPortal/activationRepo'
+import { fetchApprovedVersions, saveUpdateApproval as saveUpdateApprovalRow } from '@/lib/clientPortal/updatesRepo'
 import type { RiskLimits } from '@/features/clientPortal/risk/riskLimits'
 
 type SaveResult = { ok: boolean; error?: string }
@@ -16,18 +17,20 @@ export function useSetupPersistence(clientName: string) {
   const [savedRiskLimits, setSavedRiskLimits] = React.useState<RiskLimits | null>(null)
   const [activeKeys, setActiveKeys] = React.useState<ExchangeKey[]>([])
   const [persistedActive, setPersistedActive] = React.useState(false)
+  const [approvedVersions, setApprovedVersions] = React.useState<string[]>([])
 
   React.useEffect(() => {
     if (!hasSupabaseClient()) { setLoaded(true); return }
     let ignore = false
     ;(async () => {
       const supabase = getSupabaseClient()
-      const [appr, strat, risk, keys, activation] = await Promise.all([
+      const [appr, strat, risk, keys, activation, updates] = await Promise.all([
         fetchLatestAppropriateness(supabase, clientName),
         fetchLatestStrategy(supabase, clientName),
         fetchLatestRiskLimits(supabase, clientName),
         fetchActiveKeys(supabase, clientName),
         fetchActivationState(supabase, clientName),
+        fetchApprovedVersions(supabase, clientName),
       ])
       if (ignore) return
       if (appr.ok && appr.record) setAppropriatenessSigned(true)
@@ -35,6 +38,7 @@ export function useSetupPersistence(clientName: string) {
       if (risk.ok && risk.limits) setSavedRiskLimits(risk.limits)
       if (keys.ok) setActiveKeys(keys.keys)
       if (activation.ok) setPersistedActive(activation.active)
+      if (updates.ok) setApprovedVersions(updates.versions)
       setLoaded(true)
     })()
     return () => { ignore = true }
@@ -76,5 +80,11 @@ export function useSetupPersistence(clientName: string) {
     return r.ok ? { ok: true } : { ok: false, error: r.error }
   }, [clientName])
 
-  return { loaded, appropriatenessSigned, selectedStrategy, savedRiskLimits, activeKeys, persistedActive, saveAppropriateness, saveStrategy, saveRiskLimits, addExchangeKey, revokeExchangeKey, saveActivation }
+  const saveUpdateApproval = React.useCallback(async (version: string): Promise<SaveResult> => {
+    if (!hasSupabaseClient()) return { ok: true }
+    const r = await saveUpdateApprovalRow(getSupabaseClient(), clientName, version)
+    return r.ok ? { ok: true } : { ok: false, error: r.error }
+  }, [clientName])
+
+  return { loaded, appropriatenessSigned, selectedStrategy, savedRiskLimits, activeKeys, persistedActive, approvedVersions, saveAppropriateness, saveStrategy, saveRiskLimits, addExchangeKey, revokeExchangeKey, saveActivation, saveUpdateApproval }
 }

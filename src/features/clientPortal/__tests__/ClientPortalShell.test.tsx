@@ -24,13 +24,14 @@ vi.mock('../useSetupPersistence', () => ({ useSetupPersistence: vi.fn() }))
 const ACTIVE_KEY = { keyRef: 'r1', venue: 'Deribit', label: 'main', fingerprint: null, scopes: 'trade,read', noWithdrawal: true, ts: '1' }
 
 const baseSetupPersistence = {
-  loaded: true, appropriatenessSigned: false, selectedStrategy: null, savedRiskLimits: null, activeKeys: [], persistedActive: false,
+  loaded: true, appropriatenessSigned: false, selectedStrategy: null, savedRiskLimits: null, activeKeys: [], persistedActive: false, approvedVersions: [],
   saveAppropriateness: vi.fn(async () => ({ ok: true })),
   saveStrategy: vi.fn(async () => ({ ok: true })),
   saveRiskLimits: vi.fn(async () => ({ ok: true })),
   addExchangeKey: vi.fn(async () => ({ ok: true, keyRef: 'k-new' })),
   revokeExchangeKey: vi.fn(async () => ({ ok: true })),
   saveActivation: vi.fn(async () => ({ ok: true })),
+  saveUpdateApproval: vi.fn(async () => ({ ok: true })),
 }
 
 beforeEach(() => {
@@ -108,13 +109,14 @@ describe('ClientPortalShell', () => {
     // seeding effect triggers a re-render, so the returned object must stay stable — matching
     // the real hook (backed by useState) rather than weakening the assertion.
     vi.mocked(useSetupPersistence).mockReturnValue({
-      loaded: true, appropriatenessSigned: true, selectedStrategy: 'Obsidian Core Yield', savedRiskLimits: null, activeKeys: [], persistedActive: false,
+      loaded: true, appropriatenessSigned: true, selectedStrategy: 'Obsidian Core Yield', savedRiskLimits: null, activeKeys: [], persistedActive: false, approvedVersions: [],
       saveAppropriateness: vi.fn(async () => ({ ok: true })),
       saveStrategy: vi.fn(async () => ({ ok: true })),
       saveRiskLimits: vi.fn(async () => ({ ok: true })),
       addExchangeKey: vi.fn(async () => ({ ok: true, keyRef: 'k-new' })),
       revokeExchangeKey: vi.fn(async () => ({ ok: true })),
       saveActivation: vi.fn(async () => ({ ok: true })),
+      saveUpdateApproval: vi.fn(async () => ({ ok: true })),
     })
     render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/appropriateness" onSignOut={() => {}} />)
     await screen.findByText(/completed & signed/i)
@@ -122,13 +124,14 @@ describe('ClientPortalShell', () => {
 
   it('shows an error banner and does not sign when the save fails', async () => {
     vi.mocked(useSetupPersistence).mockReturnValue({
-      loaded: true, appropriatenessSigned: false, selectedStrategy: null, savedRiskLimits: null, activeKeys: [], persistedActive: false,
+      loaded: true, appropriatenessSigned: false, selectedStrategy: null, savedRiskLimits: null, activeKeys: [], persistedActive: false, approvedVersions: [],
       saveAppropriateness: vi.fn(async () => ({ ok: false, error: 'network down' })),
       saveStrategy: vi.fn(async () => ({ ok: true })),
       saveRiskLimits: vi.fn(async () => ({ ok: true })),
       addExchangeKey: vi.fn(async () => ({ ok: true, keyRef: 'k-new' })),
       revokeExchangeKey: vi.fn(async () => ({ ok: true })),
       saveActivation: vi.fn(async () => ({ ok: true })),
+      saveUpdateApproval: vi.fn(async () => ({ ok: true })),
     })
     render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/appropriateness" onSignOut={() => {}} />)
     for (const cb of screen.getAllByRole('checkbox')) await userEvent.click(cb)
