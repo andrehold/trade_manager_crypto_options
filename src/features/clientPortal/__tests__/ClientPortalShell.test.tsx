@@ -85,6 +85,9 @@ describe('ClientPortalShell', () => {
     await userEvent.click(screen.getByRole('button', { name: /apply selection/i }))
     rerender(<ClientPortalShell {...base} hash="#/portal/keys" />)
     await userEvent.click(screen.getByRole('button', { name: /add key/i }))
+    await userEvent.type(screen.getByLabelText('Label'), 'Deribit — main')
+    await userEvent.click(screen.getByRole('checkbox'))
+    await userEvent.click(screen.getByRole('button', { name: /^add$/i }))
     rerender(<ClientPortalShell {...base} hash="#/portal/risk" />)
     await userEvent.click(screen.getAllByRole('button', { name: /apply deployment/i })[0])
     expect(screen.getByRole('button', { name: /^activate$/i })).toBeEnabled()
@@ -161,5 +164,46 @@ describe('ClientPortalShell', () => {
     // Precondition not flipped: the activate button still lists "Risk limits" as outstanding.
     const activate = screen.getByRole('button', { name: /^activate$/i })
     expect(activate.getAttribute('title') ?? '').toMatch(/risk limits/i)
+  })
+
+  it('seeds the trading-key precondition and list from persisted keys on load', async () => {
+    vi.mocked(useSetupPersistence).mockReturnValue({
+      ...baseSetupPersistence,
+      activeKeys: [{ keyRef: 'r1', venue: 'Deribit', label: 'Seeded — main', fingerprint: null, scopes: 'trade,read', noWithdrawal: true, ts: '1' }],
+    })
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/keys" onSignOut={() => {}} />)
+    await screen.findByText('Seeded — main')
+    const activate = screen.getByRole('button', { name: /^activate$/i })
+    expect(activate.getAttribute('title') ?? '').not.toMatch(/trading api key/i)
+  })
+
+  it('shows an error banner and does not flip the trading-key precondition when the add fails', async () => {
+    vi.mocked(useSetupPersistence).mockReturnValue({
+      ...baseSetupPersistence,
+      addExchangeKey: vi.fn(async () => ({ ok: false, error: 'key save failed' })),
+    })
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/keys" onSignOut={() => {}} />)
+    await userEvent.click(screen.getByRole('button', { name: /add key/i }))
+    await userEvent.type(screen.getByLabelText('Label'), 'Deribit — main')
+    await userEvent.click(screen.getByRole('checkbox'))
+    await userEvent.click(screen.getByRole('button', { name: /^add$/i }))
+    expect(await screen.findByText(/key save failed/i)).toBeInTheDocument()
+    const activate = screen.getByRole('button', { name: /^activate$/i })
+    expect(activate.getAttribute('title') ?? '').toMatch(/trading api key/i)
+  })
+
+  it('revoking the last active key demotes the trading-key precondition', async () => {
+    vi.mocked(useSetupPersistence).mockReturnValue({
+      ...baseSetupPersistence,
+      activeKeys: [{ keyRef: 'r1', venue: 'Deribit', label: 'Only — key', fingerprint: null, scopes: 'trade,read', noWithdrawal: true, ts: '1' }],
+      revokeExchangeKey: vi.fn(async () => ({ ok: true })),
+    })
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/keys" onSignOut={() => {}} />)
+    const activateBefore = screen.getByRole('button', { name: /^activate$/i })
+    expect(activateBefore.getAttribute('title') ?? '').not.toMatch(/trading api key/i)
+    await userEvent.click(screen.getByRole('button', { name: /revoke/i }))
+    expect(screen.getByText(/no keys registered yet/i)).toBeInTheDocument()
+    const activateAfter = screen.getByRole('button', { name: /^activate$/i })
+    expect(activateAfter.getAttribute('title') ?? '').toMatch(/trading api key/i)
   })
 })

@@ -13,6 +13,7 @@ import { type AppropriatenessInput } from '@/lib/clientPortal/appropriatenessRep
 import { parsePortalPage, portalHash, type PortalPage } from './routing'
 import { RiskPage } from './risk/RiskPage'
 import { DEFAULT_RISK_LIMITS, type RiskLimits } from './risk/riskLimits'
+import type { ExchangeKey, AddKeyInput } from '@/lib/clientPortal/exchangeKeysRepo'
 import { EMPTY_SETUP_STATUS, type SetupStatus } from './setupStatus'
 import { AppropriatenessPage } from './pages/AppropriatenessPage'
 import { StrategyPage } from './pages/StrategyPage'
@@ -44,6 +45,8 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const [setupStatus, setSetupStatus] = React.useState<SetupStatus>(EMPTY_SETUP_STATUS)
   const [riskLimits, setRiskLimits] = React.useState<RiskLimits | null>(null)
   const effectiveLimits = riskLimits ?? DEFAULT_RISK_LIMITS
+  const [exchangeKeys, setExchangeKeys] = React.useState<ExchangeKey[] | null>(null)
+  const effectiveKeys = exchangeKeys ?? []
   const [auditEvents, setAuditEvents] = React.useState<AuditEvent[]>(SEED_AUDIT_EVENTS)
   const [strategy, setStrategy] = React.useState<string | null>(null)
   const [persistError, setPersistError] = React.useState<string | null>(null)
@@ -57,10 +60,12 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
       appropriateness: s.appropriateness || persistence.appropriatenessSigned,
       strategy: s.strategy || !!persistence.selectedStrategy,
       riskLimits: s.riskLimits || !!persistence.savedRiskLimits,
+      tradingKey: s.tradingKey || persistence.activeKeys.length > 0,
     }))
     if (persistence.selectedStrategy) setStrategy((cur) => cur ?? persistence.selectedStrategy)
     if (persistence.savedRiskLimits) setRiskLimits((cur) => cur ?? persistence.savedRiskLimits)
-  }, [persistence.loaded, persistence.appropriatenessSigned, persistence.selectedStrategy, persistence.savedRiskLimits])
+    if (persistence.activeKeys.length > 0) setExchangeKeys((cur) => cur ?? persistence.activeKeys)
+  }, [persistence.loaded, persistence.appropriatenessSigned, persistence.selectedStrategy, persistence.savedRiskLimits, persistence.activeKeys])
   const appendAudit = React.useCallback((type: AuditType, detail: string, actor: 'client' | 'system' = 'client') => {
     setAuditEvents((evs) => [newEvent(type, detail, actor), ...evs])
   }, [])
@@ -88,10 +93,25 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
     setSetupStatus((s) => ({ ...s, strategy: true }))
     appendAudit('STRATEGY', `selected module "${name}"`)
   }, [persistence.saveStrategy, appendAudit])
-  const addTradingKey = React.useCallback((label: string) => {
+  const addTradingKey = React.useCallback(async (input: AddKeyInput) => {
+    const r = await persistence.addExchangeKey(input)
+    if (!r.ok || !r.keyRef) { setPersistError(r.error ?? 'Could not save your key. Please try again.'); return }
+    setPersistError(null)
+    const newKey: ExchangeKey = { keyRef: r.keyRef, venue: input.venue, label: input.label, fingerprint: input.fingerprint, scopes: 'trade,read', noWithdrawal: input.noWithdrawal, ts: new Date().toISOString() }
+    setExchangeKeys((cur) => [...(cur ?? []), newKey])
     setSetupStatus((s) => ({ ...s, tradingKey: true }))
-    appendAudit('API_KEY', `added ${label} · scope trade,read · no-withdraw`)
-  }, [appendAudit])
+    appendAudit('API_KEY', `added ${input.venue} key "${input.label}" · scope trade,read · no-withdraw`)
+  }, [persistence.addExchangeKey, appendAudit])
+
+  const revokeKey = React.useCallback(async (keyRef: string) => {
+    const r = await persistence.revokeExchangeKey(keyRef)
+    if (!r.ok) { setPersistError(r.error ?? 'Could not revoke your key. Please try again.'); return }
+    setPersistError(null)
+    const next = (exchangeKeys ?? []).filter((k) => k.keyRef !== keyRef)
+    setExchangeKeys(next)
+    setSetupStatus((s) => ({ ...s, tradingKey: next.length > 0 }))
+    appendAudit('API_KEY', `revoked exchange key`)
+  }, [persistence.revokeExchangeKey, exchangeKeys, appendAudit])
   const approveUpdate = React.useCallback((ver: string) => {
     appendAudit('UPDATE', `reviewed & approved ${ver} → installed`)
   }, [appendAudit])
@@ -131,7 +151,7 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
           ) : page === 'strategy' ? (
             <StrategyPage selected={strategy} onSelect={selectStrategy} />
           ) : page === 'keys' ? (
-            <KeysPage hasActiveKey={setupStatus.tradingKey} onAddKey={addTradingKey} />
+            <KeysPage keys={effectiveKeys} onAddKey={addTradingKey} onRevokeKey={revokeKey} />
           ) : page === 'updates' ? (
             <UpdatesPage onApprove={approveUpdate} />
           ) : page === 'audit' ? (
