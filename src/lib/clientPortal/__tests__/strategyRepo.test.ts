@@ -16,13 +16,13 @@ function mockClient(over: { selectData?: unknown[]; selectError?: { message: str
 
 describe('fetchLatestStrategy', () => {
   it('returns the latest module scoped + ordered by the client', async () => {
-    const { client, from, q } = mockClient({ selectData: [{ module: 'Range Condor' }] })
+    const { client, from, q } = mockClient({ selectData: [{ module: 'Obsidian Core Yield' }] })
     const r = await fetchLatestStrategy(client, 'TwoPrime')
     expect(from).toHaveBeenCalledWith('strategy_selections')
     expect(q.eq).toHaveBeenCalledWith('client_name', 'TwoPrime')
     expect(q.order).toHaveBeenCalledWith('ts', { ascending: false })
     expect(q.limit).toHaveBeenCalledWith(1)
-    expect(r).toEqual({ ok: true, module: 'Range Condor' })
+    expect(r).toEqual({ ok: true, module: 'Obsidian Core Yield' })
   })
   it('returns null when there is no selection', async () => {
     const { client } = mockClient({ selectData: [] })
@@ -37,8 +37,8 @@ describe('fetchLatestStrategy', () => {
 describe('saveStrategy', () => {
   it('inserts the selection and returns ok', async () => {
     const { client, q } = mockClient({})
-    const r = await saveStrategy(client, 'TwoPrime', 'Range Condor')
-    expect(q.insert).toHaveBeenCalledWith({ client_name: 'TwoPrime', module: 'Range Condor' })
+    const r = await saveStrategy(client, 'TwoPrime', 'Obsidian Core Yield')
+    expect(q.insert).toHaveBeenCalledWith({ client_name: 'TwoPrime', module: 'Obsidian Core Yield' })
     expect(r).toEqual({ ok: true })
   })
   it('returns an error result on insert failure', async () => {

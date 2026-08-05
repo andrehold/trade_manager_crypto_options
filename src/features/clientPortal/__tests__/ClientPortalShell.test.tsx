@@ -100,7 +100,7 @@ describe('ClientPortalShell', () => {
     // seeding effect triggers a re-render, so the returned object must stay stable — matching
     // the real hook (backed by useState) rather than weakening the assertion.
     vi.mocked(useSetupPersistence).mockReturnValue({
-      loaded: true, appropriatenessSigned: true, selectedStrategy: 'Range Condor', savedRiskLimits: null,
+      loaded: true, appropriatenessSigned: true, selectedStrategy: 'Obsidian Core Yield', savedRiskLimits: null,
       saveAppropriateness: vi.fn(async () => ({ ok: true })),
       saveStrategy: vi.fn(async () => ({ ok: true })),
       saveRiskLimits: vi.fn(async () => ({ ok: true })),

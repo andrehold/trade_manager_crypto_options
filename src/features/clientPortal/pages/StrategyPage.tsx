@@ -2,9 +2,11 @@ import React from 'react'
 import { Button } from '@/components/ui/Button'
 
 const MODULES: { name: string; desc: string; facts: string[] }[] = [
-  { name: 'Weekend Vol (Short-Dated)', desc: 'Sells short-dated BTC iron condors over the weekend session.', facts: ['horizon 1–3 DTE', 'legs 4', 'venue Deribit'] },
-  { name: 'Range Condor', desc: 'Defined-risk condors on a fixed weekly expiry cadence.', facts: ['horizon 7 DTE', 'legs 4', 'venue Deribit'] },
-  { name: 'Delta-Neutral Straddle', desc: 'Long/short straddle rebalanced to a delta band you set.', facts: ['horizon 3–14 DTE', 'legs 2', 'venue Deribit'] },
+  { name: 'Obsidian Core Yield', desc: 'Systematic BTC options yield — multi-leg structures actively managed within a defined delta corridor to capture structural carry in rangebound markets.', facts: ['BTC options · European, cash-settled', 'iron condor / diagonal / vertical', 'Deribit · Coincall'] },
+  { name: 'Nocturne Theta', desc: 'Short-dated premium capture — harvests time value on a compressed expiry cadence, managed to a delta band you set.', facts: ['horizon 0–3 DTE', 'legs 2–4', 'venue Deribit'] },
+  { name: 'Ironbark Overlay', desc: 'Options overlay layered on a core BTC holding to generate income against existing exposure.', facts: ['overlay on spot/perp', 'legs 1–2', 'venue Deribit'] },
+  { name: 'Obsidian Carry', desc: 'Captures volatility and term carry via calendar and diagonal spreads across expiries.', facts: ['horizon 7–30 DTE', 'legs 2', 'venue Deribit'] },
+  { name: 'Twin Flow', desc: 'Delta-neutral paired structure rebalanced across two legs to harvest volatility flow.', facts: ['delta-neutral', 'legs 2', 'venue Deribit'] },
 ]
 
 export function StrategyPage({ selected, onSelect }: { selected: string | null; onSelect: (name: string) => void }) {

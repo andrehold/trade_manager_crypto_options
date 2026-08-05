@@ -37,18 +37,18 @@ beforeEach(() => {
 describe('useSetupPersistence', () => {
   it('seeds signed + selected strategy from fetched records', async () => {
     fApp.mockResolvedValue({ ok: true, record: { signedName: 'R', validUntil: null, ts: 't' } })
-    fStr.mockResolvedValue({ ok: true, module: 'Range Condor' })
+    fStr.mockResolvedValue({ ok: true, module: 'Obsidian Core Yield' })
     const { result } = renderHook(() => useSetupPersistence('TwoPrime'))
     await waitFor(() => expect(result.current.loaded).toBe(true))
     expect(result.current.appropriatenessSigned).toBe(true)
-    expect(result.current.selectedStrategy).toBe('Range Condor')
+    expect(result.current.selectedStrategy).toBe('Obsidian Core Yield')
   })
 
   it('saveStrategy delegates to the repo and returns its result', async () => {
     const { result } = renderHook(() => useSetupPersistence('TwoPrime'))
     await waitFor(() => expect(result.current.loaded).toBe(true))
-    const r = await result.current.saveStrategy('Range Condor')
-    expect(sStr).toHaveBeenCalledWith(expect.anything(), 'TwoPrime', 'Range Condor')
+    const r = await result.current.saveStrategy('Obsidian Core Yield')
+    expect(sStr).toHaveBeenCalledWith(expect.anything(), 'TwoPrime', 'Obsidian Core Yield')
     expect(r).toEqual({ ok: true })
   })
 
