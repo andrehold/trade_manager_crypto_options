@@ -47,6 +47,8 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const effectiveLimits = riskLimits ?? DEFAULT_RISK_LIMITS
   const [exchangeKeys, setExchangeKeys] = React.useState<ExchangeKey[] | null>(null)
   const effectiveKeys = exchangeKeys ?? []
+  const [approvedVersions, setApprovedVersions] = React.useState<string[] | null>(null)
+  const effectiveApproved = approvedVersions ?? []
   const [auditEvents, setAuditEvents] = React.useState<AuditEvent[]>(SEED_AUDIT_EVENTS)
   const [strategy, setStrategy] = React.useState<string | null>(null)
   const [persistError, setPersistError] = React.useState<string | null>(null)
@@ -65,6 +67,7 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
     if (persistence.selectedStrategy) setStrategy((cur) => cur ?? persistence.selectedStrategy)
     if (persistence.savedRiskLimits) setRiskLimits((cur) => cur ?? persistence.savedRiskLimits)
     if (persistence.activeKeys.length > 0) setExchangeKeys((cur) => cur ?? persistence.activeKeys)
+    if (persistence.approvedVersions.length > 0) setApprovedVersions((cur) => cur ?? persistence.approvedVersions)
     // Guarded activation seed: restore active only if the persisted state is active AND the gate holds
     // from the persisted preconditions (avoids "Active with an unmet gate" after reload). Promote-only.
     const persistedStatus: SetupStatus = {
@@ -74,7 +77,7 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
       tradingKey: persistence.activeKeys.length > 0,
     }
     if (persistence.persistedActive && canActivate(persistedStatus)) setActive((cur) => cur || true)
-  }, [persistence.loaded, persistence.appropriatenessSigned, persistence.selectedStrategy, persistence.savedRiskLimits, persistence.activeKeys, persistence.persistedActive])
+  }, [persistence.loaded, persistence.appropriatenessSigned, persistence.selectedStrategy, persistence.savedRiskLimits, persistence.activeKeys, persistence.persistedActive, persistence.approvedVersions])
   const appendAudit = React.useCallback((type: AuditType, detail: string, actor: 'client' | 'system' = 'client') => {
     setAuditEvents((evs) => [newEvent(type, detail, actor), ...evs])
   }, [])
@@ -122,9 +125,13 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
     setSetupStatus((s) => ({ ...s, tradingKey: next.length > 0 }))
     appendAudit('API_KEY', revoked ? `revoked ${revoked.venue} key "${revoked.label}"` : `revoked exchange key "${keyRef}"`)
   }, [persistence.revokeExchangeKey, exchangeKeys, appendAudit])
-  const approveUpdate = React.useCallback((ver: string) => {
+  const approveUpdate = React.useCallback(async (ver: string) => {
+    const r = await persistence.saveUpdateApproval(ver)
+    if (!r.ok) { setPersistError(r.error ?? 'Could not save your update approval. Please try again.'); return }
+    setPersistError(null)
+    setApprovedVersions((cur) => ((cur ?? []).includes(ver) ? cur : [...(cur ?? []), ver]))
     appendAudit('UPDATE', `reviewed & approved ${ver} → installed`)
-  }, [appendAudit])
+  }, [persistence.saveUpdateApproval, appendAudit])
   const toggleActivation = React.useCallback(async () => {
     const next = !active
     const r = await persistence.saveActivation(next)
@@ -164,7 +171,7 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
           ) : page === 'keys' ? (
             <KeysPage keys={effectiveKeys} onAddKey={addTradingKey} onRevokeKey={revokeKey} />
           ) : page === 'updates' ? (
-            <UpdatesPage onApprove={approveUpdate} />
+            <UpdatesPage approvedVersions={effectiveApproved} onApprove={approveUpdate} />
           ) : page === 'audit' ? (
             <AuditLogPage events={auditEvents} clientName={clientName} />
           ) : (page === 'dashboard' || page === 'positions') ? (

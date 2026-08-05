@@ -1,19 +1,21 @@
-import React from 'react'
 import { Download, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
-const CHANGELOG = [
-  'Deribit reconnection hardening after venue maintenance windows',
-  'Drawdown-stop evaluation moved to per-tick (was per-minute)',
-  'Audit-log export now includes cryptographic chain hash',
-]
+const PENDING = {
+  ver: 'v2.4.1',
+  changelog: [
+    'Deribit reconnection hardening after venue maintenance windows',
+    'Drawdown-stop evaluation moved to per-tick (was per-minute)',
+    'Audit-log export now includes cryptographic chain hash',
+  ],
+}
 const HISTORY = [
   { ver: 'v2.4.0', date: '2026-07-11', note: 'Portfolio-greeks aggregation fix' },
   { ver: 'v2.3.5', date: '2026-06-28', note: 'CoinCall venue adapter' },
 ]
 
-export function UpdatesPage({ onApprove }: { onApprove: (ver: string) => void }) {
-  const [installed, setInstalled] = React.useState(false)
+export function UpdatesPage({ approvedVersions, onApprove }: { approvedVersions: string[]; onApprove: (ver: string) => void }) {
+  const installed = approvedVersions.includes(PENDING.ver)
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-2">
@@ -26,11 +28,11 @@ export function UpdatesPage({ onApprove }: { onApprove: (ver: string) => void })
         <div className={`flex flex-wrap gap-3.5 rounded-xl border p-4 ${installed ? 'border-status-success/30 bg-status-success/10' : 'border-status-warning/30 bg-status-warning/10'}`}>
           <span className={installed ? 'text-status-success' : 'text-status-warning'}>{installed ? <Check className="h-5 w-5" /> : <Download className="h-5 w-5" />}</span>
           <div className="min-w-0 flex-1">
-            <div className="type-subhead font-semibold text-text-primary">Update {installed ? 'applied' : 'available'} — <span className="font-mono text-status-warning">v2.4.1</span></div>
-            <ul className="mt-2 list-disc pl-4 type-caption text-text-secondary">{CHANGELOG.map((c) => <li key={c}>{c}</li>)}</ul>
+            <div className="type-subhead font-semibold text-text-primary">Update {installed ? 'applied' : 'available'} — <span className="font-mono text-status-warning">{PENDING.ver}</span></div>
+            <ul className="mt-2 list-disc pl-4 type-caption text-text-secondary">{PENDING.changelog.map((c) => <li key={c}>{c}</li>)}</ul>
           </div>
           <div className="self-center">
-            <Button variant="primary" size="sm" disabled={installed} onClick={() => { setInstalled(true); onApprove('v2.4.1') }}>{installed ? 'Installed' : 'Approve & install'}</Button>
+            <Button variant="primary" size="sm" disabled={installed} onClick={() => onApprove(PENDING.ver)}>{installed ? 'Installed' : 'Approve & install'}</Button>
           </div>
         </div>
         <div className="mt-4">

@@ -266,4 +266,18 @@ describe('ClientPortalShell', () => {
     // Still inactive — no Deactivate control appeared.
     expect(screen.queryByRole('button', { name: /deactivate/i })).toBeNull()
   })
+
+  it('restores the Updates page to Installed when the pending version is persisted', async () => {
+    vi.mocked(useSetupPersistence).mockReturnValue({ ...baseSetupPersistence, approvedVersions: ['v2.4.1'] })
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/updates" onSignOut={() => {}} />)
+    expect(await screen.findByRole('button', { name: /installed/i })).toBeInTheDocument()
+  })
+
+  it('shows an error banner and leaves the update pending when the approval save fails', async () => {
+    vi.mocked(useSetupPersistence).mockReturnValue({ ...baseSetupPersistence, saveUpdateApproval: vi.fn(async () => ({ ok: false, error: 'update save failed' })) })
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/updates" onSignOut={() => {}} />)
+    await userEvent.click(await screen.findByRole('button', { name: /approve & install/i }))
+    expect(await screen.findByText(/update save failed/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /approve & install/i })).toBeInTheDocument()
+  })
 })
