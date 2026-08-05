@@ -14,7 +14,7 @@ import { parsePortalPage, portalHash, type PortalPage } from './routing'
 import { RiskPage } from './risk/RiskPage'
 import { DEFAULT_RISK_LIMITS, type RiskLimits } from './risk/riskLimits'
 import type { ExchangeKey, AddKeyInput } from '@/lib/clientPortal/exchangeKeysRepo'
-import { EMPTY_SETUP_STATUS, type SetupStatus } from './setupStatus'
+import { canActivate, EMPTY_SETUP_STATUS, type SetupStatus } from './setupStatus'
 import { AppropriatenessPage } from './pages/AppropriatenessPage'
 import { StrategyPage } from './pages/StrategyPage'
 import { KeysPage } from './pages/KeysPage'
@@ -65,7 +65,16 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
     if (persistence.selectedStrategy) setStrategy((cur) => cur ?? persistence.selectedStrategy)
     if (persistence.savedRiskLimits) setRiskLimits((cur) => cur ?? persistence.savedRiskLimits)
     if (persistence.activeKeys.length > 0) setExchangeKeys((cur) => cur ?? persistence.activeKeys)
-  }, [persistence.loaded, persistence.appropriatenessSigned, persistence.selectedStrategy, persistence.savedRiskLimits, persistence.activeKeys])
+    // Guarded activation seed: restore active only if the persisted state is active AND the gate holds
+    // from the persisted preconditions (avoids "Active with an unmet gate" after reload). Promote-only.
+    const persistedStatus: SetupStatus = {
+      appropriateness: persistence.appropriatenessSigned,
+      strategy: !!persistence.selectedStrategy,
+      riskLimits: !!persistence.savedRiskLimits,
+      tradingKey: persistence.activeKeys.length > 0,
+    }
+    if (persistence.persistedActive && canActivate(persistedStatus)) setActive((cur) => cur || true)
+  }, [persistence.loaded, persistence.appropriatenessSigned, persistence.selectedStrategy, persistence.savedRiskLimits, persistence.activeKeys, persistence.persistedActive])
   const appendAudit = React.useCallback((type: AuditType, detail: string, actor: 'client' | 'system' = 'client') => {
     setAuditEvents((evs) => [newEvent(type, detail, actor), ...evs])
   }, [])
@@ -116,13 +125,14 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const approveUpdate = React.useCallback((ver: string) => {
     appendAudit('UPDATE', `reviewed & approved ${ver} → installed`)
   }, [appendAudit])
-  const toggleActivation = React.useCallback(() => {
-    setActive((a) => {
-      const next = !a
-      appendAudit(next ? 'ACTIVATION' : 'DEACTIVATION', next ? 'software activated' : 'software deactivated')
-      return next
-    })
-  }, [appendAudit])
+  const toggleActivation = React.useCallback(async () => {
+    const next = !active
+    const r = await persistence.saveActivation(next)
+    if (!r.ok) { setPersistError(r.error ?? 'Could not save activation state. Please try again.'); return }
+    setPersistError(null)
+    setActive(next)
+    appendAudit(next ? 'ACTIVATION' : 'DEACTIVATION', next ? 'software activated' : 'software deactivated')
+  }, [active, persistence.saveActivation, appendAudit])
 
   const navigate = React.useCallback((p: PortalPage) => { window.location.hash = portalHash(p) }, [])
 

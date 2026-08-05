@@ -21,6 +21,8 @@ const mockedHook = vi.mocked(useClientPositions)
 
 vi.mock('../useSetupPersistence', () => ({ useSetupPersistence: vi.fn() }))
 
+const ACTIVE_KEY = { keyRef: 'r1', venue: 'Deribit', label: 'main', fingerprint: null, scopes: 'trade,read', noWithdrawal: true, ts: '1' }
+
 const baseSetupPersistence = {
   loaded: true, appropriatenessSigned: false, selectedStrategy: null, savedRiskLimits: null, activeKeys: [], persistedActive: false,
   saveAppropriateness: vi.fn(async () => ({ ok: true })),
@@ -223,5 +225,42 @@ describe('ClientPortalShell', () => {
     expect(screen.getByText('Only — key')).toBeInTheDocument()
     const activate = screen.getByRole('button', { name: /^activate$/i })
     expect(activate.getAttribute('title') ?? '').not.toMatch(/trading api key/i)
+  })
+
+  it('restores Active on load when persisted active and all preconditions are met', async () => {
+    vi.mocked(useSetupPersistence).mockReturnValue({
+      ...baseSetupPersistence,
+      appropriatenessSigned: true, selectedStrategy: 'Obsidian Core Yield', savedRiskLimits: DEFAULT_RISK_LIMITS,
+      activeKeys: [ACTIVE_KEY], persistedActive: true,
+    })
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/dashboard" onSignOut={() => {}} />)
+    // ActivationControl renders a "Deactivate" control only while active.
+    expect(await screen.findByRole('button', { name: /deactivate/i })).toBeInTheDocument()
+  })
+
+  it('stays Inactive on load when persisted active but a precondition is missing (guard)', async () => {
+    vi.mocked(useSetupPersistence).mockReturnValue({
+      ...baseSetupPersistence,
+      appropriatenessSigned: true, selectedStrategy: 'Obsidian Core Yield', savedRiskLimits: DEFAULT_RISK_LIMITS,
+      activeKeys: [], persistedActive: true, // no trading key → gate not open
+    })
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/dashboard" onSignOut={() => {}} />)
+    expect(screen.queryByRole('button', { name: /deactivate/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /^activate$/i })).toBeInTheDocument()
+  })
+
+  it('shows an error banner and does not activate when the save fails', async () => {
+    vi.mocked(useSetupPersistence).mockReturnValue({
+      ...baseSetupPersistence,
+      appropriatenessSigned: true, selectedStrategy: 'Obsidian Core Yield', savedRiskLimits: DEFAULT_RISK_LIMITS,
+      activeKeys: [ACTIVE_KEY], persistedActive: false,
+      saveActivation: vi.fn(async () => ({ ok: false, error: 'activation save failed' })),
+    })
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/dashboard" onSignOut={() => {}} />)
+    // Gate is open (all four preconditions persisted), so Activate is enabled.
+    await userEvent.click(await screen.findByRole('button', { name: /^activate$/i }))
+    expect(await screen.findByText(/activation save failed/i)).toBeInTheDocument()
+    // Still inactive — no Deactivate control appeared.
+    expect(screen.queryByRole('button', { name: /deactivate/i })).toBeNull()
   })
 })
