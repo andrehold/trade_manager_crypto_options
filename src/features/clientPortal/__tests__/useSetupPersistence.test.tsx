@@ -14,11 +14,15 @@ vi.mock('@/lib/clientPortal/riskLimitsRepo', () => ({
 vi.mock('@/lib/clientPortal/exchangeKeysRepo', () => ({
   fetchActiveKeys: vi.fn(), addExchangeKey: vi.fn(), revokeExchangeKey: vi.fn(),
 }))
+vi.mock('@/lib/clientPortal/activationRepo', () => ({
+  fetchActivationState: vi.fn(), saveActivation: vi.fn(),
+}))
 
 import { fetchLatestStrategy, saveStrategy } from '@/lib/clientPortal/strategyRepo'
 import { fetchLatestAppropriateness, saveAppropriateness } from '@/lib/clientPortal/appropriatenessRepo'
 import { fetchLatestRiskLimits, saveRiskLimits as saveRiskLimitsRepo } from '@/lib/clientPortal/riskLimitsRepo'
 import { fetchActiveKeys, addExchangeKey as addKeyRepo, revokeExchangeKey as revokeKeyRepo } from '@/lib/clientPortal/exchangeKeysRepo'
+import { fetchActivationState, saveActivation as saveActivationRepo } from '@/lib/clientPortal/activationRepo'
 import { DEFAULT_RISK_LIMITS } from '@/features/clientPortal/risk/riskLimits'
 import { useSetupPersistence } from '../useSetupPersistence'
 
@@ -26,22 +30,26 @@ const fApp = vi.mocked(fetchLatestAppropriateness)
 const fStr = vi.mocked(fetchLatestStrategy)
 const fRisk = vi.mocked(fetchLatestRiskLimits)
 const fKeys = vi.mocked(fetchActiveKeys)
+const fAct = vi.mocked(fetchActivationState)
 const sApp = vi.mocked(saveAppropriateness)
 const sStr = vi.mocked(saveStrategy)
 const sRisk = vi.mocked(saveRiskLimitsRepo)
 const aKey = vi.mocked(addKeyRepo)
 const rKey = vi.mocked(revokeKeyRepo)
+const sAct = vi.mocked(saveActivationRepo)
 
 beforeEach(() => {
   fApp.mockResolvedValue({ ok: true, record: null })
   fStr.mockResolvedValue({ ok: true, module: null })
   fRisk.mockResolvedValue({ ok: true, limits: null })
   fKeys.mockResolvedValue({ ok: true, keys: [] })
+  fAct.mockResolvedValue({ ok: true, active: false })
   sApp.mockResolvedValue({ ok: true, record: { signedName: 'R', validUntil: null, ts: 't' } })
   sStr.mockResolvedValue({ ok: true })
   sRisk.mockResolvedValue({ ok: true })
   aKey.mockResolvedValue({ ok: true, keyRef: 'kref-1' })
   rKey.mockResolvedValue({ ok: true })
+  sAct.mockResolvedValue({ ok: true })
 })
 
 describe('useSetupPersistence', () => {
@@ -105,6 +113,21 @@ describe('useSetupPersistence', () => {
     await waitFor(() => expect(result.current.loaded).toBe(true))
     const r = await result.current.revokeExchangeKey('a')
     expect(rKey).toHaveBeenCalledWith(expect.anything(), 'TwoPrime', 'a')
+    expect(r).toEqual({ ok: true })
+  })
+
+  it('seeds persistedActive from a fetched active state', async () => {
+    fAct.mockResolvedValue({ ok: true, active: true })
+    const { result } = renderHook(() => useSetupPersistence('TwoPrime'))
+    await waitFor(() => expect(result.current.loaded).toBe(true))
+    expect(result.current.persistedActive).toBe(true)
+  })
+
+  it('saveActivation delegates to the repo and returns its result', async () => {
+    const { result } = renderHook(() => useSetupPersistence('TwoPrime'))
+    await waitFor(() => expect(result.current.loaded).toBe(true))
+    const r = await result.current.saveActivation(true)
+    expect(sAct).toHaveBeenCalledWith(expect.anything(), 'TwoPrime', true)
     expect(r).toEqual({ ok: true })
   })
 })
