@@ -21,6 +21,11 @@ const mockedHook = vi.mocked(useClientPositions)
 
 vi.mock('../useSetupPersistence', () => ({ useSetupPersistence: vi.fn() }))
 
+// Isolate the shell's own `hasSupabaseClient()` check (used for the SEED-fallback decision) from
+// whatever real Supabase env vars happen to be configured locally (e.g. via .env.local) — tests
+// must exercise the "no DB configured" branch deterministically, not the developer's local setup.
+vi.mock('@/lib/supabase', () => ({ hasSupabaseClient: () => false }))
+
 const ACTIVE_KEY = { keyRef: 'r1', venue: 'Deribit', label: 'main', fingerprint: null, scopes: 'trade,read', noWithdrawal: true, ts: '1' }
 
 const baseSetupPersistence = {
@@ -282,5 +287,25 @@ describe('ClientPortalShell', () => {
     await userEvent.click(await screen.findByRole('button', { name: /approve & install/i }))
     expect(await screen.findByText(/update save failed/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /approve & install/i })).toBeInTheDocument()
+  })
+
+  it('renders persisted audit entries on the audit log page', async () => {
+    vi.mocked(useSetupPersistence).mockReturnValue({
+      ...baseSetupPersistence,
+      persistedAudit: [{ id: 'a1', ts: '2026-08-01T00:00:00Z', actor: 'client', type: 'STRATEGY', detail: 'selected module "Twin Flow"' }],
+    })
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/audit" onSignOut={() => {}} />)
+    expect(await screen.findByText(/selected module "Twin Flow"/i)).toBeInTheDocument()
+  })
+
+  it('appends a visible audit entry and persists it when the client acts', async () => {
+    const saveAuditEvent = vi.fn(async () => ({ ok: true }))
+    vi.mocked(useSetupPersistence).mockReturnValue({ ...baseSetupPersistence, saveAuditEvent })
+    const base = { clientName: 'TwoPrime', program: 'Obsidian Core', onSignOut: () => {} }
+    const { rerender } = render(<ClientPortalShell {...base} hash="#/portal/updates" />)
+    await userEvent.click(await screen.findByRole('button', { name: /approve & install/i }))
+    expect(saveAuditEvent).toHaveBeenCalled()
+    rerender(<ClientPortalShell {...base} hash="#/portal/audit" />)
+    expect(screen.getByText(/reviewed & approved v2\.4\.1/i)).toBeInTheDocument()
   })
 })

@@ -20,8 +20,9 @@ import { StrategyPage } from './pages/StrategyPage'
 import { KeysPage } from './pages/KeysPage'
 import { UpdatesPage } from './pages/UpdatesPage'
 import { AuditLogPage } from './pages/AuditLogPage'
-import { newEvent, SEED_AUDIT_EVENTS, type AuditEvent, type AuditType } from './audit'
+import { newEvent, SEED_AUDIT_EVENTS, type AuditEvent, type AuditType, type AuditActor } from './audit'
 import { SAMPLE_POSITIONS, SAMPLE_MARKS } from './sampleData'
+import { hasSupabaseClient } from '@/lib/supabase'
 
 const PAGE_TITLES: Record<PortalPage, string> = {
   dashboard: 'Dashboard', positions: 'Positions', appropriateness: 'Appropriateness',
@@ -49,7 +50,7 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const effectiveKeys = exchangeKeys ?? []
   const [approvedVersions, setApprovedVersions] = React.useState<string[] | null>(null)
   const effectiveApproved = approvedVersions ?? []
-  const [auditEvents, setAuditEvents] = React.useState<AuditEvent[]>(SEED_AUDIT_EVENTS)
+  const [sessionAudit, setSessionAudit] = React.useState<AuditEvent[]>([])
   const [strategy, setStrategy] = React.useState<string | null>(null)
   const [persistError, setPersistError] = React.useState<string | null>(null)
   // Seed the three persisted preconditions from the DB once the fetch resolves. Promote-only
@@ -78,9 +79,16 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
     }
     if (persistence.persistedActive && canActivate(persistedStatus)) setActive((cur) => cur || true)
   }, [persistence.loaded, persistence.appropriatenessSigned, persistence.selectedStrategy, persistence.savedRiskLimits, persistence.activeKeys, persistence.persistedActive, persistence.approvedVersions])
-  const appendAudit = React.useCallback((type: AuditType, detail: string, actor: 'client' | 'system' = 'client') => {
-    setAuditEvents((evs) => [newEvent(type, detail, actor), ...evs])
-  }, [])
+  const appendAudit = React.useCallback((type: AuditType, detail: string, actor: AuditActor = 'client') => {
+    const e = newEvent(type, detail, actor)
+    setSessionAudit((evs) => [e, ...evs])
+    persistence.saveAuditEvent(e).then((r) => { if (!r.ok) console.error('audit persist failed', r.error) })
+  }, [persistence.saveAuditEvent])
+  const shownAudit = React.useMemo(() => {
+    const real = [...sessionAudit, ...persistence.persistedAudit]
+    if (real.length > 0) return real
+    return hasSupabaseClient() ? [] : SEED_AUDIT_EVENTS
+  }, [sessionAudit, persistence.persistedAudit])
   const applyRisk = React.useCallback(async (next: RiskLimits) => {
     const r = await persistence.saveRiskLimits(next)
     if (!r.ok) { setPersistError(r.error ?? 'Could not save your risk limits. Please try again.'); return }
@@ -173,7 +181,7 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
           ) : page === 'updates' ? (
             <UpdatesPage approvedVersions={effectiveApproved} onApprove={approveUpdate} />
           ) : page === 'audit' ? (
-            <AuditLogPage events={auditEvents} clientName={clientName} />
+            <AuditLogPage events={shownAudit} clientName={clientName} />
           ) : (page === 'dashboard' || page === 'positions') ? (
             error ? (
               <div className="rounded-2xl border border-status-danger/30 bg-status-danger/10 p-6 text-center">
