@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { useClientPositions } from '../useClientPositions'
 import { useSetupPersistence } from '../useSetupPersistence'
 import { DEFAULT_RISK_LIMITS } from '../risk/riskLimits'
+import { hasSupabaseClient } from '@/lib/supabase'
 
 // Recharts' ResponsiveContainer measures 0×0 in jsdom; give it a fixed size.
 vi.mock('recharts', async (importOriginal) => {
@@ -24,7 +25,25 @@ vi.mock('../useSetupPersistence', () => ({ useSetupPersistence: vi.fn() }))
 // Isolate the shell's own `hasSupabaseClient()` check (used for the SEED-fallback decision) from
 // whatever real Supabase env vars happen to be configured locally (e.g. via .env.local) — tests
 // must exercise the "no DB configured" branch deterministically, not the developer's local setup.
-vi.mock('@/lib/supabase', () => ({ hasSupabaseClient: () => false }))
+// A vi.fn (default false) lets individual tests override it to exercise the "DB configured" branch too.
+// getSupabaseClient is stubbed as a self-chaining thenable query builder: flipping
+// hasSupabaseClient to true also arms usePositionInterventions' fetch effect (it's mounted
+// unconditionally by the shell regardless of page), so getSupabaseClient must resolve to
+// something that satisfies `.from().select().order().eq()` → `{ data: [], error: null }`
+// rather than leaving that effect to throw into an unhandled rejection.
+vi.mock('@/lib/supabase', () => {
+  const queryBuilder: any = {
+    select: () => queryBuilder,
+    order: () => queryBuilder,
+    eq: () => queryBuilder,
+    insert: () => Promise.resolve({ error: null }),
+    then: (resolve: (v: { data: unknown[]; error: null }) => void) => resolve({ data: [], error: null }),
+  }
+  return {
+    hasSupabaseClient: vi.fn(() => false),
+    getSupabaseClient: vi.fn(() => ({ from: () => queryBuilder })),
+  }
+})
 
 const ACTIVE_KEY = { keyRef: 'r1', venue: 'Deribit', label: 'main', fingerprint: null, scopes: 'trade,read', noWithdrawal: true, ts: '1' }
 
@@ -44,6 +63,8 @@ beforeEach(() => {
   mockedHook.mockReturnValue({ positions: [], loading: false, error: null, reload: vi.fn() })
   // Reset the persistence mock every test so a per-test override never leaks forward.
   vi.mocked(useSetupPersistence).mockReturnValue(baseSetupPersistence)
+  // Reset the Supabase-configured flag every test so a per-test override never leaks forward.
+  vi.mocked(hasSupabaseClient).mockReturnValue(false)
 })
 
 import { ClientPortalShell } from '../ClientPortalShell'
@@ -84,6 +105,17 @@ describe('ClientPortalShell', () => {
     render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/audit" onSignOut={() => {}} />)
     expect(screen.getByRole('heading', { name: /audit log/i })).toBeInTheDocument()
     expect(screen.getByText(/self-assessment completed & signed/i)).toBeInTheDocument()
+  })
+
+  it('shows the empty-state (not the seed) when Supabase is configured and the log is empty', async () => {
+    vi.mocked(hasSupabaseClient).mockReturnValue(true)
+    vi.mocked(useSetupPersistence).mockReturnValue({ ...baseSetupPersistence, persistedAudit: [] })
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/audit" onSignOut={() => {}} />)
+    // findBy (vs getBy) flushes pending effects — flipping hasSupabaseClient true also arms the
+    // unrelated usePositionInterventions fetch effect, whose resolution must settle inside act().
+    expect(await screen.findByRole('heading', { name: /audit log/i })).toBeInTheDocument()
+    expect(screen.queryByText(/self-assessment completed & signed/i)).toBeNull()
+    expect(screen.getByText(/no entries/i)).toBeInTheDocument()
   })
 
   it('enables activation after all four setup preconditions are met', async () => {

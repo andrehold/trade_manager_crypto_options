@@ -82,7 +82,7 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const appendAudit = React.useCallback((type: AuditType, detail: string, actor: AuditActor = 'client') => {
     const e = newEvent(type, detail, actor)
     setSessionAudit((evs) => [e, ...evs])
-    persistence.saveAuditEvent(e).then((r) => { if (!r.ok) console.error('audit persist failed', r.error) })
+    persistence.saveAuditEvent(e).then((r) => { if (!r.ok) console.error('audit persist failed', r.error) }).catch((err) => console.error('audit persist failed', err))
   }, [persistence.saveAuditEvent])
   const shownAudit = React.useMemo(() => {
     const real = [...sessionAudit, ...persistence.persistedAudit]
