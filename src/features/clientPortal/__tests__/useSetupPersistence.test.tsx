@@ -20,6 +20,9 @@ vi.mock('@/lib/clientPortal/activationRepo', () => ({
 vi.mock('@/lib/clientPortal/updatesRepo', () => ({
   fetchApprovedVersions: vi.fn(), saveUpdateApproval: vi.fn(),
 }))
+vi.mock('@/lib/clientPortal/auditRepo', () => ({
+  fetchAuditEvents: vi.fn(), saveAuditEvent: vi.fn(),
+}))
 
 import { fetchLatestStrategy, saveStrategy } from '@/lib/clientPortal/strategyRepo'
 import { fetchLatestAppropriateness, saveAppropriateness } from '@/lib/clientPortal/appropriatenessRepo'
@@ -27,6 +30,7 @@ import { fetchLatestRiskLimits, saveRiskLimits as saveRiskLimitsRepo } from '@/l
 import { fetchActiveKeys, addExchangeKey as addKeyRepo, revokeExchangeKey as revokeKeyRepo } from '@/lib/clientPortal/exchangeKeysRepo'
 import { fetchActivationState, saveActivation as saveActivationRepo } from '@/lib/clientPortal/activationRepo'
 import { fetchApprovedVersions, saveUpdateApproval as saveUpdateApprovalRepo } from '@/lib/clientPortal/updatesRepo'
+import { fetchAuditEvents, saveAuditEvent as saveAuditEventRepo } from '@/lib/clientPortal/auditRepo'
 import { DEFAULT_RISK_LIMITS } from '@/features/clientPortal/risk/riskLimits'
 import { useSetupPersistence } from '../useSetupPersistence'
 
@@ -36,6 +40,7 @@ const fRisk = vi.mocked(fetchLatestRiskLimits)
 const fKeys = vi.mocked(fetchActiveKeys)
 const fAct = vi.mocked(fetchActivationState)
 const fUpd = vi.mocked(fetchApprovedVersions)
+const fAud = vi.mocked(fetchAuditEvents)
 const sApp = vi.mocked(saveAppropriateness)
 const sStr = vi.mocked(saveStrategy)
 const sRisk = vi.mocked(saveRiskLimitsRepo)
@@ -43,6 +48,7 @@ const aKey = vi.mocked(addKeyRepo)
 const rKey = vi.mocked(revokeKeyRepo)
 const sAct = vi.mocked(saveActivationRepo)
 const sUpd = vi.mocked(saveUpdateApprovalRepo)
+const sAud = vi.mocked(saveAuditEventRepo)
 
 beforeEach(() => {
   fApp.mockResolvedValue({ ok: true, record: null })
@@ -51,6 +57,7 @@ beforeEach(() => {
   fKeys.mockResolvedValue({ ok: true, keys: [] })
   fAct.mockResolvedValue({ ok: true, active: false })
   fUpd.mockResolvedValue({ ok: true, versions: [] })
+  fAud.mockResolvedValue({ ok: true, events: [] })
   sApp.mockResolvedValue({ ok: true, record: { signedName: 'R', validUntil: null, ts: 't' } })
   sStr.mockResolvedValue({ ok: true })
   sRisk.mockResolvedValue({ ok: true })
@@ -58,6 +65,7 @@ beforeEach(() => {
   rKey.mockResolvedValue({ ok: true })
   sAct.mockResolvedValue({ ok: true })
   sUpd.mockResolvedValue({ ok: true })
+  sAud.mockResolvedValue({ ok: true })
 })
 
 describe('useSetupPersistence', () => {
@@ -151,6 +159,22 @@ describe('useSetupPersistence', () => {
     await waitFor(() => expect(result.current.loaded).toBe(true))
     const r = await result.current.saveUpdateApproval('v2.4.1')
     expect(sUpd).toHaveBeenCalledWith(expect.anything(), 'TwoPrime', 'v2.4.1')
+    expect(r).toEqual({ ok: true })
+  })
+
+  it('seeds persistedAudit from a fetched set', async () => {
+    fAud.mockResolvedValue({ ok: true, events: [{ id: 'a1', ts: 't1', actor: 'client', type: 'UPDATE', detail: 'd1' }] })
+    const { result } = renderHook(() => useSetupPersistence('TwoPrime'))
+    await waitFor(() => expect(result.current.loaded).toBe(true))
+    expect(result.current.persistedAudit).toEqual([{ id: 'a1', ts: 't1', actor: 'client', type: 'UPDATE', detail: 'd1' }])
+  })
+
+  it('saveAuditEvent delegates to the repo and returns its result', async () => {
+    const { result } = renderHook(() => useSetupPersistence('TwoPrime'))
+    await waitFor(() => expect(result.current.loaded).toBe(true))
+    const ev = { id: 'evt-x', ts: 't', actor: 'client' as const, type: 'UPDATE' as const, detail: 'd' }
+    const r = await result.current.saveAuditEvent(ev)
+    expect(sAud).toHaveBeenCalledWith(expect.anything(), 'TwoPrime', ev)
     expect(r).toEqual({ ok: true })
   })
 })
