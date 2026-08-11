@@ -42,25 +42,28 @@ metadata note below), independent of the allowlist.
 Supabase Dashboard → **Authentication → Users** → **Add user** → **Create new user** → email +
 password, tick **Auto Confirm User**. Use an email that is **not** in `VITE_SUPABASE_ADMIN_EMAILS`.
 
-## 3. Set the client's `client_name`
+## 3. Link the client to its portal account
 
-The portal reads `user_metadata.client_name` for the display name and to scope positions
-(`fetchSavedStructures` filters by it). The "Create user" form has no metadata field, so set it after:
+The configured portal resolves the canonical `client_name` from the caller's own
+`public.clients` row. Its authority comes only from
+`app_metadata.client_id`; editable `user_metadata` is never used to choose the
+account. Set the matching UUID after creating both the Auth user and the portal
+client row:
 
-**SQL Editor (reliable):**
 ```sql
 update auth.users
-set raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) || '{"client_name":"TwoPrime"}'::jsonb
+set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || jsonb_build_object(
+  'client_id', '00000000-0000-0000-0000-000000000000'
+)
 where email = 'client@example.com';
 ```
 
-`raw_user_meta_data` is the DB column behind `user_metadata`; the `|| jsonb` merge adds/overwrites only
-`client_name` and preserves other keys. Newer Supabase dashboards also expose an editable **User
-Metadata** JSON box on the user's detail panel — if present, set `{ "client_name": "TwoPrime" }` there.
+The UUID must be the corresponding `public.clients.client_id`. The user must sign
+out and back in once after this server-side app-metadata change so the JWT is
+refreshed.
 
-`client_name` should match the `clientName` stored on that client's rows in the `positions` table,
-otherwise the portal loads but shows no client-scoped positions. (`client_id` is optional and, if set,
-must be a UUID.)
+`user_metadata.client_name` may still be set for local/no-Supabase demo display,
+but it is optional in configured environments and has no authorization effect.
 
 ## 4. Log in
 
@@ -75,14 +78,16 @@ must be a UUID.)
 |---|---|---|
 | Client logs in but sees the **admin desk** | `resolveClientAccess` returned `isAdmin: true` | The client's email is in `VITE_SUPABASE_ADMIN_EMAILS`, or their `app_metadata.role` is `admin`. Remove it. |
 | **You** (admin) now land in the client portal | Fail-closed default + allowlist not applied | Add your email to `VITE_SUPABASE_ADMIN_EMAILS` **and redeploy/rebuild** (env is baked at build time), or set your `app_metadata.role = "admin"`. |
-| Portal loads but shows **no positions** | `client_name` mismatch | Make `user_metadata.client_name` match the `clientName` on the client's `positions` rows. |
-| New metadata not taking effect | Stale session token | Sign the user out and back in (metadata is read from the token). |
+| Portal says the account is not linked | Missing/invalid `app_metadata.client_id`, or no matching `public.clients` row | Set the correct UUID in app metadata and sign out/in. |
+| Portal loads but shows **no positions** | The canonical client row has no matching positions, or account mapping data is unresolved | Check `public.clients.client_id` and the matching rows' `client_id`; do not use user metadata to scope data. |
+| New app metadata not taking effect | Stale session token | Sign the user out and back in (claims are read from the token). |
 
 Verify a user's resolved state:
 ```sql
 select email,
        raw_app_meta_data ->> 'role'        as role,
-       raw_user_meta_data ->> 'client_name' as client_name
+       raw_app_meta_data ->> 'client_id'   as client_id,
+       raw_user_meta_data ->> 'client_name' as optional_display_name
 from auth.users
 where email = 'client@example.com';
 ```

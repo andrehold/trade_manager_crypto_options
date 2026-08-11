@@ -9,6 +9,91 @@ import { DevDoorSwitch } from '@/features/clientPortal/DevDoorSwitch'
 import { ClientPortalShell } from '@/features/clientPortal/ClientPortalShell'
 import { parseDoor } from '@/features/clientPortal/routing'
 
+type CanonicalClientProfile =
+  | { status: 'ready'; clientId: string; clientName: string }
+  | { status: 'fallback'; clientName: string }
+  | { status: 'loading' }
+  | { status: 'error'; clientId?: string; message: string }
+
+function useCanonicalClientProfile(
+  userId: string | undefined,
+  isAdmin: boolean,
+  clientId: string | null,
+  legacyClientName: string | null,
+): CanonicalClientProfile {
+  const [profile, setProfile] = React.useState<CanonicalClientProfile>(() => ({
+    status: 'fallback',
+    clientName: legacyClientName ?? 'Client',
+  }))
+
+  const requiresCanonicalLookup = Boolean(userId && !isAdmin && hasSupabaseClient())
+
+  React.useEffect(() => {
+    if (!userId || isAdmin) {
+      setProfile({ status: 'fallback', clientName: legacyClientName ?? 'Client' })
+      return
+    }
+
+    // Local/demo builds without Supabase keep the existing metadata fallback.
+    // A configured portal instead resolves the server-authoritative clients row.
+    if (!hasSupabaseClient()) {
+      setProfile({ status: 'fallback', clientName: legacyClientName ?? 'Client' })
+      return
+    }
+
+    if (!clientId) {
+      setProfile({
+        status: 'error',
+        message: 'Your portal account is not linked to a client profile. Please contact support.',
+      })
+      return
+    }
+
+    let cancelled = false
+    setProfile({ status: 'loading' })
+
+    void getSupabaseClient()
+      .from('clients')
+      .select('client_name')
+      .eq('client_id', clientId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return
+        const clientName = typeof data?.client_name === 'string' ? data.client_name.trim() : ''
+        if (error || !clientName) {
+          setProfile({
+            status: 'error',
+            clientId,
+            message: 'Your portal client profile could not be loaded. Please contact support.',
+          })
+          return
+        }
+        setProfile({ status: 'ready', clientId, clientName })
+      })
+
+    return () => { cancelled = true }
+  }, [clientId, isAdmin, legacyClientName, userId])
+
+  // Effects run after paint. Do not render a legacy user_metadata name in the
+  // interval before a configured portal resolves its canonical clients row.
+  if (requiresCanonicalLookup) {
+    if (!clientId) {
+      return {
+        status: 'error',
+        message: 'Your portal account is not linked to a client profile. Please contact support.',
+      }
+    }
+    if ((profile.status === 'ready' || profile.status === 'error') && profile.clientId === clientId) {
+      return profile
+    }
+    return { status: 'loading' }
+  }
+
+  return profile.status === 'fallback'
+    ? profile
+    : { status: 'fallback', clientName: legacyClientName ?? 'Client' }
+}
+
 function useHash(): string {
   const [hash, setHash] = React.useState(() => (typeof window !== 'undefined' ? window.location.hash : ''))
   React.useEffect(() => {
@@ -22,7 +107,8 @@ function useHash(): string {
 export function RootRouter() {
   const hash = useHash()
   const { user, loading } = useAuth()
-  const { isAdmin, clientName } = resolveClientAccess(user)
+  const { isAdmin, clientName: legacyClientName, clientId } = resolveClientAccess(user)
+  const canonicalClientProfile = useCanonicalClientProfile(user?.id, isAdmin, clientId, legacyClientName)
   const door = parseDoor(hash)
 
   const signOut = React.useCallback(() => {
@@ -38,7 +124,17 @@ export function RootRouter() {
     // every other entry (client door, or a #/portal/* deep link) shows the branded client login.
     content = door === 'admin' ? <App /> : <LoginDoor role="client" />
   } else if (!isAdmin) {
-    content = <ClientPortalShell clientName={clientName ?? 'Client'} program="Obsidian Core" hash={hash} onSignOut={signOut} />
+    if (canonicalClientProfile.status === 'loading') {
+      content = <div className="grid min-h-screen place-items-center bg-bg-canvas"><Spinner className="h-6 w-6" /></div>
+    } else if (canonicalClientProfile.status === 'error') {
+      content = (
+        <main className="grid min-h-screen place-items-center bg-bg-canvas p-6 text-center">
+          <p className="max-w-md text-text-secondary">{canonicalClientProfile.message}</p>
+        </main>
+      )
+    } else {
+      content = <ClientPortalShell clientName={canonicalClientProfile.clientName} program="Obsidian Core" hash={hash} onSignOut={signOut} />
+    }
   } else {
     content = <App />
   }

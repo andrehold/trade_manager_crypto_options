@@ -58,4 +58,17 @@ describe('resolveClientAccess — client identity', () => {
     expect(access.isAdmin).toBe(false)
     expect(access.clientName).toBe('TwoPrime')
   })
+
+  it('accepts client_id only from trusted app_metadata', () => {
+    const u = user({
+      user_metadata: { client_id: '11111111-1111-4111-8111-111111111111' },
+      app_metadata: { client_id: '22222222-2222-4222-8222-222222222222' },
+    })
+    expect(resolveClientAccess(u).clientId).toBe('22222222-2222-4222-8222-222222222222')
+  })
+
+  it('does not treat a user_metadata-only client_id as authority', () => {
+    const u = user({ user_metadata: { client_id: '11111111-1111-4111-8111-111111111111' } })
+    expect(resolveClientAccess(u).clientId).toBeNull()
+  })
 })

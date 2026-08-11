@@ -47,13 +47,11 @@ function extractClientNameFromUser(user: User | null): string | null {
 }
 
 function extractClientIdFromUser(user: User | null): string | null {
-  const candidates: Array<unknown> = []
-  if (user?.user_metadata) {
-    candidates.push((user.user_metadata as Record<string, unknown>).client_id)
-  }
-  if (user?.app_metadata) {
-    candidates.push((user.app_metadata as Record<string, unknown>).client_id)
-  }
+  // client_id is authorization-bearing. User metadata is editable by the user,
+  // so only the Auth-service controlled app_metadata claim can establish it.
+  const candidates: Array<unknown> = [
+    (user?.app_metadata as Record<string, unknown> | undefined)?.client_id,
+  ]
 
   for (const candidate of candidates) {
     if (typeof candidate !== 'string') continue
