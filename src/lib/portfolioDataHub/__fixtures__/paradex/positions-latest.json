@@ -1,0 +1,58 @@
+{
+  "canonical_schema_version": "1.0",
+  "snapshot": {
+    "canonical_schema_version": "1.0",
+    "id": "33333333-3333-4333-8333-333333333332",
+    "account_id": "a0000000-0000-4000-8000-000000000001",
+    "run_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "fetched_at": "2026-07-29T12:00:00Z",
+    "venue_observed_at": null,
+    "status": "complete",
+    "position_count": 1,
+    "processing_version": "paradex-v1",
+    "venue": "paradex",
+    "account_label": "Paradex primary",
+    "source_raw_batch_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee2",
+    "ingested_at": "2026-07-29T12:00:01Z"
+  },
+  "items": [
+    {
+      "canonical_schema_version": "1.0",
+      "id": "33333333-3333-4333-8333-333333333333",
+      "snapshot_id": "33333333-3333-4333-8333-333333333332",
+      "venue_record_identifier": "position-1",
+      "native_instrument_id": "BTC-USD-PERP",
+      "instrument_type": "perpetual",
+      "base_currency": "BTC",
+      "quote_currency": "USD",
+      "settlement_currency": null,
+      "direction": "long",
+      "quantity": "0.25",
+      "quantity_unit": "contracts",
+      "average_price": "50000.5",
+      "mark_price": null,
+      "index_price": null,
+      "notional": null,
+      "notional_unit": null,
+      "realized_pnl": "12.5",
+      "unrealized_pnl": "4.75",
+      "initial_margin": null,
+      "maintenance_margin": null,
+      "liquidation_price": "42000.25",
+      "expiry_at": null,
+      "strike": null,
+      "option_side": null,
+      "attributes": {
+        "status": "OPEN"
+      },
+      "account_id": "a0000000-0000-4000-8000-000000000001",
+      "run_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "venue": "paradex",
+      "account_label": "Paradex primary",
+      "source_raw_batch_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee2",
+      "ingested_at": "2026-07-29T12:00:01Z",
+      "processing_version": "paradex-v1"
+    }
+  ],
+  "next_cursor": null
+}

@@ -1,0 +1,35 @@
+{
+  "canonical_schema_version": "1.0",
+  "items": [
+    {
+      "canonical_schema_version": "1.0",
+      "id": "d0000000-0000-4000-8000-000000000001",
+      "label": "Deribit primary",
+      "venue": "deribit",
+      "environment": "production",
+      "external_account_identifier": "deribit-account-42",
+      "enabled": true,
+      "activated_at": "2026-07-01T08:00:00Z"
+    },
+    {
+      "canonical_schema_version": "1.0",
+      "id": "c0000000-0000-4000-8000-000000000001",
+      "label": "Coincall primary",
+      "venue": "coincall",
+      "environment": "production",
+      "external_account_identifier": "9935374000",
+      "enabled": true,
+      "activated_at": "2026-07-01T08:00:00Z"
+    },
+    {
+      "canonical_schema_version": "1.0",
+      "id": "a0000000-0000-4000-8000-000000000001",
+      "label": "Paradex primary",
+      "venue": "paradex",
+      "environment": "production",
+      "external_account_identifier": "0xabc123",
+      "enabled": true,
+      "activated_at": "2026-07-01T08:00:00Z"
+    }
+  ]
+}

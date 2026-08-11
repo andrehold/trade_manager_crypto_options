@@ -1,0 +1,222 @@
+{
+  "dataset_format": "portfolio-data-hub-position-fixture-v1",
+  "canonical_schema_version": "1.0",
+  "sanitized": true,
+  "contains_real_account_data": false,
+  "description": "Single-file target-application fixture containing one canonical latest-position response for every implemented venue.",
+  "items": [
+    {
+      "venue": "deribit",
+      "account": {
+        "canonical_schema_version": "1.0",
+        "id": "d0000000-0000-4000-8000-000000000001",
+        "label": "Deribit primary",
+        "venue": "deribit",
+        "environment": "production",
+        "external_account_identifier": "deribit-account-42",
+        "enabled": true,
+        "activated_at": "2026-07-01T08:00:00Z"
+      },
+      "latest_positions_response": {
+        "canonical_schema_version": "1.0",
+        "snapshot": {
+          "canonical_schema_version": "1.0",
+          "id": "11111111-1111-4111-8111-111111111112",
+          "account_id": "d0000000-0000-4000-8000-000000000001",
+          "run_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          "fetched_at": "2026-07-29T12:00:00Z",
+          "venue_observed_at": "2026-07-29T12:00:00Z",
+          "status": "complete",
+          "position_count": 1,
+          "processing_version": "deribit-v1",
+          "venue": "deribit",
+          "account_label": "Deribit primary",
+          "source_raw_batch_id": "cccccccc-cccc-4ccc-8ccc-ccccccccccc2",
+          "ingested_at": "2026-07-29T12:00:01Z"
+        },
+        "items": [
+          {
+            "canonical_schema_version": "1.0",
+            "id": "11111111-1111-4111-8111-111111111113",
+            "snapshot_id": "11111111-1111-4111-8111-111111111112",
+            "venue_record_identifier": null,
+            "native_instrument_id": "BTC-PERPETUAL",
+            "instrument_type": "perpetual",
+            "base_currency": "BTC",
+            "quote_currency": "USD",
+            "settlement_currency": "BTC",
+            "direction": "long",
+            "quantity": "10000",
+            "quantity_unit": "USD",
+            "average_price": "118500.25",
+            "mark_price": "119250.25",
+            "index_price": "119200.00",
+            "notional": null,
+            "notional_unit": null,
+            "realized_pnl": "0",
+            "unrealized_pnl": "0.00035291",
+            "initial_margin": "0.008",
+            "maintenance_margin": "0.004",
+            "liquidation_price": "95000",
+            "expiry_at": null,
+            "strike": null,
+            "option_side": null,
+            "attributes": {
+              "size_currency": "0.08425000"
+            },
+            "account_id": "d0000000-0000-4000-8000-000000000001",
+            "run_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            "venue": "deribit",
+            "account_label": "Deribit primary",
+            "source_raw_batch_id": "cccccccc-cccc-4ccc-8ccc-ccccccccccc2",
+            "ingested_at": "2026-07-29T12:00:01Z",
+            "processing_version": "deribit-v1"
+          }
+        ],
+        "next_cursor": null
+      }
+    },
+    {
+      "venue": "coincall",
+      "account": {
+        "canonical_schema_version": "1.0",
+        "id": "c0000000-0000-4000-8000-000000000001",
+        "label": "Coincall primary",
+        "venue": "coincall",
+        "environment": "production",
+        "external_account_identifier": "9935374000",
+        "enabled": true,
+        "activated_at": "2026-07-01T08:00:00Z"
+      },
+      "latest_positions_response": {
+        "canonical_schema_version": "1.0",
+        "snapshot": {
+          "canonical_schema_version": "1.0",
+          "id": "22222222-2222-4222-8222-222222222222",
+          "account_id": "c0000000-0000-4000-8000-000000000001",
+          "run_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          "fetched_at": "2026-07-29T12:00:00Z",
+          "venue_observed_at": "2026-07-29T12:00:00Z",
+          "status": "complete",
+          "position_count": 1,
+          "processing_version": "coincall-v1",
+          "venue": "coincall",
+          "account_label": "Coincall primary",
+          "source_raw_batch_id": "dddddddd-dddd-4ddd-8ddd-ddddddddddd2",
+          "ingested_at": "2026-07-29T12:00:01Z"
+        },
+        "items": [
+          {
+            "canonical_schema_version": "1.0",
+            "id": "22222222-2222-4222-8222-222222222223",
+            "snapshot_id": "22222222-2222-4222-8222-222222222222",
+            "venue_record_identifier": "1584736851047620609",
+            "native_instrument_id": "BTCUSD-29AUG25-120000-C",
+            "instrument_type": "option",
+            "base_currency": "BTC",
+            "quote_currency": "USD",
+            "settlement_currency": null,
+            "direction": "long",
+            "quantity": "1.25000000",
+            "quantity_unit": "contracts",
+            "average_price": "11294.20000000",
+            "mark_price": "12260.310000000001",
+            "index_price": "119000.12",
+            "notional": "11294.2000000000000000",
+            "notional_unit": "USD",
+            "realized_pnl": "0.00000000",
+            "unrealized_pnl": "966.11000000000100000000",
+            "initial_margin": "0",
+            "maintenance_margin": "0",
+            "liquidation_price": null,
+            "expiry_at": null,
+            "strike": "120000",
+            "option_side": "call",
+            "attributes": {
+              "tradeSide": 1
+            },
+            "account_id": "c0000000-0000-4000-8000-000000000001",
+            "run_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            "venue": "coincall",
+            "account_label": "Coincall primary",
+            "source_raw_batch_id": "dddddddd-dddd-4ddd-8ddd-ddddddddddd2",
+            "ingested_at": "2026-07-29T12:00:01Z",
+            "processing_version": "coincall-v1"
+          }
+        ],
+        "next_cursor": null
+      }
+    },
+    {
+      "venue": "paradex",
+      "account": {
+        "canonical_schema_version": "1.0",
+        "id": "a0000000-0000-4000-8000-000000000001",
+        "label": "Paradex primary",
+        "venue": "paradex",
+        "environment": "production",
+        "external_account_identifier": "0xabc123",
+        "enabled": true,
+        "activated_at": "2026-07-01T08:00:00Z"
+      },
+      "latest_positions_response": {
+        "canonical_schema_version": "1.0",
+        "snapshot": {
+          "canonical_schema_version": "1.0",
+          "id": "33333333-3333-4333-8333-333333333332",
+          "account_id": "a0000000-0000-4000-8000-000000000001",
+          "run_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          "fetched_at": "2026-07-29T12:00:00Z",
+          "venue_observed_at": null,
+          "status": "complete",
+          "position_count": 1,
+          "processing_version": "paradex-v1",
+          "venue": "paradex",
+          "account_label": "Paradex primary",
+          "source_raw_batch_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee2",
+          "ingested_at": "2026-07-29T12:00:01Z"
+        },
+        "items": [
+          {
+            "canonical_schema_version": "1.0",
+            "id": "33333333-3333-4333-8333-333333333333",
+            "snapshot_id": "33333333-3333-4333-8333-333333333332",
+            "venue_record_identifier": "position-1",
+            "native_instrument_id": "BTC-USD-PERP",
+            "instrument_type": "perpetual",
+            "base_currency": "BTC",
+            "quote_currency": "USD",
+            "settlement_currency": null,
+            "direction": "long",
+            "quantity": "0.25",
+            "quantity_unit": "contracts",
+            "average_price": "50000.5",
+            "mark_price": null,
+            "index_price": null,
+            "notional": null,
+            "notional_unit": null,
+            "realized_pnl": "12.5",
+            "unrealized_pnl": "4.75",
+            "initial_margin": null,
+            "maintenance_margin": null,
+            "liquidation_price": "42000.25",
+            "expiry_at": null,
+            "strike": null,
+            "option_side": null,
+            "attributes": {
+              "status": "OPEN"
+            },
+            "account_id": "a0000000-0000-4000-8000-000000000001",
+            "run_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            "venue": "paradex",
+            "account_label": "Paradex primary",
+            "source_raw_batch_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee2",
+            "ingested_at": "2026-07-29T12:00:01Z",
+            "processing_version": "paradex-v1"
+          }
+        ],
+        "next_cursor": null
+      }
+    }
+  ]
+}

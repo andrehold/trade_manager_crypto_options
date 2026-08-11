@@ -1,0 +1,51 @@
+{
+  "canonical_schema_version": "1.0",
+  "id": "33333333-3333-4333-8333-333333333331",
+  "account_id": "a0000000-0000-4000-8000-000000000001",
+  "run_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  "fetched_at": "2026-07-29T12:00:00Z",
+  "venue_observed_at": null,
+  "processing_version": "paradex-v1",
+  "completeness": "complete",
+  "attributes": {
+    "source_pages": 2
+  },
+  "venue": "paradex",
+  "account_label": "Paradex primary",
+  "source_raw_batch_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1",
+  "ingested_at": "2026-07-29T12:00:01Z",
+  "components": [
+    {
+      "currency": "USDC",
+      "component_scope": "account",
+      "equity": "1250.125",
+      "balance": null,
+      "collateral": "1200.0",
+      "available_funds": "900.25",
+      "available_withdrawal_funds": null,
+      "initial_margin": "200.5",
+      "maintenance_margin": "100.25",
+      "realized_pnl": null,
+      "unrealized_pnl": null,
+      "attributes": {
+        "status": "ACTIVE"
+      }
+    },
+    {
+      "currency": "USDC",
+      "component_scope": "asset_balance",
+      "equity": null,
+      "balance": "1200.0",
+      "collateral": null,
+      "available_funds": null,
+      "available_withdrawal_funds": null,
+      "initial_margin": null,
+      "maintenance_margin": null,
+      "realized_pnl": null,
+      "unrealized_pnl": null,
+      "attributes": {
+        "token": "USDC"
+      }
+    }
+  ]
+}

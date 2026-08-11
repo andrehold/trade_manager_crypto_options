@@ -1,0 +1,37 @@
+{
+  "canonical_schema_version": "1.0",
+  "items": [
+    {
+      "canonical_schema_version": "1.0",
+      "id": "33333333-3333-4333-8333-333333333334",
+      "account_id": "a0000000-0000-4000-8000-000000000001",
+      "run_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "event_group_identifier": "paradex:transfer:transfer-1",
+      "event_component_index": 0,
+      "venue_event_identifier": "transfer-1",
+      "event_type": "deposit",
+      "event_time": "2026-07-29T10:00:03Z",
+      "native_instrument_id": null,
+      "side": "in",
+      "quantity": null,
+      "quantity_unit": null,
+      "amount": "500.00",
+      "currency": "USDC",
+      "price": null,
+      "price_currency": null,
+      "order_identifier": null,
+      "trade_identifier": null,
+      "transaction_hash": "0xparadex",
+      "processing_version": "paradex-v1",
+      "attributes": {
+        "kind": "DEPOSIT"
+      },
+      "venue": "paradex",
+      "account_label": "Paradex primary",
+      "source_raw_batch_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee3",
+      "deduplication_key": "paradex:transfer:transfer-1",
+      "ingested_at": "2026-07-29T12:00:01Z"
+    }
+  ],
+  "next_cursor": null
+}

@@ -1,0 +1,58 @@
+{
+  "canonical_schema_version": "1.0",
+  "snapshot": {
+    "canonical_schema_version": "1.0",
+    "id": "22222222-2222-4222-8222-222222222222",
+    "account_id": "c0000000-0000-4000-8000-000000000001",
+    "run_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "fetched_at": "2026-07-29T12:00:00Z",
+    "venue_observed_at": "2026-07-29T12:00:00Z",
+    "status": "complete",
+    "position_count": 1,
+    "processing_version": "coincall-v1",
+    "venue": "coincall",
+    "account_label": "Coincall primary",
+    "source_raw_batch_id": "dddddddd-dddd-4ddd-8ddd-ddddddddddd2",
+    "ingested_at": "2026-07-29T12:00:01Z"
+  },
+  "items": [
+    {
+      "canonical_schema_version": "1.0",
+      "id": "22222222-2222-4222-8222-222222222223",
+      "snapshot_id": "22222222-2222-4222-8222-222222222222",
+      "venue_record_identifier": "1584736851047620609",
+      "native_instrument_id": "BTCUSD-29AUG25-120000-C",
+      "instrument_type": "option",
+      "base_currency": "BTC",
+      "quote_currency": "USD",
+      "settlement_currency": null,
+      "direction": "long",
+      "quantity": "1.25000000",
+      "quantity_unit": "contracts",
+      "average_price": "11294.20000000",
+      "mark_price": "12260.310000000001",
+      "index_price": "119000.12",
+      "notional": "11294.2000000000000000",
+      "notional_unit": "USD",
+      "realized_pnl": "0.00000000",
+      "unrealized_pnl": "966.11000000000100000000",
+      "initial_margin": "0",
+      "maintenance_margin": "0",
+      "liquidation_price": null,
+      "expiry_at": null,
+      "strike": "120000",
+      "option_side": "call",
+      "attributes": {
+        "tradeSide": 1
+      },
+      "account_id": "c0000000-0000-4000-8000-000000000001",
+      "run_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "venue": "coincall",
+      "account_label": "Coincall primary",
+      "source_raw_batch_id": "dddddddd-dddd-4ddd-8ddd-ddddddddddd2",
+      "ingested_at": "2026-07-29T12:00:01Z",
+      "processing_version": "coincall-v1"
+    }
+  ],
+  "next_cursor": null
+}

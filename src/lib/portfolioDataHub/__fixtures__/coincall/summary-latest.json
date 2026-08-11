@@ -1,0 +1,51 @@
+{
+  "canonical_schema_version": "1.0",
+  "id": "22222222-2222-4222-8222-222222222221",
+  "account_id": "c0000000-0000-4000-8000-000000000001",
+  "run_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  "fetched_at": "2026-07-29T12:00:00Z",
+  "venue_observed_at": "2026-07-29T12:00:00Z",
+  "processing_version": "coincall-v1",
+  "completeness": "complete",
+  "attributes": {
+    "source_pages": 2
+  },
+  "venue": "coincall",
+  "account_label": "Coincall primary",
+  "source_raw_batch_id": "dddddddd-dddd-4ddd-8ddd-ddddddddddd1",
+  "ingested_at": "2026-07-29T12:00:01Z",
+  "components": [
+    {
+      "currency": "BTC",
+      "component_scope": "account_valuation",
+      "equity": null,
+      "balance": "0.841373578901234567",
+      "collateral": null,
+      "available_funds": null,
+      "available_withdrawal_funds": null,
+      "initial_margin": null,
+      "maintenance_margin": null,
+      "realized_pnl": null,
+      "unrealized_pnl": null,
+      "attributes": {
+        "source": "aggregate valuation"
+      }
+    },
+    {
+      "currency": "USDT",
+      "component_scope": "asset_account",
+      "equity": "99888.76626863",
+      "balance": "99932.41659503",
+      "collateral": "99888.76626863",
+      "available_funds": "99500.00",
+      "available_withdrawal_funds": "99000.00",
+      "initial_margin": "100.00",
+      "maintenance_margin": "50.00",
+      "realized_pnl": "0",
+      "unrealized_pnl": "-43.65032640",
+      "attributes": {
+        "accountType": "futures"
+      }
+    }
+  ]
+}
