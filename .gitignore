@@ -8,3 +8,5 @@
 !.env.example
 node_modules/
 dist/
+.vercel
+supabase/.temp/
