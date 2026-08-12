@@ -1,5 +1,5 @@
 import type React from 'react'
-import { LayoutDashboard, TrendingUp, ClipboardCheck, BookOpen, ShieldCheck, KeyRound, ArrowDownToLine, FileText, LogOut, Check } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, ClipboardCheck, BookOpen, ShieldCheck, KeyRound, ArrowDownToLine, FileText, LogOut, Check, ScrollText } from 'lucide-react'
 import type { PortalPage } from './routing'
 import type { SetupStatus } from './setupStatus'
 
@@ -8,6 +8,7 @@ type Item = { page: PortalPage; label: string; icon: React.ComponentType<{ class
 const TOP: Item[] = [
   { page: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { page: 'positions', label: 'Positions', icon: TrendingUp },
+  { page: 'ledger', label: 'Ledger history', icon: ScrollText },
 ]
 const SETUP: Item[] = [
   { page: 'appropriateness', label: 'Appropriateness', icon: ClipboardCheck, statusKey: 'appropriateness' },

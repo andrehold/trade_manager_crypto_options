@@ -6,7 +6,9 @@ import { ActivationControl } from './ActivationControl'
 import { ResponsibilityStrip } from './ResponsibilityStrip'
 import { DashboardPage } from './pages/DashboardPage'
 import { PositionsPage } from './pages/PositionsPage'
+import { HubDashboard, HubLedgerPage, HubPositionsPage } from './components/HubPortfolioView'
 import { useClientPositions } from './useClientPositions'
+import { usePortfolioDataHub } from './usePortfolioDataHub'
 import { usePositionInterventions } from './usePositionInterventions'
 import { useSetupPersistence } from './useSetupPersistence'
 import { type AppropriatenessInput } from '@/lib/clientPortal/appropriatenessRepo'
@@ -26,6 +28,7 @@ import { hasSupabaseClient } from '@/lib/supabase'
 
 const PAGE_TITLES: Record<PortalPage, string> = {
   dashboard: 'Dashboard', positions: 'Positions', appropriateness: 'Appropriateness',
+  ledger: 'Ledger history',
   strategy: 'Strategy module', risk: 'Risk & deployment', keys: 'Exchange API keys',
   updates: 'Software updates', audit: 'Audit log',
 }
@@ -36,11 +39,12 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const page = parsePortalPage(hash)
   const [active, setActive] = React.useState(false)
   const { positions, loading, error, reload } = useClientPositions(clientName)
+  const { state: hubState, reload: reloadHub } = usePortfolioDataHub()
   const { interventions, record } = usePositionInterventions(clientName)
   const persistence = useSetupPersistence(clientName)
-  // Fall back to clearly-labeled illustrative positions when the client has none yet,
-  // so the Dashboard/Positions pages demonstrate the UI instead of sitting empty.
-  const usingSample = !loading && !error && positions.length === 0
+  // Illustrative positions exist only in a no-Supabase demo build. A configured portal
+  // must show its own manual data or an explicit Hub setup/unavailable state, never samples.
+  const usingSample = !hasSupabaseClient() && !loading && !error && positions.length === 0
   const shownPositions = usingSample ? SAMPLE_POSITIONS : positions
   const shownMarks = usingSample ? SAMPLE_MARKS : undefined
   const [setupStatus, setSetupStatus] = React.useState<SetupStatus>(EMPTY_SETUP_STATUS)
@@ -182,8 +186,32 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
             <UpdatesPage approvedVersions={effectiveApproved} onApprove={approveUpdate} />
           ) : page === 'audit' ? (
             <AuditLogPage events={shownAudit} clientName={clientName} />
-          ) : (page === 'dashboard' || page === 'positions') ? (
-            error ? (
+          ) : (page === 'dashboard' || page === 'positions' || page === 'ledger') ? (
+            hubState.status === 'loading' ? (
+              <div className="grid place-items-center py-20"><Spinner className="h-6 w-6" /></div>
+            ) : hubState.status === 'ready' ? (
+              page === 'dashboard' ? (
+                <HubDashboard
+                  overview={hubState.overview}
+                  onOpenPositions={() => navigate('positions')}
+                  onOpenLedger={() => navigate('ledger')}
+                  onRefresh={reloadHub}
+                />
+              ) : page === 'positions' ? <HubPositionsPage overview={hubState.overview} onRefresh={reloadHub} /> : <HubLedgerPage onRefresh={reloadHub} />
+            ) : hubState.status === 'session-expired' ? (
+              <PortfolioHubStateNotice
+                title="Your portfolio session has expired."
+                message={hubState.message}
+                onRetry={reloadHub}
+                retryLabel="Try again"
+              />
+            ) : page === 'ledger' ? (
+              <PortfolioHubStateNotice
+                title={hubState.status === 'unmapped' ? 'Portfolio Data Hub is not configured for this account.' : 'Ledger history is currently unavailable.'}
+                message={hubState.status === 'not-configured' ? 'Configure Supabase and a Portfolio Data Hub mapping to view account activity.' : hubState.message}
+                onRetry={hubState.status === 'unavailable' ? reloadHub : undefined}
+              />
+            ) : error ? (
               <div className="rounded-2xl border border-status-danger/30 bg-status-danger/10 p-6 text-center">
                 <p className="type-subhead text-status-danger">Could not load your positions.</p>
                 <p className="mt-1 type-caption text-text-secondary">{error}</p>
@@ -193,6 +221,9 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
               <div className="grid place-items-center py-20"><Spinner className="h-6 w-6" /></div>
             ) : (
               <div className="flex flex-col gap-4">
+                {(hubState.status === 'unmapped' || hubState.status === 'unavailable' || hubState.status === 'not-configured') && (
+                  <PortfolioHubFallbackNotice state={hubState} onRetry={reloadHub} />
+                )}
                 {usingSample && (
                   <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border-default bg-bg-surface-2 px-4 py-2.5 type-caption text-text-secondary">
                     <span className="rounded-full bg-status-info/15 px-2 py-0.5 text-[10.5px] font-semibold text-status-info">Sample data</span>
@@ -225,6 +256,36 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
           )}
         </main>
       </div>
+    </div>
+  )
+}
+
+function PortfolioHubStateNotice({ title, message, onRetry, retryLabel = 'Retry' }: {
+  title: string; message: string; onRetry?: () => void; retryLabel?: string
+}) {
+  return (
+    <div className="rounded-2xl border border-border-default bg-bg-surface-1 p-6 text-center">
+      <p className="type-subhead font-medium text-text-primary">{title}</p>
+      <p className="mx-auto mt-1 max-w-xl type-caption text-text-secondary">{message}</p>
+      {onRetry && <div className="mt-4"><Button variant="secondary" size="sm" onClick={onRetry}>{retryLabel}</Button></div>}
+    </div>
+  )
+}
+
+function PortfolioHubFallbackNotice({ state, onRetry }: {
+  state: Exclude<ReturnType<typeof usePortfolioDataHub>['state'], { status: 'loading' } | { status: 'ready'; overview: unknown } | { status: 'session-expired'; message: string }>
+  onRetry: () => void
+}) {
+  const unavailable = state.status === 'unavailable'
+  const text = state.status === 'unmapped'
+    ? 'Portfolio Data Hub is not configured for this client. Showing portal positions only.'
+    : state.status === 'not-configured'
+      ? 'Portfolio Data Hub is not configured in this build. Showing portal positions only.'
+      : 'Portfolio Data Hub could not be reached. Showing portal positions only.'
+  return (
+    <div className={`flex flex-wrap items-center gap-2 rounded-xl border px-4 py-2.5 type-caption ${unavailable ? 'border-status-warning/30 bg-status-warning/10 text-status-warning' : 'border-border-default bg-bg-surface-2 text-text-secondary'}`} role="status">
+      <span>{text}</span>
+      {unavailable && <Button variant="ghost" size="sm" onClick={onRetry}>Retry Hub</Button>}
     </div>
   )
 }

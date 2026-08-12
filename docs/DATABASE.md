@@ -81,7 +81,7 @@ alter table public.clients enable row level security;
 create policy "clients_admin_only" on public.clients
   for all using (helpers.is_admin()) with check (helpers.is_admin());
 
--- 20260811_add_portfolio_data_hub_client_mapping.sql applies these policies
+-- 20260812090000_account_identity_rls_hardening.sql applies these policies
 -- after removing every pre-existing policy on each table. SELECT policies never
 -- have WITH CHECK: PostgreSQL permits WITH CHECK only for INSERT/UPDATE/ALL.
 alter table public.positions enable row level security;
@@ -130,21 +130,49 @@ Once the claims are in place, non-admin users automatically see only their own s
 
 ## Portfolio Data Hub account mappings
 
-`20260811_add_portfolio_data_hub_client_mapping.sql` adds a deliberately narrow
-connection from one portal account (`public.clients.client_id`) to one Portfolio
-Data Hub account (`hub_account_id`). The ID is nullable during rollout, but a
-partial unique index guarantees that a non-null Hub account can never be attached
-to two portal accounts.
+The database work is deliberately separated into three ordered migrations:
 
-The migration also removes the historical policy that let any authenticated user
-update or delete any `clients` row. It replaces it with:
+1. `20260812090000_account_identity_rls_hardening.sql` establishes the trusted
+   `client_id` authorization boundary for existing portal data.
+2. `20260812091000_portfolio_data_hub_mapping.sql` connects one portal account to
+   at most one Hub account. It stores routing/configuration only; Hub summaries,
+   positions, and ledger data remain in the Hub and are fetched through its API.
+3. `20260812092000_reporting_currency_configuration.sql` adds the independent
+   reporting-currency preference and its audit trail.
+
+The account-identity migration removes the historical policy that let any
+authenticated user update or delete any `clients` row. It replaces it with:
 
 - Admin-only direct client mutations, authenticated exclusively by
   `app_metadata.role = 'admin'`.
 - A client read policy restricted to `app_metadata.client_id`.
-- `public.set_own_reporting_currency(text)`, a `SECURITY DEFINER` RPC that lets a
-  client set or clear only its own reporting currency. It cannot accept or change
-  a Hub account ID, mapping label, or another client ID.
+
+It also hardens all existing portal state tables (`appropriateness_assessments`,
+`strategy_selections`, `risk_limit_selections`, `exchange_key_events`,
+`activation_events`, `update_approvals`, `audit_events`, and
+`position_interventions`). Each receives an authoritative nullable `client_id`
+foreign key, explicit RLS, and compatibility handling for its historical
+`client_name` snapshot. Unmatched legacy rows remain admin-only until reconciled.
+Optional portal tables that do not yet exist are skipped, which allows the Hub
+mapping to be installed in a partially initialized project. If one of those legacy
+tables is created later, apply its historical creation migration first and rerun
+the account-hardening SQL before exposing it to clients.
+
+`transaction_logs` and `unprocessed_imports` are account-owned but remain
+admin-only mutable import workspaces. Core `positions`, `legs`, and `fills` receive
+fail-closed RLS: admins have full access and clients have SELECT-only access to
+their own structures. Account child foreign keys use `ON DELETE RESTRICT`, so a
+stateful client is deactivated rather than deleted.
+
+The Hub-mapping migration adds nullable `hub_account_id`, `hub_account_label`,
+and `hub_account_mapped_at`. A partial unique index prevents the same non-null Hub
+account being attached to two portal clients. Use the narrow
+`admin_set_client_hub_account_mapping(uuid, uuid, text)` RPC for assignments.
+
+The reporting-currency migration adds `public.set_own_reporting_currency(text)`
+and `admin_set_client_reporting_currency(uuid, text)`. The client RPC derives the
+account only from trusted `app_metadata.client_id` and cannot accept or change a
+Hub account ID, mapping label, or another client ID.
 
 `reporting_currency_source` is database-managed: it is `client` when the narrow
 RPC changes a non-null currency, `admin` when an administrator changes it, and
@@ -155,29 +183,6 @@ an unmapped account has neither a Hub label nor mapping timestamp, a mapped acco
 has a timestamp, reporting currency and source are null together, and any selected
 currency is canonical uppercase `A-Z0-9` (2–12 characters). The BEFORE trigger
 normalizes and validates direct administrator writes too.
-
-The same migration also hardens all existing portal state tables
-(`appropriateness_assessments`, `strategy_selections`, `risk_limit_selections`,
-`exchange_key_events`, `activation_events`, `update_approvals`, `audit_events`,
-and `position_interventions`). Each now has an authoritative nullable `client_id`
-foreign key. Existing rows are backfilled from their historical `client_name`; a
-row with no matching client is preserved but intentionally unavailable to client
-users until an administrator reconciles it. New client writes can keep sending the
-legacy `client_name` for now: a database trigger replaces it with the name for the
-caller’s trusted `app_metadata.client_id`, so it cannot be used to write to another
-account. RLS uses `client_id`, never `user_metadata.client_name`. These state
-tables remain append-only: the new trusted-admin policies permit reads and inserts,
-not direct updates or deletes.
-
-`transaction_logs` and `unprocessed_imports` are hardened too, but remain
-admin-only mutable import-workspace tables: clients receive no policy for either.
-Their ownership trigger applies the same canonical `client_id`/snapshot-name
-rewrite, and their account indexes use `created_at` rather than `ts`.
-
-All new account child foreign keys explicitly use `ON DELETE RESTRICT`, including
-the existing `positions` relationship. Therefore a client with any positions,
-setup state, import records, or configuration history must be **deactivated, not
-deleted**. This is intentional: it preserves account isolation and auditability.
 
 Client names remain compatibility snapshots while repository code still filters
 some queries with `.eq('client_name', ...)`. An administrator rename cascades the
@@ -195,17 +200,14 @@ history; administrators may read all history; the table has no direct write poli
 Selecting the same currency again is meaningful: it updates the provenance to the
 actor (`client` or `admin`) and is audited when that provenance changes.
 
-For future server work, use the narrow
-`admin_set_client_reporting_currency(uuid, text)` and
-`admin_set_client_hub_account_mapping(uuid, uuid, text)` RPCs. They accept either
+The two narrow admin RPCs accept either
 an `app_metadata.role = 'admin'` JWT or Supabase's server-held `service_role`; do
 not put a service-role credential in the browser. Direct administrator table
 updates remain allowed by RLS, but the database trigger still derives provenance.
 
 ### Required live Supabase acceptance checks
 
-The repository has static SQL-contract tests but no disposable Supabase/Postgres
-test harness. After applying the migration to a non-production project, run these
+After applying all three migrations in order to a non-production project, run these
 checks with fresh JWTs (sign out and back in after changing app metadata):
 
 1. Create two portal clients and map one Hub UUID to the first. Verify mapping the
@@ -245,7 +247,7 @@ checks with fresh JWTs (sign out and back in after changing app metadata):
    rejects it once any account history exists; set the client `status` to inactive
    instead.
 
-The same migration establishes core `positions`, `legs`, and `fills` RLS. It
+The account-identity migration establishes core `positions`, `legs`, and `fills` RLS. It
 first removes every existing policy (to prevent an unknown permissive policy from
 OR-opening access), then grants trusted admins full access and clients **SELECT
 only** access to their own positions and parent-position-scoped legs/fills.
@@ -260,9 +262,9 @@ bash scripts/verify-slice2-postgres.sh
 ```
 
 The command refuses any database other than `trade_management_desk_dev`, never
-touches `portfolio_data_hub`, records the SHA-256 of the applied Slice 2 migration,
-and refuses to test a stale schema when that hash changes. Fixture data is enclosed
-in a rollback transaction; baseline objects and the migration persist for repeatable
+touches `portfolio_data_hub`, records a SHA-256 over the ordered three-migration
+set, and refuses to test a stale schema when that hash changes. Fixture data is enclosed
+in a rollback transaction; baseline objects and the migrations persist for repeatable
 checks. The plain-PostgreSQL bootstrap creates `authenticated` and `service_role`
 as **cluster-global roles** plus minimal `auth.*` claim shims. That is acceptable in
 the user-approved disposable shared container, but strict isolation should use a

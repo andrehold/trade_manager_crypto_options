@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useClientPositions } from '../useClientPositions'
 import { useSetupPersistence } from '../useSetupPersistence'
+import { usePortfolioDataHub } from '../usePortfolioDataHub'
 import { DEFAULT_RISK_LIMITS } from '../risk/riskLimits'
 import { hasSupabaseClient } from '@/lib/supabase'
 
@@ -19,6 +20,8 @@ vi.mock('recharts', async (importOriginal) => {
 
 vi.mock('../useClientPositions')
 const mockedHook = vi.mocked(useClientPositions)
+
+vi.mock('../usePortfolioDataHub', () => ({ usePortfolioDataHub: vi.fn() }))
 
 vi.mock('../useSetupPersistence', () => ({ useSetupPersistence: vi.fn() }))
 
@@ -61,6 +64,7 @@ const baseSetupPersistence = {
 
 beforeEach(() => {
   mockedHook.mockReturnValue({ positions: [], loading: false, error: null, reload: vi.fn() })
+  vi.mocked(usePortfolioDataHub).mockReturnValue({ state: { status: 'not-configured' }, reload: vi.fn() })
   // Reset the persistence mock every test so a per-test override never leaks forward.
   vi.mocked(useSetupPersistence).mockReturnValue(baseSetupPersistence)
   // Reset the Supabase-configured flag every test so a per-test override never leaks forward.
@@ -89,6 +93,18 @@ describe('ClientPortalShell', () => {
     expect(screen.getByText(/could not load your positions/i)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /retry/i }))
     expect(reload).toHaveBeenCalledOnce()
+  })
+
+  it('does not substitute samples when a configured client has no Hub mapping', async () => {
+    vi.mocked(hasSupabaseClient).mockReturnValue(true)
+    vi.mocked(usePortfolioDataHub).mockReturnValue({
+      state: { status: 'unmapped', message: 'Portfolio Data Hub is not configured for this client' },
+      reload: vi.fn(),
+    })
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/positions" onSignOut={() => {}} />)
+    expect(await screen.findByText(/Hub is not configured/i)).toBeInTheDocument()
+    expect(screen.getByText(/No open positions/i)).toBeInTheDocument()
+    expect(screen.queryByText('Sample data')).toBeNull()
   })
 
   it('renders the Risk page and flips the risk setup status on apply', async () => {

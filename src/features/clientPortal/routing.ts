@@ -1,11 +1,11 @@
 export type PortalPage =
   | 'dashboard' | 'positions' | 'appropriateness' | 'strategy'
-  | 'risk' | 'keys' | 'updates' | 'audit'
+  | 'ledger' | 'risk' | 'keys' | 'updates' | 'audit'
 
 export type Door = 'client' | 'admin'
 
 const PORTAL_PAGES: PortalPage[] = [
-  'dashboard', 'positions', 'appropriateness', 'strategy',
+  'dashboard', 'positions', 'ledger', 'appropriateness', 'strategy',
   'risk', 'keys', 'updates', 'audit',
 ]
 

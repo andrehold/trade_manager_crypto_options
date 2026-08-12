@@ -25,6 +25,7 @@ describe('isPortalRoute', () => {
 describe('parsePortalPage', () => {
   it('reads the page segment', () => {
     expect(parsePortalPage('#/portal/positions')).toBe('positions')
+    expect(parsePortalPage('#/portal/ledger')).toBe('ledger')
     expect(parsePortalPage('#/portal/audit')).toBe('audit')
   })
   it('defaults unknown or missing to dashboard', () => {
@@ -36,5 +37,6 @@ describe('parsePortalPage', () => {
 describe('portalHash', () => {
   it('builds a portal hash', () => {
     expect(portalHash('risk')).toBe('#/portal/risk')
+    expect(portalHash('ledger')).toBe('#/portal/ledger')
   })
 })

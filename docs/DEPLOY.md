@@ -5,6 +5,22 @@ This app uses **explicit Vercel Edge routes** for live data and a Vite proxy for
 ## Required files
 - `api/deribit/ticker.ts` — proxies `public/ticker` to Deribit and returns upstream JSON.
 - `api/coincall/price.ts` — aggregates Coincall detail + orderbook + last trade and returns `{ price, multiplier, greeks }`.
+- `api/portfolio-data-hub/*` — authenticated client summary, positions, ledger, and combined provenance routes.
+
+## Portfolio Data Hub environment
+
+The Hub key is server-only and must never use a `VITE_` prefix:
+
+```env
+PORTFOLIO_DATA_HUB_BASE_URL=https://hub.example.com
+PORTFOLIO_DATA_HUB_API_KEY=<server-only bearer key>
+```
+
+The routes validate the caller with the existing Supabase publishable key and
+query `public.clients` under the caller's RLS context. They therefore use
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`; no service-role secret is
+required for client reads. The local loopback Hub URL works only on the developer
+machine. Vercel requires the future reachable Hetzner HTTPS URL.
 
 ## Project settings
 - Framework preset: **Vite**
@@ -16,6 +32,10 @@ This app uses **explicit Vercel Edge routes** for live data and a Vite proxy for
 2) **Resources → Functions** should list:
    - `/api/deribit/ticker`
    - `/api/coincall/price`
+   - `/api/portfolio-data-hub/summary`
+   - `/api/portfolio-data-hub/positions`
+   - `/api/portfolio-data-hub/ledger`
+   - `/api/portfolio-data-hub/overview`
 3) Test in the browser (replace domain):
    ```
    https://<your-app>.vercel.app/api/deribit/ticker?instrument_name=BTC-27DEC25-50000-C
@@ -30,6 +50,21 @@ Runs the app and Edge functions locally under `/api`.
 npm i
 vercel dev
 ```
+
+Portfolio Data Hub routes require `vercel dev`; the plain Vite proxy does not
+execute files under `api/`. Requests must include the signed-in user's access
+token as `Authorization: Bearer <Supabase JWT>`.
+
+Dataset behavior:
+
+- `summary`: latest account summary.
+- `positions`: latest position snapshot; `limit` defaults to 200 and supports an
+  opaque `cursor`.
+- `ledger`: newest ledger page; `limit` defaults to 50 and supports `cursor` plus
+  the documented Hub filters.
+- `overview`: summary and positions together with `runAligned`/`mixedAge`, both
+  run IDs, and both collection timestamps. Each dataset retains its own quality
+  and provenance; the server does not imply coherence when run IDs differ.
 
 ### Option B — `npm run dev` (vite proxy)
 If you only use Vite dev, the client falls back to proxies:

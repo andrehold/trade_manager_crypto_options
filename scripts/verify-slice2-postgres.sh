@@ -8,8 +8,12 @@ container="${SLICE2_PG_CONTAINER:-portfolio-data-hub-postgres-1}"
 database="${SLICE2_PG_DATABASE:-trade_management_desk_dev}"
 database_user="${SLICE2_PG_USER:-portfolio_data_hub}"
 workspace_dir="$(cd "$(dirname "$0")/.." && pwd)"
-migration_file="$workspace_dir/supabase/migrations/20260811_add_portfolio_data_hub_client_mapping.sql"
-migration_hash="$(shasum -a 256 "$migration_file" | awk '{print $1}')"
+migration_files=(
+  "$workspace_dir/supabase/migrations/20260812090000_account_identity_rls_hardening.sql"
+  "$workspace_dir/supabase/migrations/20260812091000_portfolio_data_hub_mapping.sql"
+  "$workspace_dir/supabase/migrations/20260812092000_reporting_currency_configuration.sql"
+)
+migration_hash="$(shasum -a 256 "${migration_files[@]}" | awk '{print $1}' | shasum -a 256 | awk '{print $1}')"
 
 if [[ "$database" != 'trade_management_desk_dev' ]] || [[ "$database" == 'portfolio_data_hub' || "$database" == 'postgres' ]]; then
   echo "Refusing to run: SLICE2_PG_DATABASE must be exactly trade_management_desk_dev (never portfolio_data_hub/postgres)." >&2
@@ -22,21 +26,16 @@ run_sql_file() {
 
 run_sql_file "$workspace_dir/supabase/tests/slice2_acceptance_bootstrap.sql"
 
-installed_hash="$(docker exec "$container" psql -At -U "$database_user" -d "$database" -c "select coalesce(value, '') from public._slice2_acceptance_harness where key = 'migration-applied';")"
+installed_hash="$(docker exec "$container" psql -At -U "$database_user" -d "$database" -c "select coalesce(value, '') from public._slice2_acceptance_harness where key = 'split-migrations-applied';")"
 if [[ -z "$installed_hash" ]]; then
-  marker_exists="$(docker exec "$container" psql -At -U "$database_user" -d "$database" -c "select exists (select 1 from public._slice2_acceptance_harness where key = 'migration-applied');")"
-  if [[ "$marker_exists" == 't' ]]; then
-    # A prior harness installed Slice 2 before hashes existed. The real migration
-    # is repeatable against this disposable portal DB, so reapply it successfully
-    # before binding the persistent install to this exact SQL hash.
+  # Apply the exact ordered set. This also safely upgrades the persistent local
+  # database from the superseded combined migration without dropping its schema.
+  for migration_file in "${migration_files[@]}"; do
     run_sql_file "$migration_file"
-    docker exec "$container" psql -v ON_ERROR_STOP=1 -U "$database_user" -d "$database" -c "update public._slice2_acceptance_harness set value = '$migration_hash' where key = 'migration-applied';" >/dev/null
-  else
-    run_sql_file "$migration_file"
-    docker exec "$container" psql -v ON_ERROR_STOP=1 -U "$database_user" -d "$database" -c "insert into public._slice2_acceptance_harness (key, value) values ('migration-applied', '$migration_hash');" >/dev/null
-  fi
+  done
+  docker exec "$container" psql -v ON_ERROR_STOP=1 -U "$database_user" -d "$database" -c "insert into public._slice2_acceptance_harness (key, value) values ('split-migrations-applied', '$migration_hash') on conflict (key) do update set value = excluded.value;" >/dev/null
 elif [[ "$installed_hash" != "$migration_hash" ]]; then
-  echo "Refusing to run: installed Slice 2 migration hash ($installed_hash) differs from current SQL ($migration_hash). Apply a new forward migration; do not test stale schema." >&2
+  echo "Refusing to run: installed Slice 2 migration-set hash ($installed_hash) differs from the current ordered SQL set ($migration_hash). Apply a new forward migration; do not test stale schema." >&2
   exit 3
 fi
 

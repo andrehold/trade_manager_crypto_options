@@ -15,6 +15,7 @@ describe('ClientSidebar', () => {
     )
     expect(screen.getByText('TwoPrime')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /risk & deployment/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /ledger history/i })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /positions/i }))
     expect(onNavigate).toHaveBeenCalledWith('positions')
   })
