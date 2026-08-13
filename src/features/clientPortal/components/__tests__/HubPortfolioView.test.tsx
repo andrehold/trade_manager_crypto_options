@@ -8,7 +8,7 @@ import { parseHubLatestPositionPage, parseHubLedgerEventPage, parseHubSummary } 
 
 vi.mock('../../usePortfolioDataHub', () => ({ usePortfolioHubLedger: vi.fn(), usePortfolioHubPositions: vi.fn() }))
 
-import { HubDashboard, HubLedgerHistory, HubPositionsPage } from '../HubPortfolioView'
+import { HubDashboard, HubLedgerHistory, HubNativePositionsTable, HubPositionsPage } from '../HubPortfolioView'
 import { usePortfolioHubLedger, usePortfolioHubPositions } from '../../usePortfolioDataHub'
 
 const mixedPositions = structuredClone(positionsFixture)
@@ -54,6 +54,46 @@ describe('Hub-backed portfolio views', () => {
     expect(screen.getByText(/native venue positions/i)).toBeInTheDocument()
     expect(screen.getByText('BTC-USD-PERP')).toBeInTheDocument()
     expect(screen.queryByText('Control')).toBeNull()
+  })
+
+  it('renders inverse option premiums in their BTC quote currency with sans-serif tabular cells', () => {
+    const sourcePosition = parseHubLatestPositionPage(mixedPositions).items[0]
+    const inverseOption = {
+      ...sourcePosition,
+      nativeInstrumentId: 'BTC-25SEP26-52000-P',
+      instrumentType: 'option' as const,
+      quoteCurrency: 'BTC',
+      settlementCurrency: 'BTC',
+      quantity: '-12.5' as typeof sourcePosition.quantity,
+      quantityUnit: 'BTC',
+      averagePrice: '0.0525' as typeof sourcePosition.averagePrice,
+      markPrice: '0.049' as typeof sourcePosition.markPrice,
+      unrealizedPnl: '0.000000001' as typeof sourcePosition.unrealizedPnl,
+    }
+    render(<HubNativePositionsTable positions={[inverseOption]} quality="complete" />)
+
+    const averagePriceCell = screen.getByText('0.0525 BTC').closest('td')
+    expect(averagePriceCell).toHaveClass('text-right', 'tabular-nums')
+    expect(averagePriceCell).not.toHaveClass('font-mono')
+    expect(screen.getByText('0.0490 BTC')).toBeInTheDocument()
+    expect(screen.getByText('<0.00000001 BTC')).toBeInTheDocument()
+  })
+
+  it('does not reuse the price quote currency for PnL or margin when settlement currency is unknown', () => {
+    const sourcePosition = parseHubLatestPositionPage(mixedPositions).items[0]
+    const unknownSettlement = {
+      ...sourcePosition,
+      quoteCurrency: 'USD',
+      settlementCurrency: null,
+      unrealizedPnl: '4.75' as typeof sourcePosition.unrealizedPnl,
+      initialMargin: '1.25' as typeof sourcePosition.initialMargin,
+    }
+    render(<HubNativePositionsTable positions={[unknownSettlement]} quality="complete" />)
+
+    expect(screen.getByText('4.75')).toBeInTheDocument()
+    expect(screen.getByText('1.25')).toBeInTheDocument()
+    expect(screen.queryByText('4.75 USD')).toBeNull()
+    expect(screen.queryByText('1.25 USD')).toBeNull()
   })
 
   it('does not claim an authoritative zero when the position snapshot is partial', () => {

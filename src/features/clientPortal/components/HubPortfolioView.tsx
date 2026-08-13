@@ -3,22 +3,10 @@ import { AlertTriangle, Database, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge, DataTable, type Column } from '@/components/ui'
 import { decimalFrom } from '@/lib/portfolioDataHub/decimal'
-import type { ExactDecimal } from '@/lib/portfolioDataHub/schemas'
 import type { HubLedgerEvent, HubPosition, HubSummaryComponent } from '@/lib/portfolioDataHub'
 import type { PortfolioHubOverview } from '@/lib/portfolioDataHub/client'
 import { usePortfolioHubLedger, usePortfolioHubPositions } from '../usePortfolioDataHub'
-
-function formatAmount(value: ExactDecimal | null, currency?: string | null, digits = 2) {
-  if (value === null) return '—'
-  try {
-    const fixed = decimalFrom(value).toDecimalPlaces(digits).toFixed(digits)
-    const [whole, fraction] = fixed.split('.')
-    const text = `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${fraction == null ? '' : `.${fraction}`}`
-    return currency ? `${text} ${currency}` : text
-  } catch {
-    return currency ? `${value} ${currency}` : value
-  }
-}
+import { formatPortfolioValue } from './portfolioFormatters'
 
 function formatTimestamp(value: string) {
   const date = new Date(value)
@@ -80,18 +68,21 @@ export function HubNativePositionsTable({ positions, quality, onLoadMore, loadin
     { key: 'instrument', header: 'Instrument', render: (row) => <span className="font-medium text-text-primary">{row.nativeInstrumentId}</span> },
     { key: 'type', header: 'Type', render: (row) => row.instrumentType ?? '—' },
     { key: 'direction', header: 'Direction', render: (row) => row.direction ?? '—' },
-    { key: 'quantity', header: 'Quantity', align: 'right', mono: true, render: (row) => formatAmount(row.quantity, row.quantityUnit, 4) },
-    { key: 'averagePrice', header: 'Avg. price', align: 'right', mono: true, render: (row) => formatAmount(row.averagePrice, row.quoteCurrency) },
-    { key: 'markPrice', header: 'Mark', align: 'right', mono: true, render: (row) => formatAmount(row.markPrice, row.quoteCurrency) },
+    { key: 'quantity', header: 'Quantity', align: 'right', tabular: true, render: (row) => formatPortfolioValue(row.quantity, row.quantityUnit, 'quantity') },
+    { key: 'averagePrice', header: 'Avg. price', align: 'right', tabular: true, render: (row) => formatPortfolioValue(row.averagePrice, row.quoteCurrency, 'price') },
+    { key: 'markPrice', header: 'Mark', align: 'right', tabular: true, render: (row) => formatPortfolioValue(row.markPrice, row.quoteCurrency, 'price') },
     {
-      key: 'unrealizedPnl', header: 'uPnL', align: 'right', mono: true,
+      key: 'unrealizedPnl', header: 'uPnL', align: 'right', tabular: true,
       render: (row) => {
-        const value = formatAmount(row.unrealizedPnl, row.settlementCurrency ?? row.quoteCurrency)
+        // quoteCurrency is the average/mark price unit. Canonical v1 does not
+        // guarantee that it is also the PnL unit, so leave the value unlabelled
+        // when the Hub cannot provide a reliable settlement currency.
+        const value = formatPortfolioValue(row.unrealizedPnl, row.settlementCurrency)
         const tone = row.unrealizedPnl && decimalFrom(row.unrealizedPnl).isNegative() ? 'text-status-danger' : 'text-status-success'
         return row.unrealizedPnl === null ? value : <span className={tone}>{value}</span>
       },
     },
-    { key: 'initialMargin', header: 'Initial margin', align: 'right', mono: true, render: (row) => formatAmount(row.initialMargin, row.settlementCurrency ?? row.quoteCurrency) },
+    { key: 'initialMargin', header: 'Initial margin', align: 'right', tabular: true, render: (row) => formatPortfolioValue(row.initialMargin, row.settlementCurrency) },
   ], [])
 
   const emptyMessage = quality === 'partial'
@@ -123,9 +114,9 @@ export function HubDashboard({ overview, onOpenPositions, onOpenLedger, onRefres
       <HubProvenance overview={overview} />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="hub-kpi-row">
-        <Metric label="Equity" value={formatAmount(component?.equity ?? null, overview.reportingCurrency)} />
-        <Metric label="Balance" value={formatAmount(component?.balance ?? null, overview.reportingCurrency)} />
-        <Metric label="Available funds" value={formatAmount(component?.availableFunds ?? null, overview.reportingCurrency)} />
+        <Metric label="Equity" value={formatPortfolioValue(component?.equity ?? null, overview.reportingCurrency)} />
+        <Metric label="Balance" value={formatPortfolioValue(component?.balance ?? null, overview.reportingCurrency)} />
+        <Metric label="Available funds" value={formatPortfolioValue(component?.availableFunds ?? null, overview.reportingCurrency)} />
         <Metric label="Open positions" value={partial ? 'Partial collection' : String(overview.positions.snapshot.positionCount)} />
       </div>
       {!overview.reportingCurrency ? <p className="type-caption text-text-secondary">No reporting currency is configured, so a single-currency headline is not shown.</p>
@@ -194,10 +185,10 @@ function HubSummaryDetails({ components }: { components: HubSummaryComponent[] }
   const columns = React.useMemo<Column<HubSummaryComponent>[]>(() => [
     { key: 'scope', header: 'Scope', render: (row) => row.componentScope.replace(/_/g, ' ') },
     { key: 'currency', header: 'Currency', render: (row) => row.currency },
-    { key: 'equity', header: 'Equity', align: 'right', mono: true, render: (row) => formatAmount(row.equity, row.currency) },
-    { key: 'balance', header: 'Balance', align: 'right', mono: true, render: (row) => formatAmount(row.balance, row.currency) },
-    { key: 'available', header: 'Available funds', align: 'right', mono: true, render: (row) => formatAmount(row.availableFunds, row.currency) },
-    { key: 'margin', header: 'Initial margin', align: 'right', mono: true, render: (row) => formatAmount(row.initialMargin, row.currency) },
+    { key: 'equity', header: 'Equity', align: 'right', tabular: true, render: (row) => formatPortfolioValue(row.equity, row.currency) },
+    { key: 'balance', header: 'Balance', align: 'right', tabular: true, render: (row) => formatPortfolioValue(row.balance, row.currency) },
+    { key: 'available', header: 'Available funds', align: 'right', tabular: true, render: (row) => formatPortfolioValue(row.availableFunds, row.currency) },
+    { key: 'margin', header: 'Initial margin', align: 'right', tabular: true, render: (row) => formatPortfolioValue(row.initialMargin, row.currency) },
   ], [])
   return (
     <section className="rounded-2xl border border-border-default bg-bg-surface-1 p-5">
@@ -225,9 +216,9 @@ export function HubLedgerHistory() {
     { key: 'time', header: 'Time', render: (row) => formatTimestamp(row.eventTime) },
     { key: 'type', header: 'Event', render: (row) => titleCase(row.eventType) },
     { key: 'instrument', header: 'Instrument', render: (row) => row.nativeInstrumentId ?? '—' },
-    { key: 'amount', header: 'Amount', align: 'right', mono: true, render: (row) => formatAmount(row.amount, row.currency) },
-    { key: 'quantity', header: 'Quantity', align: 'right', mono: true, render: (row) => formatAmount(row.quantity, row.quantityUnit, 4) },
-    { key: 'price', header: 'Price', align: 'right', mono: true, render: (row) => formatAmount(row.price, row.priceCurrency) },
+    { key: 'amount', header: 'Amount', align: 'right', tabular: true, render: (row) => formatPortfolioValue(row.amount, row.currency) },
+    { key: 'quantity', header: 'Quantity', align: 'right', tabular: true, render: (row) => formatPortfolioValue(row.quantity, row.quantityUnit, 'quantity') },
+    { key: 'price', header: 'Price', align: 'right', tabular: true, render: (row) => formatPortfolioValue(row.price, row.priceCurrency, 'price') },
   ], [])
   return (
     <section className="rounded-2xl border border-border-default bg-bg-surface-1 p-5" aria-label="Ledger history">

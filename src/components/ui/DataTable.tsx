@@ -8,8 +8,8 @@ export interface Column<T> {
   align?: ColumnAlign
   /** Render the cell content. Receives the row item. */
   render: (row: T) => React.ReactNode
-  /** If true, cell uses font-mono tabular-nums for numeric values */
-  mono?: boolean
+  /** If true, cell uses tabular number glyphs while retaining the app font. */
+  tabular?: boolean
   /** Optional abbr tooltip for short header labels like greek symbols */
   headerAbbr?: string
   /** Extra className applied to both th and td */
@@ -67,9 +67,9 @@ export function DataTable<T>({
               <tr key={rowKey(row, i)} className="tbl-row">
                 {columns.map((col) => {
                   const alignClass = col.align === 'right' ? 'text-right' : ''
-                  const monoClass = col.mono ? 'font-mono tabular-nums' : ''
+                  const tabularClass = col.tabular ? 'tabular-nums' : ''
                   return (
-                    <td key={col.key} className={`tbl-td ${alignClass} ${monoClass} ${col.className ?? ''}`}>
+                    <td key={col.key} className={`tbl-td ${alignClass} ${tabularClass} ${col.className ?? ''}`}>
                       {col.render(row)}
                     </td>
                   )

@@ -123,6 +123,10 @@ export const positionSchema = contractObject({
   average_price: nullableExactDecimalSchema,
   mark_price: nullableExactDecimalSchema,
   index_price: nullableExactDecimalSchema,
+  // Additive v1 fields. Do not infer either price unit from quote_currency:
+  // inverse options can quote their premium in BTC while their index and
+  // strike remain USD-denominated.
+  index_price_currency: nullableStringSchema.optional(),
   notional: nullableExactDecimalSchema,
   notional_unit: nullableStringSchema,
   realized_pnl: nullableExactDecimalSchema,
@@ -132,6 +136,7 @@ export const positionSchema = contractObject({
   liquidation_price: nullableExactDecimalSchema,
   expiry_at: nullableDateTimeSchema,
   strike: nullableExactDecimalSchema,
+  strike_currency: nullableStringSchema.optional(),
   option_side: z.enum(['call', 'put']).nullable(),
   attributes: attributesSchema,
   account_id: nullableUuidSchema.optional(),

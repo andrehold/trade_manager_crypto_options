@@ -124,6 +124,27 @@ describe('Portfolio Data Hub Canonical Contract v1', () => {
     expect(exact.plus('0.000000000000000001').toString()).toBe('2.345678901234567891');
   });
 
+  it('keeps each position price field bound to its explicit currency', () => {
+    const positions = parseHubLatestPositionPage(deribitPositions).items;
+    const perpetual = positions.find((position) => position.nativeInstrumentId === 'BTC-PERPETUAL');
+    const inverseOption = positions.find((position) => position.nativeInstrumentId === 'BTC-25SEP26-52000-P');
+
+    expect(perpetual).toMatchObject({
+      quoteCurrency: 'USD',
+      indexPriceCurrency: null,
+      strikeCurrency: null,
+    });
+    expect(inverseOption).toMatchObject({
+      quoteCurrency: 'BTC',
+      averagePrice: '0.0525',
+      markPrice: '0.0490',
+      indexPrice: '119000.12',
+      indexPriceCurrency: 'USD',
+      strike: '52000',
+      strikeCurrency: 'USD',
+    });
+  });
+
   it('retains documented absent venue observation timestamps', () => {
     const paradex = parseHubSummary(paradexSummary);
     const positions = parseHubLatestPositionPage(paradexPositions);

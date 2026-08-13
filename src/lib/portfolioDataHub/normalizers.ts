@@ -101,6 +101,7 @@ export interface HubPosition {
   averagePrice: ExactDecimal | null;
   markPrice: ExactDecimal | null;
   indexPrice: ExactDecimal | null;
+  indexPriceCurrency: string | null;
   notional: ExactDecimal | null;
   notionalUnit: string | null;
   realizedPnl: ExactDecimal | null;
@@ -110,6 +111,7 @@ export interface HubPosition {
   liquidationPrice: ExactDecimal | null;
   expiryAt: string | null;
   strike: ExactDecimal | null;
+  strikeCurrency: string | null;
   optionSide: 'call' | 'put' | null;
   attributes: Record<string, unknown>;
 }
@@ -249,6 +251,7 @@ export function normalizeHubPosition(position: CanonicalPosition): HubPosition {
     averagePrice: position.average_price,
     markPrice: position.mark_price,
     indexPrice: position.index_price,
+    indexPriceCurrency: nullableOptional(position.index_price_currency),
     notional: position.notional,
     notionalUnit: position.notional_unit,
     realizedPnl: position.realized_pnl,
@@ -258,6 +261,7 @@ export function normalizeHubPosition(position: CanonicalPosition): HubPosition {
     liquidationPrice: position.liquidation_price,
     expiryAt: position.expiry_at,
     strike: position.strike,
+    strikeCurrency: nullableOptional(position.strike_currency),
     optionSide: position.option_side,
     attributes: position.attributes,
   };
