@@ -5,7 +5,7 @@ import { createPortfolioDataHubGateway } from '../server'
 
 const runLive = process.env.RUN_PORTFOLIO_DATA_HUB_LIVE_TEST === '1'
 
-describe.skipIf(!runLive)('Portfolio Data Hub live contract', () => {
+describe.skipIf(!runLive)('Portfolio Data Hub direct contract/parser smoke (not portal end-to-end)', () => {
   it('parses real summary, positions, and first 50 ledger events', async () => {
     const hubAccountId = process.env.PORTFOLIO_DATA_HUB_TEST_ACCOUNT_ID
     if (!hubAccountId) throw new Error('PORTFOLIO_DATA_HUB_TEST_ACCOUNT_ID is required')
