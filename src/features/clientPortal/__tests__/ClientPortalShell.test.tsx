@@ -3,9 +3,12 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useClientPositions } from '../useClientPositions'
 import { useSetupPersistence } from '../useSetupPersistence'
-import { usePortfolioDataHub } from '../usePortfolioDataHub'
+import { usePortfolioDataHub, useReportingCurrencySelection } from '../usePortfolioDataHub'
 import { DEFAULT_RISK_LIMITS } from '../risk/riskLimits'
 import { hasSupabaseClient } from '@/lib/supabase'
+import summaryFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/summary-latest.json'
+import positionsFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/positions-latest.json'
+import { parseHubLatestPositionPage, parseHubSummary } from '@/lib/portfolioDataHub'
 
 // Recharts' ResponsiveContainer measures 0×0 in jsdom; give it a fixed size.
 vi.mock('recharts', async (importOriginal) => {
@@ -21,7 +24,11 @@ vi.mock('recharts', async (importOriginal) => {
 vi.mock('../useClientPositions')
 const mockedHook = vi.mocked(useClientPositions)
 
-vi.mock('../usePortfolioDataHub', () => ({ usePortfolioDataHub: vi.fn() }))
+const reportingCurrencySave = vi.fn()
+vi.mock('../usePortfolioDataHub', () => ({
+  usePortfolioDataHub: vi.fn(),
+  useReportingCurrencySelection: vi.fn(() => ({ saving: false, error: null, save: reportingCurrencySave })),
+}))
 
 vi.mock('../useSetupPersistence', () => ({ useSetupPersistence: vi.fn() }))
 
@@ -65,6 +72,8 @@ const baseSetupPersistence = {
 beforeEach(() => {
   mockedHook.mockReturnValue({ positions: [], loading: false, error: null, reload: vi.fn() })
   vi.mocked(usePortfolioDataHub).mockReturnValue({ state: { status: 'not-configured' }, reload: vi.fn() })
+  vi.mocked(useReportingCurrencySelection).mockReturnValue({ saving: false, error: null, save: reportingCurrencySave })
+  reportingCurrencySave.mockReset()
   // Reset the persistence mock every test so a per-test override never leaks forward.
   vi.mocked(useSetupPersistence).mockReturnValue(baseSetupPersistence)
   // Reset the Supabase-configured flag every test so a per-test override never leaks forward.
@@ -105,6 +114,31 @@ describe('ClientPortalShell', () => {
     expect(await screen.findByText(/Hub is not configured/i)).toBeInTheDocument()
     expect(screen.getByText(/No open positions/i)).toBeInTheDocument()
     expect(screen.queryByText('Sample data')).toBeNull()
+  })
+
+  it('wires the ready Hub dashboard selector to the client-scoped reporting currency save flow', async () => {
+    vi.mocked(hasSupabaseClient).mockReturnValue(true)
+    vi.mocked(usePortfolioDataHub).mockReturnValue({
+      state: {
+        status: 'ready',
+        overview: {
+          summary: parseHubSummary(summaryFixture),
+          positions: { ...parseHubLatestPositionPage(positionsFixture), pageToken: 'signed-page-token' },
+          reportingCurrency: null,
+          reportingCurrencySource: null,
+          alignment: {
+            runAligned: true, mixedAge: false,
+            summaryRunId: summaryFixture.run_id, positionsRunId: positionsFixture.snapshot.run_id,
+            summaryFetchedAt: summaryFixture.fetched_at, positionsFetchedAt: positionsFixture.snapshot.fetched_at,
+          },
+        },
+      },
+      reload: vi.fn(),
+    })
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/dashboard" onSignOut={() => {}} />)
+    await userEvent.selectOptions(screen.getByLabelText('Reporting currency'), 'USDC')
+    await userEvent.click(screen.getByRole('button', { name: /^save$/i }))
+    expect(reportingCurrencySave).toHaveBeenCalledWith('USDC')
   })
 
   it('renders the Risk page and flips the risk setup status on apply', async () => {

@@ -249,9 +249,21 @@ export function Sidebar({
       {/* ── Client selector ── */}
       <div className="border-t border-border-default">
         {collapsed ? (
-          <div className="flex justify-center px-4 py-3" title={selectedClient}>
-            <Users className="w-4 h-4 text-faint" />
-          </div>
+          isAdmin ? (
+            <button
+              type="button"
+              onClick={onAddClient}
+              aria-label="Manage clients"
+              className="flex w-full justify-center px-4 py-3 text-faint transition-colors hover:bg-surface-hover hover:text-heading focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
+              title={`Manage clients · ${selectedClient}`}
+            >
+              <Users className="w-4 h-4" />
+            </button>
+          ) : (
+            <div className="flex justify-center px-4 py-3" title={selectedClient}>
+              <Users className="w-4 h-4 text-faint" />
+            </div>
+          )
         ) : (
           <div className="flex items-center gap-2 px-4 py-3">
             <Users className="w-4 h-4 text-faint shrink-0" />
@@ -276,9 +288,9 @@ export function Sidebar({
             {isAdmin && (
               <button
                 onClick={onAddClient}
-                aria-label="Add client"
+                aria-label="Manage clients"
                 className="p-1 rounded-lg text-faint hover:text-heading hover:bg-surface-hover transition shrink-0 focus:outline-none focus:shadow-[var(--glow-accent-sm)]"
-                title="Add client"
+                title="Manage clients"
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>

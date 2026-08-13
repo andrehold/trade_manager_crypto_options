@@ -28,6 +28,8 @@ export type HubRouteErrorCode =
   | 'HUB_UNAVAILABLE'
   | 'HUB_INVALID_RESPONSE'
   | 'SERVER_MISCONFIGURED'
+  | 'FORBIDDEN'
+  | 'CLIENT_NOT_FOUND'
 
 export class HubRouteError extends Error {
   constructor(
@@ -47,6 +49,15 @@ export interface HubRequestContext {
   hubAccountId: string
   hubAccountLabel: string | null
   reportingCurrency: string | null
+  reportingCurrencySource: 'client' | 'admin' | null
+}
+
+/** Browser-safe data for the admin currency selector. It deliberately omits Hub routing IDs. */
+export interface AdminReportingCurrencyOptions {
+  currencies: string[]
+  reportingCurrency: string | null
+  reportingCurrencySource: 'client' | 'admin' | null
+  summary: Pick<HubSummary, 'runId' | 'fetchedAt' | 'venueObservedAt' | 'quality' | 'venue'>
 }
 
 export interface DatasetAlignment {
@@ -76,6 +87,12 @@ type PortalClientRow = {
   hub_account_id: string | null
   hub_account_label: string | null
   reporting_currency: string | null
+  reporting_currency_source: string | null
+}
+
+type SupabaseAuthUser = {
+  id: string
+  app_metadata?: Record<string, unknown> | null
 }
 
 export type GatewayDependencies = {
@@ -286,7 +303,7 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
   const fetchImpl = dependencies.fetch ?? globalThis.fetch
   const config = readConfig(env)
 
-  async function resolveContext(req: Request): Promise<HubRequestContext> {
+  async function authenticate(req: Request): Promise<{ token: string; user: SupabaseAuthUser; headers: HeadersInit }> {
     const token = bearerToken(req)
     const supabaseHeaders = {
       apikey: config.supabasePublishableKey,
@@ -306,21 +323,24 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
       if (error instanceof HubRouteError) throw error
       throw new HubRouteError(502, 'SUPABASE_UNAVAILABLE', 'Supabase authentication is unavailable', error)
     }
-    const authBody = await readJson(authResponse) as { id?: unknown } | null
+    const authBody = await readJson(authResponse) as Partial<SupabaseAuthUser> | null
     if (!authResponse.ok || typeof authBody?.id !== 'string' || !UUID_PATTERN.test(authBody.id)) {
       throw new HubRouteError(401, 'UNAUTHENTICATED', 'The Supabase session is invalid or expired')
     }
+    return { token, user: { id: authBody.id, app_metadata: authBody.app_metadata }, headers: supabaseHeaders }
+  }
 
-    const query = new URLSearchParams({
-      select: 'client_id,client_name,hub_account_id,hub_account_label,reporting_currency',
-      limit: '2',
-    })
+  function reportingCurrencySource(value: unknown): 'client' | 'admin' | null {
+    return value === 'client' || value === 'admin' ? value : null
+  }
+
+  async function readClientRows(headers: HeadersInit, search: URLSearchParams): Promise<Partial<PortalClientRow>[]> {
     let profileResponse: Response
     try {
       profileResponse = await fetchWithTimeout(
         fetchImpl,
-        `${config.supabaseUrl}/rest/v1/clients?${query}`,
-        { headers: supabaseHeaders },
+        `${config.supabaseUrl}/rest/v1/clients?${search}`,
+        { headers },
         config.timeoutMs,
       )
     } catch (error) {
@@ -331,10 +351,21 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
     if (!profileResponse.ok || !Array.isArray(profileBody)) {
       throw new HubRouteError(502, 'SUPABASE_UNAVAILABLE', 'The portal client mapping could not be read')
     }
-    if (profileBody.length !== 1) {
+    return profileBody as Partial<PortalClientRow>[]
+  }
+
+  async function resolveContext(req: Request): Promise<HubRequestContext> {
+    const { user, headers } = await authenticate(req)
+
+    const query = new URLSearchParams({
+      select: 'client_id,client_name,hub_account_id,hub_account_label,reporting_currency,reporting_currency_source',
+      limit: '2',
+    })
+    const rows = await readClientRows(headers, query)
+    if (rows.length !== 1) {
       throw new HubRouteError(403, 'CLIENT_NOT_LINKED', 'The signed-in user is not linked to one portal client')
     }
-    const row = profileBody[0] as Partial<PortalClientRow>
+    const row = rows[0]
     if (!row.client_id || !UUID_PATTERN.test(row.client_id) || typeof row.client_name !== 'string') {
       throw new HubRouteError(502, 'SUPABASE_UNAVAILABLE', 'The portal client mapping is invalid')
     }
@@ -342,12 +373,67 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
       throw new HubRouteError(409, 'HUB_ACCOUNT_NOT_CONFIGURED', 'Portfolio Data Hub is not configured for this client')
     }
     return {
-      authUserId: authBody.id,
+      authUserId: user.id,
       clientId: row.client_id,
       clientName: row.client_name,
       hubAccountId: row.hub_account_id,
       hubAccountLabel: row.hub_account_label ?? null,
       reportingCurrency: row.reporting_currency ?? null,
+      reportingCurrencySource: reportingCurrencySource(row.reporting_currency_source),
+    }
+  }
+
+  async function adminReportingCurrencies(req: Request): Promise<AdminReportingCurrencyOptions> {
+    const { user, headers } = await authenticate(req)
+    if (user.app_metadata?.role !== 'admin') {
+      throw new HubRouteError(403, 'FORBIDDEN', 'Administrator privileges are required')
+    }
+    const requestUrl = new URL(req.url)
+    const clientId = requestUrl.searchParams.get('client_id')
+    if (!clientId || !UUID_PATTERN.test(clientId)) {
+      throw new HubRouteError(400, 'INVALID_QUERY', 'client_id must be a UUID')
+    }
+    const query = new URLSearchParams({
+      select: 'client_id,client_name,hub_account_id,hub_account_label,reporting_currency,reporting_currency_source',
+      client_id: `eq.${clientId}`,
+      limit: '2',
+    })
+    // This is intentionally still caller-JWT/RLS scoped after trusted-role verification.
+    // It prevents this route from becoming a service-role client-directory oracle.
+    const rows = await readClientRows(headers, query)
+    if (rows.length !== 1) throw new HubRouteError(404, 'CLIENT_NOT_FOUND', 'The requested client could not be found')
+    const row = rows[0]
+    if (!row.client_id || row.client_id !== clientId || !row.hub_account_id || !UUID_PATTERN.test(row.hub_account_id)) {
+      if (!row.hub_account_id) {
+        throw new HubRouteError(409, 'HUB_ACCOUNT_NOT_CONFIGURED', 'Portfolio Data Hub is not configured for this client')
+      }
+      throw new HubRouteError(502, 'SUPABASE_UNAVAILABLE', 'The portal client mapping is invalid')
+    }
+    const context: HubRequestContext = {
+      authUserId: user.id,
+      clientId,
+      clientName: typeof row.client_name === 'string' ? row.client_name : '',
+      hubAccountId: row.hub_account_id,
+      hubAccountLabel: typeof row.hub_account_label === 'string' ? row.hub_account_label : null,
+      reportingCurrency: typeof row.reporting_currency === 'string' ? row.reporting_currency : null,
+      reportingCurrencySource: reportingCurrencySource(row.reporting_currency_source),
+    }
+    const latestSummary = await summary(context)
+    const currencies = [...new Set(latestSummary.components
+      .map((component) => component.currency.trim().toUpperCase())
+      .filter((currency) => /^[A-Z0-9]{2,12}$/.test(currency)))]
+      .sort((left, right) => left.localeCompare(right))
+    return {
+      currencies,
+      reportingCurrency: context.reportingCurrency,
+      reportingCurrencySource: context.reportingCurrencySource,
+      summary: {
+        runId: latestSummary.runId,
+        fetchedAt: latestSummary.fetchedAt,
+        venueObservedAt: latestSummary.venueObservedAt,
+        quality: latestSummary.quality,
+        venue: latestSummary.venue,
+      },
     }
   }
 
@@ -459,18 +545,21 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
     return fetchHub(context, accountPath(context, 'ledger-events'), search, parseHubLedgerEventPage)
   }
 
-  return { resolveContext, summary, positions, latestPositions, ledger }
+  return { resolveContext, summary, positions, latestPositions, ledger, adminReportingCurrencies }
 }
 
 export async function handlePortfolioDataHubRequest(
   req: Request,
-  dataset: HubDataset | 'overview',
+  dataset: HubDataset | 'overview' | 'admin-reporting-currencies',
   dependencies: GatewayDependencies = {},
 ): Promise<Response> {
   const methodError = methodGuard(req)
   if (methodError) return methodError
   try {
     const gateway = createPortfolioDataHubGateway(dependencies)
+    if (dataset === 'admin-reporting-currencies') {
+      return json({ data: await gateway.adminReportingCurrencies(req) })
+    }
     const context = await gateway.resolveContext(req)
     const requestUrl = new URL(req.url)
     if (dataset === 'summary') return json({ data: await gateway.summary(context) })
@@ -487,6 +576,7 @@ export async function handlePortfolioDataHubRequest(
         alignment: compareDatasetAlignment(summary, positions),
         // Configuration is intentionally returned without any privileged mapping IDs.
         reportingCurrency: context.reportingCurrency,
+        reportingCurrencySource: context.reportingCurrencySource,
       },
     })
   } catch (error) {

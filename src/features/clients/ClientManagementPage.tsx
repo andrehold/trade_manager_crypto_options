@@ -4,6 +4,11 @@ import { Button } from '../../components/ui/Button'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { ArrowLeft, Plus, Search, UserCircle } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import {
+  fetchAdminReportingCurrencies,
+  type AdminReportingCurrencyOptions,
+  PortfolioHubClientError,
+} from '../../lib/portfolioDataHub/client'
 
 /* ── Types ── */
 
@@ -17,7 +22,18 @@ export type ClientFormData = {
   status: 'active' | 'inactive'
 }
 
-type ClientRecord = ClientFormData & { client_id: string }
+type ClientRecord = ClientFormData & {
+  client_id: string
+  hub_account_label: string | null
+  reporting_currency: string | null
+  reporting_currency_source: 'client' | 'admin' | null
+}
+
+type CurrencyLoadState =
+  | { status: 'idle' | 'loading' }
+  | { status: 'ready'; options: AdminReportingCurrencyOptions }
+  | { status: 'unmapped' }
+  | { status: 'unavailable'; message: string }
 
 type Props = {
   supabase: SupabaseClient | null
@@ -49,20 +65,88 @@ export default function ClientManagementPage({ supabase, isAdmin, onClientAdded,
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [successMsg, setSuccessMsg] = React.useState<string | null>(null)
+  const [currencyState, setCurrencyState] = React.useState<CurrencyLoadState>({ status: 'idle' })
+  const [savingReportingCurrencyTargets, setSavingReportingCurrencyTargets] = React.useState<Set<string>>(new Set())
+  const savingReportingCurrencyTargetsRef = React.useRef<Set<string>>(new Set())
+  const selectedIdRef = React.useRef<string | null>(null)
+  const selectionGenerationRef = React.useRef(0)
+  const mountedRef = React.useRef(true)
+
+  React.useEffect(() => () => { mountedRef.current = false }, [])
+
+  const isCurrentCurrencyTarget = React.useCallback((clientId: string, generation: number) =>
+    mountedRef.current
+    && selectedIdRef.current === clientId
+    && selectionGenerationRef.current === generation,
+  [])
+
+  const setReportingCurrencySaving = React.useCallback((clientId: string, savingNow: boolean) => {
+    if (savingNow) savingReportingCurrencyTargetsRef.current.add(clientId)
+    else savingReportingCurrencyTargetsRef.current.delete(clientId)
+    if (!mountedRef.current) return
+    setSavingReportingCurrencyTargets((previous) => {
+      const next = new Set(previous)
+      if (savingNow) next.add(clientId)
+      else next.delete(clientId)
+      return next
+    })
+  }, [])
 
   /* ---------- fetch clients ---------- */
   const fetchClients = React.useCallback(async () => {
-    if (!supabase) { setLoading(false); return }
-    setLoading(true)
+    if (!supabase) {
+      if (mountedRef.current) setLoading(false)
+      return [] as ClientRecord[]
+    }
+    if (mountedRef.current) setLoading(true)
     const { data, error: err } = await supabase
       .from('clients')
-      .select('client_id, client_name, contact_name, contact_email, phone, mandate, notes, status')
+      .select('client_id, client_name, contact_name, contact_email, phone, mandate, notes, status, hub_account_label, reporting_currency, reporting_currency_source')
       .order('client_name')
-    if (!err && data) setClients(data as ClientRecord[])
-    setLoading(false)
+    const records = !err && data ? data as ClientRecord[] : []
+    if (mountedRef.current) {
+      if (!err && data) setClients(records)
+      setLoading(false)
+    }
+    return records
   }, [supabase])
 
   React.useEffect(() => { fetchClients() }, [fetchClients])
+
+  const loadAdminReportingCurrencies = React.useCallback(async (clientId: string, generation: number) => {
+    if (!supabase) return
+    if (isCurrentCurrencyTarget(clientId, generation)) setCurrencyState({ status: 'loading' })
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!isCurrentCurrencyTarget(clientId, generation)) return
+    if (!session?.access_token) {
+      setCurrencyState({ status: 'unavailable', message: 'Your session has expired. Sign in again to manage reporting currency.' })
+      return
+    }
+    try {
+      const options = await fetchAdminReportingCurrencies(clientId, session.access_token)
+      if (!isCurrentCurrencyTarget(clientId, generation)) return
+      setCurrencyState({ status: 'ready', options })
+    } catch (err) {
+      if (!isCurrentCurrencyTarget(clientId, generation)) return
+      if (err instanceof PortfolioHubClientError && err.code === 'HUB_ACCOUNT_NOT_CONFIGURED') {
+        setCurrencyState({ status: 'unmapped' })
+        return
+      }
+      const message = err instanceof PortfolioHubClientError && err.code === 'FORBIDDEN'
+        ? 'This account is visible in the admin UI, but its Supabase app_metadata.role is not admin. Reporting-currency changes are blocked.'
+        : err instanceof Error ? err.message : 'Reporting currencies could not be loaded.'
+      setCurrencyState({ status: 'unavailable', message })
+    }
+  }, [isCurrentCurrencyTarget, supabase])
+
+  React.useEffect(() => {
+    if (!selectedId || mode !== 'edit') {
+      setCurrencyState({ status: 'idle' })
+      return
+    }
+    const generation = selectionGenerationRef.current
+    void loadAdminReportingCurrencies(selectedId, generation)
+  }, [loadAdminReportingCurrencies, mode, selectedId])
 
   /* ---------- helpers ---------- */
   const set = <K extends keyof ClientFormData>(key: K, value: ClientFormData[K]) =>
@@ -87,8 +171,11 @@ export default function ClientManagementPage({ supabase, isAdmin, onClientAdded,
   const handleSelect = (id: string) => {
     const client = clients.find((c) => c.client_id === id)
     if (!client) return
+    selectionGenerationRef.current += 1
+    selectedIdRef.current = id
     setSelectedId(id)
     setMode('edit')
+    setCurrencyState({ status: 'loading' })
     setForm({
       client_name: client.client_name,
       contact_name: client.contact_name ?? '',
@@ -102,10 +189,52 @@ export default function ClientManagementPage({ supabase, isAdmin, onClientAdded,
     setSuccessMsg(null)
   }
 
+  const handleAdminReportingCurrency = async (value: string) => {
+    const targetId = selectedIdRef.current
+    const targetGeneration = selectionGenerationRef.current
+    if (!supabase || !targetId || currencyState.status !== 'ready' || savingReportingCurrencyTargetsRef.current.has(targetId)) return
+    // The select contains only Hub-derived currencies plus the explicit unset option.
+    if (value && !currencyState.options.currencies.includes(value)) return
+    setReportingCurrencySaving(targetId, true)
+    setError(null)
+    setSuccessMsg(null)
+    try {
+      const { error: rpcError } = await supabase.rpc('admin_set_client_reporting_currency', {
+        p_client_id: targetId,
+        p_reporting_currency: value || null,
+      })
+      if (rpcError) {
+        if (isCurrentCurrencyTarget(targetId, targetGeneration)) {
+          setError(rpcError.code === '42501'
+            ? 'Administrator privileges are required by Supabase to change reporting currency.'
+            : rpcError.message)
+        }
+        return
+      }
+      // Persist first. Re-read Hub-derived choices and client state afterwards so
+      // a stale response cannot overwrite the just-saved selection.
+      await fetchClients()
+      if (!isCurrentCurrencyTarget(targetId, targetGeneration)) return
+      await loadAdminReportingCurrencies(targetId, targetGeneration)
+      if (isCurrentCurrencyTarget(targetId, targetGeneration)) {
+        setSuccessMsg(value ? `Reporting currency set to ${value}.` : 'Reporting currency cleared.')
+      }
+    } catch (err: any) {
+      if (isCurrentCurrencyTarget(targetId, targetGeneration)) {
+        setError(err?.message ?? 'Reporting currency could not be saved.')
+      }
+    } finally {
+      setReportingCurrencySaving(targetId, false)
+    }
+  }
+
   /* ---------- new client mode ---------- */
   const handleNewClient = () => {
+    selectionGenerationRef.current += 1
+    selectedIdRef.current = null
     setSelectedId(null)
     setMode('add')
+    setCurrencyState({ status: 'idle' })
     setForm(emptyForm)
     setError(null)
     setSuccessMsg(null)
@@ -196,14 +325,19 @@ export default function ClientManagementPage({ supabase, isAdmin, onClientAdded,
           .eq('client_name', form.client_name.trim())
           .single()).data
         if (created) {
+          // Keep the imperative target identity in lockstep with the React
+          // selection before the effect starts its Hub-currency load.
+          selectionGenerationRef.current += 1
+          selectedIdRef.current = created.client_id
           setSelectedId(created.client_id)
           setMode('edit')
+          setCurrencyState({ status: 'loading' })
         }
       }
     } catch (err: any) {
       setError(err?.message ?? 'Unexpected error')
     } finally {
-      setSaving(false)
+      if (mountedRef.current) setSaving(false)
     }
   }
 
@@ -470,6 +604,15 @@ export default function ClientManagementPage({ supabase, isAdmin, onClientAdded,
                       </div>
                     </Field>
 
+                    {mode === 'edit' && selectedId && (
+                      <AdminReportingCurrencyField
+                        client={clients.find((candidate) => candidate.client_id === selectedId) ?? null}
+                        state={currencyState}
+                        saving={savingReportingCurrencyTargets.has(selectedId)}
+                        onChange={handleAdminReportingCurrency}
+                      />
+                    )}
+
                     {/* Messages */}
                     {error && <p className="text-status-danger type-caption">{error}</p>}
                     {successMsg && <p className="text-emerald-400 type-caption">{successMsg}</p>}
@@ -482,7 +625,7 @@ export default function ClientManagementPage({ supabase, isAdmin, onClientAdded,
                       <Button
                         type="button"
                         variant="ghost"
-                        onClick={() => { setMode('idle'); setSelectedId(null); setError(null); setSuccessMsg(null) }}
+                        onClick={() => { selectionGenerationRef.current += 1; selectedIdRef.current = null; setCurrencyState({ status: 'idle' }); setMode('idle'); setSelectedId(null); setError(null); setSuccessMsg(null) }}
                         disabled={saving}
                       >
                         Cancel
@@ -527,5 +670,90 @@ function StatusChip({ active, onClick, label }: { active: boolean; onClick: () =
     >
       {label}
     </button>
+  )
+}
+
+function AdminReportingCurrencyField({
+  client,
+  state,
+  saving,
+  onChange,
+}: {
+  client: ClientRecord | null
+  state: CurrencyLoadState
+  saving: boolean
+  onChange: (value: string) => void
+}) {
+  const configuredCurrency = state.status === 'ready'
+    ? state.options.reportingCurrency
+    : client?.reporting_currency ?? null
+  const source = state.status === 'ready'
+    ? state.options.reportingCurrencySource
+    : client?.reporting_currency_source ?? null
+  const currentMissing = state.status === 'ready'
+    && configuredCurrency !== null
+    && !state.options.currencies.includes(configuredCurrency)
+  const [draft, setDraft] = React.useState(configuredCurrency ?? '')
+
+  // The selected client is keyed by the parent, but configuration can also
+  // change after a post-save re-read. Preserve a Hub-missing saved code here
+  // rather than silently presenting it as "Not configured".
+  React.useEffect(() => {
+    setDraft(configuredCurrency ?? '')
+  }, [client?.client_id, configuredCurrency])
+
+  const canApply = state.status === 'ready'
+    && !saving
+    && draft !== ''
+    && state.options.currencies.includes(draft)
+    && (draft !== configuredCurrency || source !== 'admin')
+  const canClear = state.status === 'ready' && !saving && configuredCurrency !== null
+
+  return (
+    <fieldset className="space-y-1.5" disabled={saving || state.status !== 'ready'}>
+      <div className="flex items-center justify-between gap-3">
+        <legend className="type-caption text-text-secondary">Reporting Currency</legend>
+        {source && <span className="type-caption text-text-muted">Last selected by {source === 'admin' ? 'administrator' : 'client'}</span>}
+      </div>
+      {client?.hub_account_label && (
+        <p className="type-caption text-text-muted">Hub account: {client.hub_account_label}</p>
+      )}
+      {state.status === 'loading' && <p className="type-caption text-text-muted">Loading currencies from Portfolio Data Hub…</p>}
+      {state.status === 'unmapped' && <p className="type-caption text-text-muted">No Portfolio Data Hub account is mapped to this client.</p>}
+      {state.status === 'unavailable' && <p className="type-caption text-status-danger">{state.message}</p>}
+      {state.status === 'ready' && (
+        <>
+          <select
+            aria-label="Reporting Currency"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            className="w-full rounded-xl border border-border-default bg-bg-surface-3 px-3 py-2 text-text-primary outline-none focus:border-border-accent disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <option value="">Not configured</option>
+            {currentMissing && <option value={configuredCurrency!}>{configuredCurrency} (not in latest summary)</option>}
+            {state.options.currencies.map((currency) => <option key={currency} value={currency}>{currency}</option>)}
+          </select>
+          {currentMissing && (
+            <p className="type-caption text-amber-400">
+              Current setting {configuredCurrency} is not present in the latest Hub summary. It remains selected until explicitly cleared or replaced.
+            </p>
+          )}
+          {state.options.currencies.length === 0 && (
+            <p className="type-caption text-text-muted">The latest Hub summary has no usable account-level currencies.</p>
+          )}
+          <p className="type-caption text-text-muted">
+            Uses an existing Hub summary component only; no FX conversion or currency aggregation is performed.
+          </p>
+          <div className="flex gap-2 pt-1">
+            <Button type="button" size="sm" variant="primary" disabled={!canApply} onClick={() => onChange(draft)}>
+              {saving ? 'Saving…' : 'Apply reporting currency'}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" disabled={!canClear} onClick={() => onChange('')}>
+              Clear
+            </Button>
+          </div>
+        </>
+      )}
+    </fieldset>
   )
 }

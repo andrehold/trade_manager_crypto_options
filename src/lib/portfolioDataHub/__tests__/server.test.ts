@@ -329,10 +329,90 @@ describe('mixed-age provenance', () => {
     const fetchMock = vi.fn<typeof fetch>(async (input) => {
       const url = String(input)
       if (url.endsWith('/auth/v1/user')) return response({ id: authUserId })
-      if (url.includes('/rest/v1/clients?')) return response([profile({ reporting_currency: 'USDC' })])
+      if (url.includes('/rest/v1/clients?')) return response([profile({ reporting_currency: 'USDC', reporting_currency_source: 'client' })])
       return response(url.includes('summaries') ? summaryFixture : positionsFixture)
     })
     const result = await handlePortfolioDataHubRequest(request('/api/portfolio-data-hub/overview'), 'overview', { env, fetch: fetchMock })
-    expect(await result.json()).toMatchObject({ data: { reportingCurrency: 'USDC', summary: { components: [{ currency: summaryFixture.components[0].currency, equity: summaryFixture.components[0].equity }] } } })
+    expect(await result.json()).toMatchObject({ data: { reportingCurrency: 'USDC', reportingCurrencySource: 'client', summary: { components: [{ currency: summaryFixture.components[0].currency, equity: summaryFixture.components[0].equity }] } } })
+  })
+})
+
+describe('admin reporting-currency discovery', () => {
+  it('rejects a normal client before any clients or Hub data is read', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      if (String(input).endsWith('/auth/v1/user')) return response({ id: authUserId, app_metadata: { role: 'client' } })
+      throw new Error('should not be called')
+    })
+    const result = await handlePortfolioDataHubRequest(
+      request(`/api/portfolio-data-hub/admin/reporting-currencies?client_id=${clientId}`),
+      'admin-reporting-currencies', { env, fetch: fetchMock },
+    )
+    expect(result.status).toBe(403)
+    expect(await result.json()).toMatchObject({ error: { code: 'FORBIDDEN' } })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses the caller JWT/RLS target lookup, returns sorted unique currencies, and hides Hub mapping IDs', async () => {
+    const multiCurrency = structuredClone(summaryFixture)
+    multiCurrency.components = [
+      ...multiCurrency.components,
+      { ...multiCurrency.components[0], currency: 'eur' },
+      { ...multiCurrency.components[0], currency: 'BTC' },
+    ]
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      const url = String(input)
+      if (url.endsWith('/auth/v1/user')) return response({ id: authUserId, app_metadata: { role: 'admin' } })
+      if (url.includes('/rest/v1/clients?')) {
+        expect(new Headers(init?.headers).get('authorization')).toBe('Bearer client-jwt')
+        expect(url).toContain(`client_id=eq.${clientId}`)
+        expect(url).toContain('limit=2')
+        return response([profile({ reporting_currency: 'BTC', reporting_currency_source: 'admin' })])
+      }
+      return response(multiCurrency)
+    })
+    const result = await handlePortfolioDataHubRequest(
+      request(`/api/portfolio-data-hub/admin/reporting-currencies?client_id=${clientId}`),
+      'admin-reporting-currencies', { env, fetch: fetchMock },
+    )
+    expect(result.status).toBe(200)
+    const body = await result.json()
+    expect(body).toMatchObject({
+      data: { currencies: ['BTC', 'EUR'], reportingCurrency: 'BTC', reportingCurrencySource: 'admin' },
+    })
+    expect(JSON.stringify(body)).not.toContain('hubAccountId')
+    expect(JSON.stringify(body)).not.toContain('hub_account_id')
+  })
+
+  it('fails closed when the trusted admin cannot read the exact target through RLS', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/auth/v1/user')) return response({ id: authUserId, app_metadata: { role: 'admin' } })
+      if (url.includes('/rest/v1/clients?')) return response([])
+      throw new Error('Hub must not be called')
+    })
+    const result = await handlePortfolioDataHubRequest(
+      request(`/api/portfolio-data-hub/admin/reporting-currencies?client_id=${clientId}`),
+      'admin-reporting-currencies', { env, fetch: fetchMock },
+    )
+    expect(result.status).toBe(404)
+    expect(await result.json()).toMatchObject({ error: { code: 'CLIENT_NOT_FOUND' } })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('rejects a Hub summary returned for a different account', async () => {
+    const wrongAccount = structuredClone(summaryFixture)
+    wrongAccount.account_id = '11111111-1111-4111-8111-111111111111'
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/auth/v1/user')) return response({ id: authUserId, app_metadata: { role: 'admin' } })
+      if (url.includes('/rest/v1/clients?')) return response([profile()])
+      return response(wrongAccount)
+    })
+    const result = await handlePortfolioDataHubRequest(
+      request(`/api/portfolio-data-hub/admin/reporting-currencies?client_id=${clientId}`),
+      'admin-reporting-currencies', { env, fetch: fetchMock },
+    )
+    expect(result.status).toBe(502)
+    expect(await result.json()).toMatchObject({ error: { code: 'HUB_INVALID_RESPONSE' } })
   })
 })

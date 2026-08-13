@@ -8,7 +8,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { PositionsPage } from './pages/PositionsPage'
 import { HubDashboard, HubLedgerPage, HubPositionsPage } from './components/HubPortfolioView'
 import { useClientPositions } from './useClientPositions'
-import { usePortfolioDataHub } from './usePortfolioDataHub'
+import { usePortfolioDataHub, useReportingCurrencySelection } from './usePortfolioDataHub'
 import { usePositionInterventions } from './usePositionInterventions'
 import { useSetupPersistence } from './useSetupPersistence'
 import { type AppropriatenessInput } from '@/lib/clientPortal/appropriatenessRepo'
@@ -40,6 +40,7 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const [active, setActive] = React.useState(false)
   const { positions, loading, error, reload } = useClientPositions(clientName)
   const { state: hubState, reload: reloadHub } = usePortfolioDataHub()
+  const reportingCurrency = useReportingCurrencySelection(reloadHub)
   const { interventions, record } = usePositionInterventions(clientName)
   const persistence = useSetupPersistence(clientName)
   // Illustrative positions exist only in a no-Supabase demo build. A configured portal
@@ -196,6 +197,9 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
                   onOpenPositions={() => navigate('positions')}
                   onOpenLedger={() => navigate('ledger')}
                   onRefresh={reloadHub}
+                  onSaveReportingCurrency={(currency) => { void reportingCurrency.save(currency) }}
+                  savingReportingCurrency={reportingCurrency.saving}
+                  reportingCurrencyError={reportingCurrency.error}
                 />
               ) : page === 'positions' ? <HubPositionsPage overview={hubState.overview} onRefresh={reloadHub} /> : <HubLedgerPage onRefresh={reloadHub} />
             ) : hubState.status === 'session-expired' ? (

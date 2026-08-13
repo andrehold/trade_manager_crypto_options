@@ -69,6 +69,7 @@ describe('usePortfolioHubLedger', () => {
     const overview = {
       summary: {} as any,
       reportingCurrency: null,
+      reportingCurrencySource: null,
       alignment: {} as any,
       positions: {
         items: [{ id: 'first' }], nextCursor: 'position-cursor', pageToken: 'server-signed-token', snapshot: { id: 'snapshot-1' },

@@ -11,6 +11,7 @@ export type PortfolioHubOverview = {
   summary: HubSummary
   positions: HubLatestPositionPage & { pageToken: string }
   reportingCurrency: string | null
+  reportingCurrencySource: 'client' | 'admin' | null
   alignment: {
     runAligned: boolean
     mixedAge: boolean
@@ -18,6 +19,20 @@ export type PortfolioHubOverview = {
     positionsRunId: string
     summaryFetchedAt: string
     positionsFetchedAt: string
+  }
+}
+
+/** Data returned by the trusted-admin currency-discovery endpoint. */
+export type AdminReportingCurrencyOptions = {
+  currencies: string[]
+  reportingCurrency: string | null
+  reportingCurrencySource: 'client' | 'admin' | null
+  summary: {
+    runId: string
+    fetchedAt: string
+    venueObservedAt: string | null
+    quality: 'complete' | 'partial'
+    venue: string | null
   }
 }
 
@@ -37,6 +52,8 @@ export type HubClientErrorCode =
   | 'HUB_UNAVAILABLE'
   | 'HUB_INVALID_RESPONSE'
   | 'SERVER_MISCONFIGURED'
+  | 'FORBIDDEN'
+  | 'CLIENT_NOT_FOUND'
   | 'NETWORK_ERROR'
   | 'INVALID_RESPONSE'
 
@@ -61,7 +78,7 @@ function apiErrorCode(value: unknown): HubClientErrorCode {
   const codes: HubClientErrorCode[] = [
     'UNAUTHENTICATED', 'HUB_ACCOUNT_NOT_CONFIGURED', 'CLIENT_NOT_LINKED', 'INVALID_QUERY',
     'UPSTREAM_TIMEOUT', 'SUPABASE_UNAVAILABLE', 'HUB_UNAVAILABLE', 'HUB_INVALID_RESPONSE',
-    'SERVER_MISCONFIGURED',
+    'SERVER_MISCONFIGURED', 'FORBIDDEN', 'CLIENT_NOT_FOUND',
   ]
   return typeof value === 'string' && codes.includes(value as HubClientErrorCode)
     ? value as HubClientErrorCode
@@ -113,6 +130,23 @@ export async function requestPortfolioHub<T>(
 
 export function fetchPortfolioHubOverview(accessToken: string, fetchImpl?: typeof fetch) {
   return requestPortfolioHub<PortfolioHubOverview>('/api/portfolio-data-hub/overview', accessToken, fetchImpl)
+}
+
+/**
+ * Reads currencies only after the server has verified `app_metadata.role`.
+ * The response intentionally omits the Hub account ID.
+ */
+export function fetchAdminReportingCurrencies(
+  clientId: string,
+  accessToken: string,
+  fetchImpl?: typeof fetch,
+) {
+  const query = new URLSearchParams({ client_id: clientId })
+  return requestPortfolioHub<AdminReportingCurrencyOptions>(
+    `/api/portfolio-data-hub/admin/reporting-currencies?${query}`,
+    accessToken,
+    fetchImpl,
+  )
 }
 
 /** Reads a page from the immutable snapshot selected by the initial overview. */

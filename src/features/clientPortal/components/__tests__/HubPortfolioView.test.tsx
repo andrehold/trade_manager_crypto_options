@@ -17,6 +17,7 @@ const overview = {
   summary: parseHubSummary(summaryFixture),
   positions: { ...parseHubLatestPositionPage(mixedPositions), pageToken: 'signed-page-token' },
   reportingCurrency: 'USDC',
+  reportingCurrencySource: 'client' as const,
   alignment: {
     runAligned: false,
     mixedAge: true,
@@ -110,6 +111,14 @@ describe('Hub-backed portfolio views', () => {
   it('does not select or combine a summary component when the reporting currency has no account-level match', () => {
     render(<HubDashboard overview={{ ...overview, reportingCurrency: 'EUR' }} onOpenPositions={() => {}} onOpenLedger={() => {}} onRefresh={() => {}} />)
     expect(screen.getByText(/No account-level summary component was reported in EUR/i)).toBeInTheDocument()
+  })
+
+  it('matches lowercase Hub summary currency to the canonical configured currency without conversion or summation', () => {
+    const lowerCase = structuredClone(overview)
+    lowerCase.reportingCurrency = ' usdc '
+    lowerCase.summary.components = [{ ...lowerCase.summary.components[0], currency: 'usdc', componentScope: 'account', equity: '123.45' as any }]
+    render(<HubDashboard overview={lowerCase} onOpenPositions={() => {}} onOpenLedger={() => {}} onRefresh={() => {}} />)
+    expect(screen.getAllByText('123.45 USDC').length).toBeGreaterThan(0)
   })
 
   it('uses an explicit account-total scope priority and warns when fully loaded rows disagree with snapshot count', () => {

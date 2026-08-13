@@ -9,6 +9,7 @@ import {
 } from '@/lib/portfolioDataHub/client'
 import type { HubLedgerEvent, HubPosition } from '@/lib/portfolioDataHub'
 import { getSupabaseClient, hasSupabaseClient } from '@/lib/supabase'
+import { setOwnReportingCurrency } from '@/lib/clientPortal/reportingCurrencyRepo'
 
 export type PortfolioHubState =
   | { status: 'not-configured' }
@@ -37,6 +38,16 @@ async function currentAccessToken(): Promise<string> {
   return data.session.access_token
 }
 
+async function currentSessionIdentity(): Promise<string> {
+  const { data, error } = await getSupabaseClient().auth.getSession()
+  if (error || !data.session?.access_token) {
+    throw new PortfolioHubClientError('UNAUTHENTICATED', 'Your session has expired. Please sign in again.')
+  }
+  // A normal Supabase token refresh changes access_token without changing the signed-in user.
+  // Prefer the stable auth user ID so that only an actual account switch invalidates this save.
+  return data.session.user?.id ?? data.session.access_token
+}
+
 /** Fetches the independently-provenanced summary and position datasets together. */
 export function usePortfolioDataHub() {
   const [state, setState] = React.useState<PortfolioHubState>(() => (
@@ -59,6 +70,55 @@ export function usePortfolioDataHub() {
   }, [nonce])
 
   return { state, reload: React.useCallback(() => setNonce((value) => value + 1), []) }
+}
+
+/**
+ * Persists the client's account-level reporting currency before asking the Hub overview to
+ * refresh. The returned overview remains the source of truth; this hook never recalculates
+ * or locally converts headline values.
+ */
+export function useReportingCurrencySelection(onSaved: () => void) {
+  const [saving, setSaving] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+  const mounted = React.useRef(true)
+  const request = React.useRef(0)
+  const inFlight = React.useRef(false)
+  React.useEffect(() => () => { mounted.current = false }, [])
+
+  const save = React.useCallback(async (currency: string | null) => {
+    if (inFlight.current) return
+    const requestId = ++request.current
+    inFlight.current = true
+    setSaving(true)
+    setError(null)
+    try {
+      const beforeSession = await currentSessionIdentity()
+      const result = await setOwnReportingCurrency(getSupabaseClient(), currency)
+      if (!mounted.current || request.current !== requestId) return
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+      // Do not refresh a newly signed-in account based on a mutation submitted under a
+      // previous session. The RPC remains safely scoped server-side either way.
+      const afterSession = await currentSessionIdentity()
+      if (!mounted.current || request.current !== requestId) return
+      if (afterSession !== beforeSession) {
+        setError('Your session changed before the reporting currency was refreshed. Please try again.')
+        return
+      }
+      onSaved()
+    } catch (cause) {
+      if (mounted.current && request.current === requestId) {
+        setError(cause instanceof Error ? cause.message : 'Could not save reporting currency. Please try again.')
+      }
+    } finally {
+      if (mounted.current && request.current === requestId) setSaving(false)
+      if (request.current === requestId) inFlight.current = false
+    }
+  }, [onSaved])
+
+  return { saving, error, save }
 }
 
 type PositionsState = {

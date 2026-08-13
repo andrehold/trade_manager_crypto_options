@@ -3,6 +3,7 @@ import {
   fetchPortfolioHubLedger,
   fetchPortfolioHubOverview,
   fetchPortfolioHubPositionSnapshot,
+  fetchAdminReportingCurrencies,
 } from '../client'
 
 function response(body: unknown, status = 200) {
@@ -38,5 +39,16 @@ describe('Portfolio Data Hub browser client', () => {
     await expect(fetchPortfolioHubOverview('current-access-token', fetchMock)).rejects.toMatchObject({
       code: 'HUB_ACCOUNT_NOT_CONFIGURED', status: 409,
     })
+  })
+
+  it('calls the admin currency route with an encoded client id and bearer token', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(response({
+      data: { currencies: ['BTC'], reportingCurrency: 'BTC', reportingCurrencySource: 'admin', summary: {} },
+    }))
+    await fetchAdminReportingCurrencies('038cd955-e117-4596-aaee-b46360dcf138', 'current-access-token', fetchMock)
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/portfolio-data-hub/admin/reporting-currencies?client_id=038cd955-e117-4596-aaee-b46360dcf138',
+      { headers: { authorization: 'Bearer current-access-token', accept: 'application/json' } },
+    )
   })
 })

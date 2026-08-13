@@ -7,6 +7,8 @@ import type { HubLedgerEvent, HubPosition, HubSummaryComponent } from '@/lib/por
 import type { PortfolioHubOverview } from '@/lib/portfolioDataHub/client'
 import { usePortfolioHubLedger, usePortfolioHubPositions } from '../usePortfolioDataHub'
 import { formatPortfolioValue } from './portfolioFormatters'
+import { ReportingCurrencySelector } from './ReportingCurrencySelector'
+import { normalizeReportingCurrency } from '@/lib/clientPortal/reportingCurrencyRepo'
 
 function formatTimestamp(value: string) {
   const date = new Date(value)
@@ -15,12 +17,13 @@ function formatTimestamp(value: string) {
   })
 }
 
-function componentForOverview(components: HubSummaryComponent[], reportingCurrency: string | null) {
-  if (!reportingCurrency) return null
+export function componentForOverview(components: HubSummaryComponent[], reportingCurrency: string | null) {
+  const canonicalReportingCurrency = normalizeReportingCurrency(reportingCurrency)
+  if (!canonicalReportingCurrency) return null
   // Only account-total scopes are eligible; never fall back to an asset/component row.
   // Stable priority makes the displayed headline deterministic if a venue sends more than one.
   const scopePriority = ['account', 'margin_account', 'account_valuation']
-  const sameCurrency = components.filter((component) => component.currency === reportingCurrency)
+  const sameCurrency = components.filter((component) => normalizeReportingCurrency(component.currency) === canonicalReportingCurrency)
   for (const scope of scopePriority) {
     const match = sameCurrency.find((component) => component.componentScope === scope)
     if (match) return match
@@ -97,8 +100,18 @@ export function HubNativePositionsTable({ positions, quality, onLoadMore, loadin
   </>
 }
 
-export function HubDashboard({ overview, onOpenPositions, onOpenLedger, onRefresh, refreshing }: { overview: PortfolioHubOverview; onOpenPositions: () => void; onOpenLedger: () => void; onRefresh: () => void; refreshing?: boolean }) {
-  const component = componentForOverview(overview.summary.components, overview.reportingCurrency)
+export function HubDashboard({ overview, onOpenPositions, onOpenLedger, onRefresh, onSaveReportingCurrency, savingReportingCurrency, reportingCurrencyError, refreshing }: {
+  overview: PortfolioHubOverview
+  onOpenPositions: () => void
+  onOpenLedger: () => void
+  onRefresh: () => void
+  onSaveReportingCurrency?: (currency: string | null) => void
+  savingReportingCurrency?: boolean
+  reportingCurrencyError?: string | null
+  refreshing?: boolean
+}) {
+  const reportingCurrency = normalizeReportingCurrency(overview.reportingCurrency)
+  const component = componentForOverview(overview.summary.components, reportingCurrency)
   const partial = overview.positions.snapshot.quality === 'partial'
   return (
     <div className="flex flex-col gap-5">
@@ -113,14 +126,23 @@ export function HubDashboard({ overview, onOpenPositions, onOpenLedger, onRefres
 
       <HubProvenance overview={overview} />
 
+      {onSaveReportingCurrency && <ReportingCurrencySelector
+        components={overview.summary.components}
+        reportingCurrency={overview.reportingCurrency}
+        reportingCurrencySource={overview.reportingCurrencySource}
+        saving={savingReportingCurrency}
+        error={reportingCurrencyError}
+        onSave={onSaveReportingCurrency}
+      />}
+
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="hub-kpi-row">
-        <Metric label="Equity" value={formatPortfolioValue(component?.equity ?? null, overview.reportingCurrency)} />
-        <Metric label="Balance" value={formatPortfolioValue(component?.balance ?? null, overview.reportingCurrency)} />
-        <Metric label="Available funds" value={formatPortfolioValue(component?.availableFunds ?? null, overview.reportingCurrency)} />
+        <Metric label="Equity" value={formatPortfolioValue(component?.equity ?? null, reportingCurrency)} />
+        <Metric label="Balance" value={formatPortfolioValue(component?.balance ?? null, reportingCurrency)} />
+        <Metric label="Available funds" value={formatPortfolioValue(component?.availableFunds ?? null, reportingCurrency)} />
         <Metric label="Open positions" value={partial ? 'Partial collection' : String(overview.positions.snapshot.positionCount)} />
       </div>
-      {!overview.reportingCurrency ? <p className="type-caption text-text-secondary">No reporting currency is configured, so a single-currency headline is not shown.</p>
-        : !component ? <p className="type-caption text-text-secondary">No account-level summary component was reported in {overview.reportingCurrency}; currencies are not converted or combined.</p> : null}
+      {!reportingCurrency ? <p className="type-caption text-text-secondary">No reporting currency is configured, so a single-currency headline is not shown.</p>
+        : !component ? <p className="type-caption text-text-secondary">No account-level summary component was reported in {reportingCurrency}; currencies are not converted or combined.</p> : null}
 
       <section className="rounded-2xl border border-border-default bg-bg-surface-1 p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
