@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildMappingTable } from './remote-hub-remap.mjs'
+import { buildMappingTable, decimalWithinTolerance, verifyKnownFigure } from './remote-hub-remap.mjs'
 
 const client = (over = {}) => ({
   client_id: '11111111-1111-4111-8111-111111111111',
@@ -75,5 +75,81 @@ describe('buildMappingTable', () => {
     )
     expect(rows).toHaveLength(0)
     expect(conflicts).toEqual([])
+  })
+})
+
+describe('decimalWithinTolerance', () => {
+  it('treats an exact match as within any non-negative tolerance', () => {
+    expect(decimalWithinTolerance('12345.67', '12345.67', '0')).toBe(true)
+  })
+  it('accepts a difference at the tolerance boundary', () => {
+    expect(decimalWithinTolerance('12345.67', '12345.00', '0.67')).toBe(true)
+  })
+  it('rejects a difference beyond tolerance', () => {
+    expect(decimalWithinTolerance('12345.67', '12345.00', '0.50')).toBe(false)
+  })
+  it('compares large values exactly without float error', () => {
+    // 20-digit integers differ by exactly 1; float would collapse them.
+    expect(decimalWithinTolerance('10000000000000000001', '10000000000000000000', '0')).toBe(false)
+    expect(decimalWithinTolerance('10000000000000000001', '10000000000000000000', '1')).toBe(true)
+  })
+  it('handles differing fractional lengths and signs', () => {
+    expect(decimalWithinTolerance('-5.5', '-5.500', '0')).toBe(true)
+  })
+  it('throws on exponent notation so the caller falls back to manual review', () => {
+    expect(() => decimalWithinTolerance('1e3', '1000', '0')).toThrow()
+  })
+})
+
+describe('verifyKnownFigure', () => {
+  const summary = {
+    venue: 'deribit',
+    account_label: 'Acme Deribit Main',
+    components: [
+      { currency: 'USD', component_scope: 'total', equity: '100000.00', balance: '99000.00' },
+      { currency: 'BTC', component_scope: 'total', equity: '2.5', balance: '2.5' },
+    ],
+  }
+
+  it('passes when the chosen component field is within tolerance and identity matches', () => {
+    const result = verifyKnownFigure(summary, {
+      currency: 'USD', component_scope: 'total', field: 'equity',
+      expected: '100000.00', tolerance: '1.00', venue: 'deribit', account_label: 'Acme Deribit Main',
+    })
+    expect(result).toEqual({ ok: true, reasons: [] })
+  })
+
+  it('fails when the figure is out of tolerance', () => {
+    const result = verifyKnownFigure(summary, {
+      currency: 'USD', component_scope: 'total', field: 'equity', expected: '50000', tolerance: '1',
+    })
+    expect(result.ok).toBe(false)
+    expect(result.reasons.join('\n')).toContain('equity')
+  })
+
+  it('fails when the expected venue does not match', () => {
+    const result = verifyKnownFigure(summary, {
+      currency: 'USD', component_scope: 'total', field: 'equity',
+      expected: '100000.00', tolerance: '1', venue: 'coincall',
+    })
+    expect(result.ok).toBe(false)
+    expect(result.reasons.join('\n')).toContain('venue')
+  })
+
+  it('fails when the requested component is absent', () => {
+    const result = verifyKnownFigure(summary, {
+      currency: 'EUR', component_scope: 'total', field: 'equity', expected: '1', tolerance: '1',
+    })
+    expect(result.ok).toBe(false)
+    expect(result.reasons.join('\n')).toContain('component')
+  })
+
+  it('fails safe when the value cannot be compared (exponent form)', () => {
+    const weird = { ...summary, components: [{ currency: 'USD', component_scope: 'total', equity: '1e5' }] }
+    const result = verifyKnownFigure(weird, {
+      currency: 'USD', component_scope: 'total', field: 'equity', expected: '100000', tolerance: '1',
+    })
+    expect(result.ok).toBe(false)
+    expect(result.reasons.join('\n')).toContain('could not be compared')
   })
 })

@@ -65,3 +65,71 @@ export function buildMappingTable(clients, hubAccounts) {
 
   return { rows, conflicts }
 }
+
+const PLAIN_DECIMAL = /^([+-]?)(\d+)(?:\.(\d+))?$/
+
+function fracLen(value) {
+  const match = PLAIN_DECIMAL.exec(String(value).trim())
+  if (!match) throw new Error(`Not a plain decimal: ${value}`)
+  return match[3] ? match[3].length : 0
+}
+
+/** Scale a plain decimal string to an integer BigInt at `scale` fractional digits. */
+function scaledBigInt(value, scale) {
+  const match = PLAIN_DECIMAL.exec(String(value).trim())
+  if (!match) throw new Error(`Not a plain decimal: ${value}`)
+  const negative = match[1] === '-'
+  const intPart = match[2]
+  const fracPart = (match[3] ?? '').padEnd(scale, '0').slice(0, scale)
+  const magnitude = BigInt(intPart + fracPart)
+  return negative ? -magnitude : magnitude
+}
+
+/** Exact |actual - expected| <= tolerance using integer scaling. */
+export function decimalWithinTolerance(actual, expected, tolerance) {
+  const scale = Math.max(fracLen(actual), fracLen(expected), fracLen(tolerance))
+  const a = scaledBigInt(actual, scale)
+  const e = scaledBigInt(expected, scale)
+  const t = scaledBigInt(tolerance, scale)
+  const diff = a > e ? a - e : e - a
+  return diff <= t
+}
+
+/**
+ * Assert a known summary figure and (optionally) the account identity.
+ * Returns every failure reason so the operator sees the full picture.
+ */
+export function verifyKnownFigure(summary, expectation) {
+  const reasons = []
+
+  if (expectation.venue && norm(summary.venue) !== norm(expectation.venue)) {
+    reasons.push(`venue mismatch: hub="${summary.venue}" expected="${expectation.venue}"`)
+  }
+  if (expectation.account_label && norm(summary.account_label) !== norm(expectation.account_label)) {
+    reasons.push(`account_label mismatch: hub="${summary.account_label}" expected="${expectation.account_label}"`)
+  }
+
+  const component = (summary.components ?? []).find(
+    (c) => norm(c.currency) === norm(expectation.currency)
+      && norm(c.component_scope) === norm(expectation.component_scope),
+  )
+  if (!component) {
+    reasons.push(`component not found: ${expectation.currency}/${expectation.component_scope}`)
+    return { ok: false, reasons }
+  }
+
+  const actual = component[expectation.field]
+  if (actual === null || actual === undefined) {
+    reasons.push(`component field "${expectation.field}" is null`)
+    return { ok: false, reasons }
+  }
+  try {
+    if (!decimalWithinTolerance(actual, expectation.expected, expectation.tolerance)) {
+      reasons.push(`${expectation.field} out of tolerance: hub="${actual}" expected="${expectation.expected}" (±${expectation.tolerance})`)
+    }
+  } catch {
+    reasons.push(`${expectation.field}="${actual}" could not be compared as an exact decimal; verify manually`)
+  }
+
+  return { ok: reasons.length === 0, reasons }
+}
