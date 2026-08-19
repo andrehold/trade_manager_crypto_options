@@ -68,6 +68,16 @@ export function buildMappingTable(clients, hubAccounts) {
   return { rows, conflicts }
 }
 
+/** new_hub_account_ids claimed by more than one row; must be empty before apply. */
+export function duplicateClaims(rows) {
+  const counts = new Map()
+  for (const row of rows) {
+    if (!row.new_hub_account_id) continue
+    counts.set(row.new_hub_account_id, (counts.get(row.new_hub_account_id) ?? 0) + 1)
+  }
+  return [...counts].filter(([, count]) => count > 1).map(([id]) => id)
+}
+
 const PLAIN_DECIMAL = /^([+-]?)(\d+)(?:\.(\d+))?$/
 
 function fracLen(value) {
@@ -254,6 +264,10 @@ async function phaseApply(config, inPath, rollbackPath) {
   if (applicable.length !== rows.length) {
     return die(config, `Refusing to apply: ${rows.length - applicable.length} row(s) are not 'matched'. Re-run build until clean.`)
   }
+  const dupes = duplicateClaims(applicable)
+  if (dupes.length) {
+    return die(config, `Refusing to apply: ${dupes.length} hub account(s) claimed by multiple clients: ${dupes.join(', ')}. Re-run build until clean.`)
+  }
   const currentById = new Map((await listClients(config)).map((c) => [c.client_id, c]))
   const rollback = []
   for (const row of applicable) {
@@ -276,8 +290,9 @@ async function phaseVerify(config, inPath, expectedPath) {
   let failures = 0
   for (const row of rows) {
     if (!row.new_hub_account_id) continue
-    const expectation = expectedById.get(row.client_id)
-    if (!expectation) { die(config, `No expected figure for client ${row.client_name}; cannot verify`); failures += 1; continue }
+    const expected = expectedById.get(row.client_id)
+    if (!expected) { die(config, `No expected figure for client ${row.client_name}; cannot verify`); failures += 1; continue }
+    const expectation = { venue: row.venue, account_label: row.hub_account_label, ...expected }
     const summary = await fetchSummary(config, row.new_hub_account_id)
     const { ok, reasons } = verifyKnownFigure(summary, expectation)
     if (ok) log(config, `OK   ${row.client_name}`)

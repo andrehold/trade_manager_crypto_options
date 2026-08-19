@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildMappingTable, decimalWithinTolerance, verifyKnownFigure } from './remote-hub-remap.mjs'
+import { buildMappingTable, decimalWithinTolerance, duplicateClaims, verifyKnownFigure } from './remote-hub-remap.mjs'
 import { readRemapConfig, redact } from './remote-hub-remap.mjs'
 
 const client = (over = {}) => ({
@@ -190,5 +190,18 @@ describe('redact', () => {
     expect(line).not.toContain('hub-key-do-not-print')
     expect(line).not.toContain('sb_secret_do-not-print')
     expect(line).toContain('«redacted»')
+  })
+})
+
+describe('duplicateClaims', () => {
+  const row = (over = {}) => ({ new_hub_account_id: 'acc-1', ...over })
+  it('returns empty when every new_hub_account_id is distinct', () => {
+    expect(duplicateClaims([row({ new_hub_account_id: 'a' }), row({ new_hub_account_id: 'b' })])).toEqual([])
+  })
+  it('returns an id claimed by more than one row', () => {
+    expect(duplicateClaims([row({ new_hub_account_id: 'a' }), row({ new_hub_account_id: 'a' })])).toEqual(['a'])
+  })
+  it('ignores rows with no new_hub_account_id', () => {
+    expect(duplicateClaims([row({ new_hub_account_id: null }), row({ new_hub_account_id: null })])).toEqual([])
   })
 })
