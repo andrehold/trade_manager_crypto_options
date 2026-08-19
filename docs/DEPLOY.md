@@ -12,15 +12,15 @@ This app uses **explicit Vercel Edge routes** for live data and a Vite proxy for
 The Hub key is server-only and must never use a `VITE_` prefix:
 
 ```env
-PORTFOLIO_DATA_HUB_BASE_URL=https://hub.example.com
-PORTFOLIO_DATA_HUB_API_KEY=<server-only bearer key>
+PORTFOLIO_DATA_HUB_BASE_URL=https://hub.germanquantum.tech
+PORTFOLIO_DATA_HUB_API_KEY=<server-only bearer key with portal data-read scopes>
 ```
 
 The routes validate the caller with the existing Supabase publishable key and
 query `public.clients` under the caller's RLS context. They therefore use
 `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`; no service-role secret is
 required for client reads. The local loopback Hub URL works only on the developer
-machine. Vercel requires the future reachable Hetzner HTTPS URL.
+machine. Production and the account remap script use the remote Hub at `https://hub.germanquantum.tech`.
 
 ## Production Hub connection
 
