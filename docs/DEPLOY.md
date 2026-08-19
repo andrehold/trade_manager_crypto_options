@@ -104,6 +104,44 @@ the Hub's public API smoke check rather than this direct parser check.
 4. Verify the signed-in portal account still loads overview, positions, and ledger.
 5. Revoke the old Hub key only after the new deployment is verified.
 
+### Remote Hub cutover (hub.germanquantum.tech)
+
+Direct production switch. The old Hub stays reachable until the new one is
+verified, so rollback is immediate.
+
+**Preconditions**
+- The new `PORTFOLIO_DATA_HUB_API_KEY` carries the portal data-read scopes
+  (data accounts, summaries, positions, ledger-events); `raw:read` is not needed.
+- A reviewer has an `expected.json` of known figures — one row per client:
+  `{ client_id, currency, component_scope, field, expected, tolerance }`.
+
+**Cutover**
+1. Set Production `PORTFOLIO_DATA_HUB_BASE_URL=https://hub.germanquantum.tech`
+   and the new `PORTFOLIO_DATA_HUB_API_KEY`. Redeploy.
+2. `npm run hub:preflight:production` — expect a pass with no printed values.
+3. Build the mapping (read-only): `npm run hub:remap -- build --out mapping.json`.
+   Resolve every CONFLICT until the run is clean, then **have a human review
+   `mapping.json`** (each `old -> new`, venue, external id).
+4. Apply: `npm run hub:remap -- apply --input mapping.json`. This writes
+   `rollback.json` (a pre-write snapshot) before any change and applies each
+   mapping through the audited `admin_set_client_hub_account_mapping` RPC.
+5. Verify: `npm run hub:remap -- verify --input mapping.json --expected expected.json`.
+   Every client must report `OK`.
+6. Smoke-test one real client login end-to-end (overview, positions, ledger),
+   and the direct parser check: `npm run test:portfolio-data-hub:direct` with
+   `PORTFOLIO_DATA_HUB_TEST_ACCOUNT_ID` set to a mapped new account UUID.
+7. Monitor. Decommission the old Hub only after a soak period.
+
+**Rollback**
+- Data: `npm run hub:remap -- rollback --input rollback.json` restores every
+  client's prior `hub_account_id` (also recoverable from
+  `client_account_config_audit`).
+- Config: restore the previous Production `PORTFOLIO_DATA_HUB_BASE_URL` and key,
+  then redeploy.
+
+`mapping.json`, `rollback.json`, and `expected.json` are operational artifacts —
+never commit them.
+
 If the Hub is unavailable, the portal must show its existing safe unavailable
 state; it must not present stale data as current or disclose internal Hub
 details.
