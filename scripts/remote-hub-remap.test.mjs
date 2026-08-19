@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildMappingTable, decimalWithinTolerance, verifyKnownFigure } from './remote-hub-remap.mjs'
+import { readRemapConfig, redact } from './remote-hub-remap.mjs'
 
 const client = (over = {}) => ({
   client_id: '11111111-1111-4111-8111-111111111111',
@@ -151,5 +152,43 @@ describe('verifyKnownFigure', () => {
     })
     expect(result.ok).toBe(false)
     expect(result.reasons.join('\n')).toContain('could not be compared')
+  })
+})
+
+const validRemapEnv = {
+  SUPABASE_URL: 'https://example.supabase.co',
+  SUPABASE_SECRET_KEY: 'sb_secret_do-not-print',
+  PORTFOLIO_DATA_HUB_BASE_URL: 'https://hub.germanquantum.tech',
+  PORTFOLIO_DATA_HUB_API_KEY: 'hub-key-do-not-print',
+}
+
+describe('readRemapConfig', () => {
+  it('reads all four values from a valid env', () => {
+    const config = readRemapConfig(validRemapEnv)
+    expect(config.hubBaseUrl).toBe('https://hub.germanquantum.tech')
+    expect(config.supabaseUrl).toBe('https://example.supabase.co')
+  })
+  it('accepts the legacy SUPABASE_SERVICE_ROLE_KEY fallback', () => {
+    const { SUPABASE_SECRET_KEY, ...rest } = validRemapEnv
+    const config = readRemapConfig({ ...rest, SUPABASE_SERVICE_ROLE_KEY: 'legacy-secret' })
+    expect(config.supabaseSecretKey).toBe('legacy-secret')
+  })
+  it('throws when the Hub base URL is missing', () => {
+    const { PORTFOLIO_DATA_HUB_BASE_URL, ...rest } = validRemapEnv
+    expect(() => readRemapConfig(rest)).toThrow(/PORTFOLIO_DATA_HUB_BASE_URL/)
+  })
+  it('rejects a VITE_-prefixed Hub key', () => {
+    expect(() => readRemapConfig({ ...validRemapEnv, VITE_PORTFOLIO_DATA_HUB_API_KEY: 'x' }))
+      .toThrow(/VITE_/)
+  })
+})
+
+describe('redact', () => {
+  it('never leaks configured secret values', () => {
+    const config = readRemapConfig(validRemapEnv)
+    const line = redact(`connecting to ${config.hubBaseUrl} with ${config.hubApiKey} and ${config.supabaseSecretKey}`, config)
+    expect(line).not.toContain('hub-key-do-not-print')
+    expect(line).not.toContain('sb_secret_do-not-print')
+    expect(line).toContain('«redacted»')
   })
 })

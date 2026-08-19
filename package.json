@@ -11,6 +11,7 @@
     "test": "vitest run",
     "hub:preflight": "node scripts/portfolio-data-hub-preflight.mjs",
     "hub:preflight:production": "node scripts/portfolio-data-hub-preflight.mjs --production",
+    "hub:remap": "node scripts/remote-hub-remap.mjs",
     "test:portfolio-data-hub:direct": "RUN_PORTFOLIO_DATA_HUB_LIVE_TEST=1 vitest run src/lib/portfolioDataHub/__tests__/server.live.test.ts",
     "test:portfolio-data-hub:live": "npm run test:portfolio-data-hub:direct",
     "test:watch": "vitest"
