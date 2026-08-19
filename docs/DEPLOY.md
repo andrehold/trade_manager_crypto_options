@@ -72,6 +72,14 @@ npm run hub:preflight
 The command fails if a Hub variable uses a `VITE_` prefix, a production Hub URL
 is not HTTPS, required configuration is missing, or the timeout is invalid.
 
+On Vercel this runs automatically as a deploy gate: `vercel.json` sets the
+build command to run `hub:preflight:production` before `npm run build`, gated
+to `VERCEL_ENV=production` so it fires only on Production deploys (Preview and
+Development builds, where the Hub vars are intentionally unset, skip it). A
+failing preflight fails the Production build, so a misconfigured Hub connection
+can never ship. The Hub/Supabase variables must be set with **Production** scope
+in Vercel for the build to see them.
+
 ### Direct Hub contract/parser smoke
 
 This opt-in test directly calls the configured Hub URL with its consumer key,
