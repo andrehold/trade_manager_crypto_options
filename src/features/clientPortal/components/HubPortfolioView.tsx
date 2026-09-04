@@ -203,7 +203,12 @@ export function HubLedgerPage({ onRefresh, refreshing }: { onRefresh: () => void
   )
 }
 
+export function nonZeroSummaryComponents(components: HubSummaryComponent[]) {
+  return components.filter((component) => component.balance === null || !decimalFrom(component.balance).isZero())
+}
+
 function HubSummaryDetails({ components }: { components: HubSummaryComponent[] }) {
+  const visibleComponents = React.useMemo(() => nonZeroSummaryComponents(components), [components])
   const columns = React.useMemo<Column<HubSummaryComponent>[]>(() => [
     { key: 'scope', header: 'Scope', render: (row) => row.componentScope.replace(/_/g, ' ') },
     { key: 'currency', header: 'Currency', render: (row) => row.currency },
@@ -218,7 +223,7 @@ function HubSummaryDetails({ components }: { components: HubSummaryComponent[] }
         <h2 className="type-subhead font-semibold text-text-primary">Account summary</h2>
         <p className="mt-0.5 type-caption text-text-tertiary">Values remain in the currencies supplied by the Hub.</p>
       </div>
-      <DataTable columns={columns} data={components} rowKey={(_, index) => String(index)} emptyMessage="No account summary components were reported." />
+      <DataTable columns={columns} data={visibleComponents} rowKey={(_, index) => String(index)} emptyMessage="No non-zero account balances were reported." />
     </section>
   )
 }

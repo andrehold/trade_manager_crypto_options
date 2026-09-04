@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import summaryFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/summary-latest.json'
 import positionsFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/positions-latest.json'
@@ -129,6 +129,22 @@ describe('Hub-backed portfolio views', () => {
     ]
     render(<HubDashboard overview={margin} onOpenPositions={() => {}} onOpenLedger={() => {}} onRefresh={() => {}} />)
     expect(screen.getAllByText('1,250.00 USDC').length).toBeGreaterThan(0)
+  })
+
+  it('hides zero-quantity coins from the account summary', () => {
+    const balances = structuredClone(overview)
+    balances.summary.components = [
+      { ...balances.summary.components[0], currency: 'USDC', balance: '1250' as any },
+      { ...balances.summary.components[0], currency: 'BTC', componentScope: 'asset_balance', balance: '0.00000000' as any },
+      { ...balances.summary.components[0], currency: 'ETH', componentScope: 'asset_balance', balance: '-0' as any },
+    ]
+    render(<HubDashboard overview={balances} onOpenPositions={() => {}} onOpenLedger={() => {}} onRefresh={() => {}} />)
+
+    const accountSummary = screen.getByRole('heading', { name: /account summary/i }).closest('section')
+    expect(accountSummary).not.toBeNull()
+    expect(within(accountSummary!).getByText('USDC')).toBeInTheDocument()
+    expect(within(accountSummary!).queryByText('BTC')).toBeNull()
+    expect(within(accountSummary!).queryByText('ETH')).toBeNull()
   })
 
   it('does not apply full-position count reconciliation to the five-row dashboard preview', () => {
