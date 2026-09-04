@@ -5,7 +5,7 @@ This app uses **explicit Vercel Edge routes** for live data and a Vite proxy for
 ## Required files
 - `api/deribit/ticker.ts` — proxies `public/ticker` to Deribit and returns upstream JSON.
 - `api/coincall/price.ts` — aggregates Coincall detail + orderbook + last trade and returns `{ price, multiplier, greeks }`.
-- `api/portfolio-data-hub/*` — authenticated client summary, positions, ledger, and combined provenance routes.
+- `api/portfolio-data-hub/*` — authenticated client summary, historical summaries, positions, ledger, and combined provenance routes.
 
 ## Portfolio Data Hub environment
 
@@ -165,6 +165,7 @@ details.
    - `/api/deribit/ticker`
    - `/api/coincall/price`
    - `/api/portfolio-data-hub/summary`
+   - `/api/portfolio-data-hub/summaries?fetched_from=<ISO>&fetched_to=<ISO>&limit=200`
    - `/api/portfolio-data-hub/positions`
    - `/api/portfolio-data-hub/ledger`
    - `/api/portfolio-data-hub/overview`

@@ -3,6 +3,7 @@ import {
   fetchPortfolioHubLedger,
   fetchPortfolioHubOverview,
   fetchPortfolioHubPositionSnapshot,
+  fetchPortfolioHubSummaries,
   fetchAdminReportingCurrencies,
 } from '../client'
 
@@ -23,6 +24,18 @@ describe('Portfolio Data Hub browser client', () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(response({ data: { items: [], nextCursor: null } }))
     await fetchPortfolioHubLedger('current-access-token', { cursor: 'next page', eventType: 'trade', currency: 'USDC', limit: 50 }, fetchMock)
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe('/api/portfolio-data-hub/ledger?limit=50&cursor=next+page&event_type=trade&currency=USDC')
+  })
+
+  it('requests historical summaries for the supplied UTC range', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(response({ data: { items: [], nextCursor: null } }))
+    await fetchPortfolioHubSummaries('current-access-token', {
+      fetchedFrom: '2026-08-01T00:00:00Z',
+      fetchedTo: '2026-09-01T00:00:00Z',
+      limit: 200,
+    }, fetchMock)
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      '/api/portfolio-data-hub/summaries?fetched_from=2026-08-01T00%3A00%3A00Z&fetched_to=2026-09-01T00%3A00%3A00Z&limit=200',
+    )
   })
 
   it('uses the opaque page token, never a raw snapshot identifier, for later position pages', async () => {

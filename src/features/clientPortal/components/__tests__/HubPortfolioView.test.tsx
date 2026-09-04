@@ -7,6 +7,15 @@ import ledgerFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/ledger-ev
 import { parseHubLatestPositionPage, parseHubLedgerEventPage, parseHubSummary } from '@/lib/portfolioDataHub'
 
 vi.mock('../../usePortfolioDataHub', () => ({ usePortfolioHubLedger: vi.fn(), usePortfolioHubPositions: vi.fn() }))
+vi.mock('recharts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('recharts')>()
+  return {
+    ...actual,
+    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
+      <div style={{ width: 600, height: 200 }}>{children}</div>
+    ),
+  }
+})
 
 import { HubDashboard, HubLedgerHistory, HubNativePositionsTable, HubPositionsPage } from '../HubPortfolioView'
 import { usePortfolioHubLedger, usePortfolioHubPositions } from '../../usePortfolioDataHub'
@@ -47,7 +56,38 @@ describe('Hub-backed portfolio views', () => {
     expect(screen.queryByRole('button', { name: /^modify$/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /^close$/i })).toBeNull()
     expect(screen.getAllByText('1,250.13 USDC').length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: /refresh portfolio/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /refresh/i })).toBeInTheDocument()
+  })
+
+  it('prioritizes performance, then balance capacity, trends, and neutral risk values', () => {
+    const earlier = structuredClone(overview.summary)
+    earlier.fetchedAt = '2026-08-01T00:00:00.000Z'
+    earlier.components[0] = { ...earlier.components[0], equity: '1100.00' as any }
+    render(
+      <HubDashboard
+        overview={overview}
+        history={[earlier]}
+        onOpenPositions={() => {}}
+        onOpenLedger={() => {}}
+        onRefresh={() => {}}
+      />,
+    )
+
+    const performance = screen.getByTestId('hub-kpi-row')
+    expect(within(performance).getByText('Equity')).toBeInTheDocument()
+    expect(within(performance).getByText('Realized P&L')).toBeInTheDocument()
+    expect(within(performance).getByText('Unrealized P&L')).toBeInTheDocument()
+    expect(within(performance).getByText('Balance')).toBeInTheDocument()
+    expect(within(performance).getByText('Available funds')).toBeInTheDocument()
+    expect(within(performance).getByText('1,200.00 USDC')).toBeInTheDocument()
+    expect(within(performance).getByText('900.25 USDC')).toBeInTheDocument()
+    expect(screen.getByTestId('hub-equity-trend')).toBeInTheDocument()
+
+    const risk = screen.getByTestId('hub-risk-row')
+    expect(within(risk).getByText('Initial margin')).toBeInTheDocument()
+    expect(within(risk).getByText('Maintenance margin')).toBeInTheDocument()
+    expect(within(risk).getByText('Collateral')).toBeInTheDocument()
+    expect(within(risk).getByText('Available to withdraw')).toBeInTheDocument()
   })
 
   it('renders native Hub positions as read-only data', () => {
@@ -108,9 +148,10 @@ describe('Hub-backed portfolio views', () => {
     expect(screen.getByText(/not an authoritative zero-position result/i)).toBeInTheDocument()
   })
 
-  it('does not select or combine a summary component when the reporting currency has no account-level match', () => {
+  it('uses the API-supplied account currency instead of a configured portfolio currency', () => {
     render(<HubDashboard overview={{ ...overview, reportingCurrency: 'EUR' }} onOpenPositions={() => {}} onOpenLedger={() => {}} onRefresh={() => {}} />)
-    expect(screen.getByText(/No account-level summary component was reported in EUR/i)).toBeInTheDocument()
+    expect(screen.getByText('Currency USDC')).toBeInTheDocument()
+    expect(screen.queryByText('Currency EUR')).toBeNull()
   })
 
   it('matches lowercase Hub summary currency to the canonical configured currency without conversion or summation', () => {

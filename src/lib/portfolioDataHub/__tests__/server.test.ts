@@ -109,6 +109,28 @@ describe('Portfolio Data Hub server boundary', () => {
     ])
   })
 
+  it('forwards only the supported historical summary range and pagination values', async () => {
+    const historyPage = {
+      canonical_schema_version: summaryFixture.canonical_schema_version,
+      items: [summaryFixture],
+      next_cursor: null,
+    }
+    const fetchMock = gatewayFetch(historyPage)
+    const result = await handlePortfolioDataHubRequest(
+      request('/api/portfolio-data-hub/summaries?fetched_from=2026-08-01T00:00:00Z&fetched_to=2026-09-01T00:00:00Z&limit=200&ignored=secret'),
+      'summaries',
+      { env, fetch: fetchMock },
+    )
+    expect(result.status).toBe(200)
+    const hubUrl = String(fetchMock.mock.calls[2]?.[0])
+    expect(hubUrl).toContain(`/api/v1/accounts/${hubAccountId}/summaries?`)
+    expect(hubUrl).toContain('fetched_from=2026-08-01T00%3A00%3A00Z')
+    expect(hubUrl).toContain('fetched_to=2026-09-01T00%3A00%3A00Z')
+    expect(hubUrl).toContain('limit=200')
+    expect(hubUrl).not.toContain('ignored')
+    expect(await result.json()).toMatchObject({ data: { items: [{ accountId: hubAccountId }] } })
+  })
+
   it('returns a clear unmapped state without calling the Hub', async () => {
     const fetchMock = gatewayFetch({}, profile({ hub_account_id: null }))
     const result = await handlePortfolioDataHubRequest(
