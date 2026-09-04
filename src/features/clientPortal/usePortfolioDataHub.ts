@@ -126,13 +126,13 @@ export function useReportingCurrencySelection(onSaved: () => void) {
       const afterSession = await currentSessionIdentity()
       if (!mounted.current || request.current !== requestId) return
       if (afterSession !== beforeSession) {
-        setError('Your session changed before the reporting currency was refreshed. Please try again.')
+        setError('Your session changed before the account currency was refreshed. Please try again.')
         return
       }
       onSaved()
     } catch (cause) {
       if (mounted.current && request.current === requestId) {
-        setError(cause instanceof Error ? cause.message : 'Could not save reporting currency. Please try again.')
+        setError(cause instanceof Error ? cause.message : 'Could not save account currency. Please try again.')
       }
     } finally {
       if (mounted.current && request.current === requestId) setSaving(false)

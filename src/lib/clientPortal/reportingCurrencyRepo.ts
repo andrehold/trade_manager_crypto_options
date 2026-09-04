@@ -52,7 +52,7 @@ export async function setOwnReportingCurrency(
 ): Promise<SaveReportingCurrencyResult> {
   const canonicalCurrency = reportingCurrency === null ? null : normalizeReportingCurrency(reportingCurrency)
   if (reportingCurrency !== null && canonicalCurrency === null) {
-    return { ok: false, error: 'Reporting currency must be a 2-12 character uppercase currency code.' }
+    return { ok: false, error: 'Account currency must be a 2-12 character uppercase currency code.' }
   }
   const { data, error } = await supabase.rpc('set_own_reporting_currency', {
     p_reporting_currency: canonicalCurrency,
@@ -60,6 +60,6 @@ export async function setOwnReportingCurrency(
   if (error) return { ok: false, error: error.message }
   const rows = Array.isArray(data) ? data : data == null ? [] : [data]
   const selection = rows.length === 1 ? parseReportingCurrencySelection(rows[0]) : null
-  if (!selection) return { ok: false, error: 'The reporting-currency service returned an invalid response. Please try again.' }
+  if (!selection) return { ok: false, error: 'The account-currency service returned an invalid response. Please try again.' }
   return { ok: true, selection }
 }
