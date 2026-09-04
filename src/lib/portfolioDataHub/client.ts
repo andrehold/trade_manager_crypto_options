@@ -42,6 +42,13 @@ export type HubLedgerFilters = {
   instrument?: string
 }
 
+export type HubSummaryHistoryFilters = {
+  fetchedFrom: string
+  fetchedTo: string
+  cursor?: string | null
+  limit?: number
+}
+
 export type HubClientErrorCode =
   | 'UNAUTHENTICATED'
   | 'HUB_ACCOUNT_NOT_CONFIGURED'
@@ -130,6 +137,24 @@ export async function requestPortfolioHub<T>(
 
 export function fetchPortfolioHubOverview(accessToken: string, fetchImpl?: typeof fetch) {
   return requestPortfolioHub<PortfolioHubOverview>('/api/portfolio-data-hub/overview', accessToken, fetchImpl)
+}
+
+export function fetchPortfolioHubSummaries(
+  accessToken: string,
+  options: HubSummaryHistoryFilters,
+  fetchImpl?: typeof fetch,
+) {
+  const query = new URLSearchParams({
+    fetched_from: options.fetchedFrom,
+    fetched_to: options.fetchedTo,
+    limit: String(options.limit ?? 200),
+  })
+  if (options.cursor) query.set('cursor', options.cursor)
+  return requestPortfolioHub<HubPage<HubSummary>>(
+    `/api/portfolio-data-hub/summaries?${query}`,
+    accessToken,
+    fetchImpl,
+  )
 }
 
 /**

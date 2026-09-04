@@ -3,12 +3,11 @@ import { AlertTriangle, Database, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge, DataTable, type Column } from '@/components/ui'
 import { decimalFrom } from '@/lib/portfolioDataHub/decimal'
-import type { HubLedgerEvent, HubPosition, HubSummaryComponent } from '@/lib/portfolioDataHub'
+import type { HubLedgerEvent, HubPosition, HubSummary, HubSummaryComponent } from '@/lib/portfolioDataHub'
 import type { PortfolioHubOverview } from '@/lib/portfolioDataHub/client'
 import { usePortfolioHubLedger, usePortfolioHubPositions } from '../usePortfolioDataHub'
 import { formatPortfolioValue } from './portfolioFormatters'
-import { ReportingCurrencySelector } from './ReportingCurrencySelector'
-import { normalizeReportingCurrency } from '@/lib/clientPortal/reportingCurrencyRepo'
+import { HubPerformanceTrends } from './charts/HubPerformanceTrends'
 
 function formatTimestamp(value: string) {
   const date = new Date(value)
@@ -17,25 +16,54 @@ function formatTimestamp(value: string) {
   })
 }
 
-export function componentForOverview(components: HubSummaryComponent[], reportingCurrency: string | null) {
-  const canonicalReportingCurrency = normalizeReportingCurrency(reportingCurrency)
-  if (!canonicalReportingCurrency) return null
-  // Only account-total scopes are eligible; never fall back to an asset/component row.
-  // Stable priority makes the displayed headline deterministic if a venue sends more than one.
-  const scopePriority = ['account', 'margin_account', 'account_valuation']
-  const sameCurrency = components.filter((component) => normalizeReportingCurrency(component.currency) === canonicalReportingCurrency)
+export function primaryApiComponent(components: HubSummaryComponent[]) {
+  const scopePriority = ['account', 'margin_account', 'account_valuation', 'asset_account']
   for (const scope of scopePriority) {
-    const match = sameCurrency.find((component) => component.componentScope === scope)
+    const match = components.find((component) => component.componentScope === scope)
     if (match) return match
   }
-  return null
+  return components[0] ?? null
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function apiValueForCurrency(
+  components: HubSummaryComponent[],
+  primary: HubSummaryComponent | null,
+  key: Exclude<keyof HubSummaryComponent, 'currency' | 'componentScope' | 'attributes'>,
+) {
+  if (!primary) return null
+  if (primary[key] != null) return primary[key]
+  const currency = primary.currency.trim().toUpperCase()
+  return components.find((component) => (
+    component.currency.trim().toUpperCase() === currency && component[key] != null
+  ))?.[key] ?? null
+}
+
+function Metric({ label, value, detail, tone, className = '' }: {
+  label: string
+  value: string
+  detail?: string
+  tone?: 'pos' | 'neg'
+  className?: string
+}) {
   return (
-    <div className="rounded-xl border border-border-default bg-bg-surface-1 p-4">
+    <div className={`rounded-xl border border-border-default bg-bg-surface-1 p-4 ${className}`}>
       <div className="type-caption uppercase tracking-wide text-text-tertiary">{label}</div>
-      <div className="mt-1.5 type-title-l font-bold text-text-primary">{value}</div>
+      <div className={`mt-1.5 type-title-l font-bold ${tone === 'neg' ? 'text-status-danger' : tone === 'pos' ? 'text-status-success' : 'text-text-primary'}`}>{value}</div>
+      {detail && <div className="mt-1 type-caption text-text-tertiary">{detail}</div>}
+    </div>
+  )
+}
+
+function metricTone(value: HubSummaryComponent['realizedPnl']) {
+  if (value == null || decimalFrom(value).isZero()) return undefined
+  return decimalFrom(value).isNegative() ? 'neg' as const : 'pos' as const
+}
+
+function SectionHead({ title, meta }: { title: string; meta?: string }) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-2">
+      <h2 className="type-subhead font-semibold text-text-primary">{title}</h2>
+      {meta && <span className="type-caption uppercase tracking-wide text-text-tertiary">{meta}</span>}
     </div>
   )
 }
@@ -100,49 +128,69 @@ export function HubNativePositionsTable({ positions, quality, onLoadMore, loadin
   </>
 }
 
-export function HubDashboard({ overview, onOpenPositions, onOpenLedger, onRefresh, onSaveReportingCurrency, savingReportingCurrency, reportingCurrencyError, refreshing }: {
+export function HubDashboard({ overview, history = [], historyError, onOpenPositions, onOpenLedger, onRefresh, refreshing }: {
   overview: PortfolioHubOverview
+  history?: HubSummary[]
+  historyError?: string | null
   onOpenPositions: () => void
   onOpenLedger: () => void
   onRefresh: () => void
-  onSaveReportingCurrency?: (currency: string | null) => void
-  savingReportingCurrency?: boolean
-  reportingCurrencyError?: string | null
   refreshing?: boolean
 }) {
-  const reportingCurrency = normalizeReportingCurrency(overview.reportingCurrency)
-  const component = componentForOverview(overview.summary.components, reportingCurrency)
+  const component = primaryApiComponent(overview.summary.components)
   const partial = overview.positions.snapshot.quality === 'partial'
+  const currency = component?.currency.trim().toUpperCase() ?? null
+  const value = (key: Exclude<keyof HubSummaryComponent, 'currency' | 'componentScope' | 'attributes'>) => (
+    apiValueForCurrency(overview.summary.components, component, key)
+  )
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="type-title-l font-bold text-text-primary">Dashboard</h1>
-          <Badge variant="info"><Database className="mr-1 h-3 w-3" />Portfolio Data Hub</Badge>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="type-title-l font-bold text-text-primary">Performance & risk</h1>
+            <Badge variant="info"><Database className="mr-1 h-3 w-3" />Live portfolio data</Badge>
+          </div>
+          <p className="mt-1 type-subhead text-text-secondary">Your account performance and current risk exposure.</p>
         </div>
-        <p className="mt-1 type-subhead text-text-secondary">Account-level portfolio data from your connected venue.</p>
-        <div className="mt-3"><Button size="sm" variant="secondary" onClick={onRefresh} disabled={refreshing} leftIcon={<RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />}>{refreshing ? 'Refreshing…' : 'Refresh portfolio'}</Button></div>
+        <div className="flex flex-wrap items-center gap-2">
+          {currency && <Badge variant="neutral">Currency {currency}</Badge>}
+          {overview.summary.venue && <Badge variant="neutral">Venue {overview.summary.venue}</Badge>}
+          <Button size="sm" variant="secondary" onClick={onRefresh} disabled={refreshing} leftIcon={<RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />}>{refreshing ? 'Refreshing…' : 'Refresh'}</Button>
+        </div>
       </div>
 
       <HubProvenance overview={overview} />
 
-      {onSaveReportingCurrency && <ReportingCurrencySelector
-        components={overview.summary.components}
-        reportingCurrency={overview.reportingCurrency}
-        reportingCurrencySource={overview.reportingCurrencySource}
-        saving={savingReportingCurrency}
-        error={reportingCurrencyError}
-        onSave={onSaveReportingCurrency}
-      />}
+      <section className="flex flex-col gap-3">
+        <SectionHead title="Performance" meta={currency ? `values in ${currency}` : 'API values'} />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="hub-kpi-row">
+          <Metric label="Equity" value={formatPortfolioValue(value('equity'), currency)} detail="Balance including reported P&L" />
+          <Metric label="Realized P&L" value={formatPortfolioValue(value('realizedPnl'), currency)} tone={metricTone(value('realizedPnl'))} detail="Reported by the venue" />
+          <Metric label="Unrealized P&L" value={formatPortfolioValue(value('unrealizedPnl'), currency)} tone={metricTone(value('unrealizedPnl'))} detail="Reported by the venue" />
+          <Metric label="Open positions" value={partial ? 'Partial collection' : String(overview.positions.snapshot.positionCount)} detail="Current venue snapshot" />
+          <Metric label="Balance" value={formatPortfolioValue(value('balance'), currency)} detail="Includes received premium" className="md:col-span-2" />
+          <Metric label="Available funds" value={formatPortfolioValue(value('availableFunds'), currency)} detail="Available under venue margin rules" className="md:col-span-2" />
+        </div>
+      </section>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="hub-kpi-row">
-        <Metric label="Equity" value={formatPortfolioValue(component?.equity ?? null, reportingCurrency)} />
-        <Metric label="Balance" value={formatPortfolioValue(component?.balance ?? null, reportingCurrency)} />
-        <Metric label="Available funds" value={formatPortfolioValue(component?.availableFunds ?? null, reportingCurrency)} />
-        <Metric label="Open positions" value={partial ? 'Partial collection' : String(overview.positions.snapshot.positionCount)} />
-      </div>
-      {!reportingCurrency ? <p className="type-caption text-text-secondary">No reporting currency is configured, so a single-currency headline is not shown.</p>
-        : !component ? <p className="type-caption text-text-secondary">No account-level summary component was reported in {reportingCurrency}; currencies are not converted or combined.</p> : null}
+      {component && (
+        <section className="flex flex-col gap-3">
+          <SectionHead title="Performance trend" meta="last 30 days" />
+          <HubPerformanceTrends history={history} current={overview.summary} component={component} />
+          {historyError && <p className="type-caption text-text-tertiary">Historical trends could not be loaded. Current values are still up to date.</p>}
+        </section>
+      )}
+
+      <section className="flex flex-col gap-3">
+        <SectionHead title="Risk" meta="current exposure" />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="hub-risk-row">
+          <Metric label="Initial margin" value={formatPortfolioValue(value('initialMargin'), currency)} detail="Venue reported" />
+          <Metric label="Maintenance margin" value={formatPortfolioValue(value('maintenanceMargin'), currency)} detail="Venue reported" />
+          <Metric label="Collateral" value={formatPortfolioValue(value('collateral'), currency)} detail="Venue reported" />
+          <Metric label="Available to withdraw" value={formatPortfolioValue(value('availableWithdrawalFunds'), currency)} detail="Venue reported" />
+        </div>
+      </section>
 
       <section className="rounded-2xl border border-border-default bg-bg-surface-1 p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

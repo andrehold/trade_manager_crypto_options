@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useClientPositions } from '../useClientPositions'
 import { useSetupPersistence } from '../useSetupPersistence'
-import { usePortfolioDataHub, useReportingCurrencySelection } from '../usePortfolioDataHub'
+import { usePortfolioDataHub } from '../usePortfolioDataHub'
 import { DEFAULT_RISK_LIMITS } from '../risk/riskLimits'
 import { hasSupabaseClient } from '@/lib/supabase'
 import summaryFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/summary-latest.json'
@@ -24,10 +24,8 @@ vi.mock('recharts', async (importOriginal) => {
 vi.mock('../useClientPositions')
 const mockedHook = vi.mocked(useClientPositions)
 
-const reportingCurrencySave = vi.fn()
 vi.mock('../usePortfolioDataHub', () => ({
   usePortfolioDataHub: vi.fn(),
-  useReportingCurrencySelection: vi.fn(() => ({ saving: false, error: null, save: reportingCurrencySave })),
 }))
 
 vi.mock('../useSetupPersistence', () => ({ useSetupPersistence: vi.fn() }))
@@ -72,8 +70,6 @@ const baseSetupPersistence = {
 beforeEach(() => {
   mockedHook.mockReturnValue({ positions: [], loading: false, error: null, reload: vi.fn() })
   vi.mocked(usePortfolioDataHub).mockReturnValue({ state: { status: 'not-configured' }, reload: vi.fn() })
-  vi.mocked(useReportingCurrencySelection).mockReturnValue({ saving: false, error: null, save: reportingCurrencySave })
-  reportingCurrencySave.mockReset()
   // Reset the persistence mock every test so a per-test override never leaks forward.
   vi.mocked(useSetupPersistence).mockReturnValue(baseSetupPersistence)
   // Reset the Supabase-configured flag every test so a per-test override never leaks forward.
@@ -116,7 +112,7 @@ describe('ClientPortalShell', () => {
     expect(screen.queryByText('Sample data')).toBeNull()
   })
 
-  it('wires the ready Hub dashboard selector to the client-scoped reporting currency save flow', async () => {
+  it('uses the currency supplied by the API for the ready Hub dashboard', async () => {
     vi.mocked(hasSupabaseClient).mockReturnValue(true)
     vi.mocked(usePortfolioDataHub).mockReturnValue({
       state: {
@@ -132,13 +128,14 @@ describe('ClientPortalShell', () => {
             summaryFetchedAt: summaryFixture.fetched_at, positionsFetchedAt: positionsFixture.snapshot.fetched_at,
           },
         },
+        history: [],
+        historyError: null,
       },
       reload: vi.fn(),
     })
     render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/dashboard" onSignOut={() => {}} />)
-    await userEvent.selectOptions(screen.getByLabelText('Reporting currency'), 'USDC')
-    await userEvent.click(screen.getByRole('button', { name: /^save$/i }))
-    expect(reportingCurrencySave).toHaveBeenCalledWith('USDC')
+    expect(await screen.findByText('Currency USDC')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Reporting currency')).toBeNull()
   })
 
   it('renders the Risk page and flips the risk setup status on apply', async () => {

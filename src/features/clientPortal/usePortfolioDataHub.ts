@@ -3,18 +3,19 @@ import {
   fetchPortfolioHubLedger,
   fetchPortfolioHubOverview,
   fetchPortfolioHubPositionSnapshot,
+  fetchPortfolioHubSummaries,
   PortfolioHubClientError,
   type HubLedgerFilters,
   type PortfolioHubOverview,
 } from '@/lib/portfolioDataHub/client'
-import type { HubLedgerEvent, HubPosition } from '@/lib/portfolioDataHub'
+import type { HubLedgerEvent, HubPosition, HubSummary } from '@/lib/portfolioDataHub'
 import { getSupabaseClient, hasSupabaseClient } from '@/lib/supabase'
 import { setOwnReportingCurrency } from '@/lib/clientPortal/reportingCurrencyRepo'
 
 export type PortfolioHubState =
   | { status: 'not-configured' }
   | { status: 'loading' }
-  | { status: 'ready'; overview: PortfolioHubOverview }
+  | { status: 'ready'; overview: PortfolioHubOverview; history: HubSummary[]; historyError: string | null }
   | { status: 'unmapped'; message: string }
   | { status: 'session-expired'; message: string }
   | { status: 'unavailable'; message: string }
@@ -63,8 +64,29 @@ export function usePortfolioDataHub() {
     let cancelled = false
     setState({ status: 'loading' })
     void currentAccessToken()
-      .then((accessToken) => fetchPortfolioHubOverview(accessToken))
-      .then((overview) => { if (!cancelled) setState({ status: 'ready', overview }) })
+      .then(async (accessToken) => {
+        const fetchedTo = new Date()
+        const fetchedFrom = new Date(fetchedTo)
+        fetchedFrom.setUTCDate(fetchedFrom.getUTCDate() - 30)
+        const [overview, historyResult] = await Promise.all([
+          fetchPortfolioHubOverview(accessToken),
+          fetchPortfolioHubSummaries(accessToken, {
+            fetchedFrom: fetchedFrom.toISOString(),
+            fetchedTo: fetchedTo.toISOString(),
+            limit: 200,
+          }).then(
+            (page) => ({ history: page.items, error: null }),
+            (error: unknown) => ({
+              history: [] as HubSummary[],
+              error: error instanceof Error ? error.message : 'Historical summaries are unavailable',
+            }),
+          ),
+        ])
+        return { overview, historyResult }
+      })
+      .then(({ overview, historyResult }) => {
+        if (!cancelled) setState({ status: 'ready', overview, history: historyResult.history, historyError: historyResult.error })
+      })
       .catch((error: unknown) => { if (!cancelled) setState(stateFromError(error)) })
     return () => { cancelled = true }
   }, [nonce])

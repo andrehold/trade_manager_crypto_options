@@ -3,6 +3,7 @@ import {
   parseHubLatestPositionPage,
   parseHubLedgerEventPage,
   parseHubSummary,
+  parseHubSummaryPage,
   type HubLatestPositionPage,
   type HubPage,
   type HubLedgerEvent,
@@ -15,7 +16,7 @@ const DEFAULT_TIMEOUT_MS = 10_000
 
 type RuntimeEnv = Record<string, string | undefined>
 
-export type HubDataset = 'summary' | 'positions' | 'ledger'
+export type HubDataset = 'summary' | 'summaries' | 'positions' | 'ledger'
 
 export type HubRouteErrorCode =
   | 'METHOD_NOT_ALLOWED'
@@ -492,6 +493,17 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
     return fetchHub(context, accountPath(context, 'summaries/latest'), null, parseHubSummary)
   }
 
+  async function summaries(context: HubRequestContext, requestUrl: URL): Promise<HubPage<HubSummary>> {
+    const search = new URLSearchParams({ limit: String(safeLimit(requestUrl.searchParams.get('limit'), 200)) })
+    const cursor = safeOptional(requestUrl.searchParams.get('cursor'), 'cursor')
+    const fetchedFrom = safeDateTime(requestUrl.searchParams.get('fetched_from'), 'fetched_from')
+    const fetchedTo = safeDateTime(requestUrl.searchParams.get('fetched_to'), 'fetched_to')
+    if (cursor) search.set('cursor', cursor)
+    if (fetchedFrom) search.set('fetched_from', fetchedFrom)
+    if (fetchedTo) search.set('fetched_to', fetchedTo)
+    return fetchHub(context, accountPath(context, 'summaries'), search, parseHubSummaryPage)
+  }
+
   async function positions(context: HubRequestContext, requestUrl: URL): Promise<HubPositionRoutePage> {
     const search = new URLSearchParams({ limit: String(safeLimit(requestUrl.searchParams.get('limit'), 200)) })
     const cursor = safeOptional(requestUrl.searchParams.get('cursor'), 'cursor')
@@ -545,7 +557,7 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
     return fetchHub(context, accountPath(context, 'ledger-events'), search, parseHubLedgerEventPage)
   }
 
-  return { resolveContext, summary, positions, latestPositions, ledger, adminReportingCurrencies }
+  return { resolveContext, summary, summaries, positions, latestPositions, ledger, adminReportingCurrencies }
 }
 
 export async function handlePortfolioDataHubRequest(
@@ -563,6 +575,7 @@ export async function handlePortfolioDataHubRequest(
     const context = await gateway.resolveContext(req)
     const requestUrl = new URL(req.url)
     if (dataset === 'summary') return json({ data: await gateway.summary(context) })
+    if (dataset === 'summaries') return json({ data: await gateway.summaries(context, requestUrl) })
     if (dataset === 'positions') return json({ data: await gateway.positions(context, requestUrl) })
     if (dataset === 'ledger') return json({ data: await gateway.ledger(context, requestUrl) })
     const [summary, positions] = await Promise.all([
