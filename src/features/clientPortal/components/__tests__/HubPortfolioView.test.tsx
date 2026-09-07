@@ -5,6 +5,7 @@ import summaryFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/summary-
 import positionsFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/positions-latest.json'
 import ledgerFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/ledger-events.json'
 import { parseHubLatestPositionPage, parseHubLedgerEventPage, parseHubSummary } from '@/lib/portfolioDataHub'
+import type { PortfolioHubOverview } from '@/lib/portfolioDataHub/client'
 
 vi.mock('../../usePortfolioDataHub', () => ({ usePortfolioHubLedger: vi.fn(), usePortfolioHubPositions: vi.fn() }))
 vi.mock('recharts', async (importOriginal) => {
@@ -22,7 +23,7 @@ import { usePortfolioHubLedger, usePortfolioHubPositions } from '../../usePortfo
 
 const mixedPositions = structuredClone(positionsFixture)
 mixedPositions.snapshot.run_id = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
-const overview = {
+const overview: PortfolioHubOverview = {
   summary: parseHubSummary(summaryFixture),
   positions: { ...parseHubLatestPositionPage(mixedPositions), pageToken: 'signed-page-token' },
   reportingCurrency: 'USDC',
@@ -37,6 +38,30 @@ const overview = {
   },
 }
 
+const dashboardActions = {
+  onOpenPositions: () => {},
+  onOpenLedger: () => {},
+  onRefresh: () => {},
+  onSaveAccountCurrency: () => {},
+}
+
+function summaryComponent(currency: string, values: Record<string, unknown> = {}) {
+  return {
+    ...overview.summary.components[0],
+    currency,
+    equity: null,
+    balance: null,
+    collateral: null,
+    availableFunds: null,
+    availableWithdrawalFunds: null,
+    initialMargin: null,
+    maintenanceMargin: null,
+    realizedPnl: null,
+    unrealizedPnl: null,
+    ...values,
+  }
+}
+
 beforeEach(() => {
   vi.mocked(usePortfolioHubLedger).mockReturnValue({
     events: [], nextCursor: null, loading: false, loadingMore: false, error: null, loadMore: vi.fn(),
@@ -49,7 +74,7 @@ beforeEach(() => {
 describe('Hub-backed portfolio views', () => {
   it('shows independent provenance and a mixed-age warning without inferring structures', () => {
     const onRefresh = vi.fn()
-    render(<HubDashboard overview={overview} onOpenPositions={() => {}} onOpenLedger={() => {}} onRefresh={onRefresh} />)
+    render(<HubDashboard overview={overview} {...dashboardActions} onRefresh={onRefresh} />)
     expect(screen.getByTestId('hub-provenance')).toHaveTextContent('Summary as of')
     expect(screen.getByRole('status')).toHaveTextContent(/mixed-age data/i)
     expect(screen.getByText('BTC-USD-PERP')).toBeInTheDocument()
@@ -67,9 +92,7 @@ describe('Hub-backed portfolio views', () => {
       <HubDashboard
         overview={overview}
         history={[earlier]}
-        onOpenPositions={() => {}}
-        onOpenLedger={() => {}}
-        onRefresh={() => {}}
+        {...dashboardActions}
       />,
     )
 
@@ -142,23 +165,111 @@ describe('Hub-backed portfolio views', () => {
     partial.positions.snapshot.quality = 'partial'
     partial.positions.snapshot.positionCount = 0
     partial.positions.items = []
-    render(<HubDashboard overview={partial} onOpenPositions={() => {}} onOpenLedger={() => {}} onRefresh={() => {}} />)
+    render(<HubDashboard overview={partial} {...dashboardActions} />)
     expect(screen.getAllByRole('status').some((node) => /partial position collection/i.test(node.textContent ?? ''))).toBe(true)
     expect(screen.getByText('Partial collection')).toBeInTheDocument()
     expect(screen.getByText(/not an authoritative zero-position result/i)).toBeInTheDocument()
   })
 
-  it('uses the API-supplied account currency instead of a configured portfolio currency', () => {
-    render(<HubDashboard overview={{ ...overview, reportingCurrency: 'EUR' }} onOpenPositions={() => {}} onOpenLedger={() => {}} onRefresh={() => {}} />)
-    expect(screen.getByText('Currency USDC')).toBeInTheDocument()
-    expect(screen.queryByText('Currency EUR')).toBeNull()
+  it('infers the sole funded currency instead of the alphabetically first zero currency', () => {
+    const multiCurrency = structuredClone(overview)
+    multiCurrency.reportingCurrency = null
+    multiCurrency.reportingCurrencySource = null
+    multiCurrency.summary.components = [
+      summaryComponent('BNB', { balance: '0' }),
+      summaryComponent('BTC', { equity: '1.25', balance: '1.10' }),
+      summaryComponent('ETH', { collateral: '-0' }),
+    ] as typeof multiCurrency.summary.components
+
+    const { rerender } = render(<HubDashboard overview={multiCurrency} {...dashboardActions} />)
+    expect(screen.getByLabelText('Account currency')).toHaveValue('BTC')
+    expect(screen.getByText('Detected from funded balance')).toBeInTheDocument()
+    expect(screen.getAllByText('1.2500 BTC').length).toBeGreaterThan(0)
+
+    multiCurrency.summary.components.reverse()
+    rerender(<HubDashboard overview={multiCurrency} {...dashboardActions} />)
+    expect(screen.getByLabelText('Account currency')).toHaveValue('BTC')
+    expect(screen.getAllByText('1.2500 BTC').length).toBeGreaterThan(0)
+  })
+
+  it('suppresses currency-dependent sections until an ambiguous account currency is selected', () => {
+    const ambiguous = structuredClone(overview)
+    ambiguous.reportingCurrency = null
+    ambiguous.reportingCurrencySource = null
+    ambiguous.summary.components = [
+      summaryComponent('BTC', { equity: '1' }),
+      summaryComponent('USDC', { balance: '100' }),
+    ] as typeof ambiguous.summary.components
+
+    render(<HubDashboard overview={ambiguous} {...dashboardActions} />)
+    expect(screen.getByText('Choose the account currency to show on this dashboard.')).toBeInTheDocument()
+    expect(screen.queryByTestId('hub-kpi-row')).toBeNull()
+    expect(screen.queryByTestId('hub-risk-row')).toBeNull()
+    expect(screen.queryByTestId('hub-performance-trends')).toBeNull()
+    expect(screen.getByText('Native positions')).toBeInTheDocument()
+  })
+
+  it('keeps a present persisted currency authoritative even when its values are zero', () => {
+    const persisted = structuredClone(overview)
+    persisted.reportingCurrency = 'USDC'
+    persisted.reportingCurrencySource = 'client'
+    persisted.summary.components = [
+      summaryComponent('BTC', { equity: '2' }),
+      summaryComponent('USDC', { equity: '0', balance: '0' }),
+    ] as typeof persisted.summary.components
+
+    render(<HubDashboard overview={persisted} {...dashboardActions} />)
+    expect(screen.getByLabelText('Account currency')).toHaveValue('USDC')
+    const performance = screen.getByTestId('hub-kpi-row')
+    expect(within(performance).getAllByText('0.00 USDC').length).toBeGreaterThan(0)
+    expect(within(performance).queryByText('2.0000 BTC')).toBeNull()
+  })
+
+  it('fails closed when the saved currency is missing', () => {
+    const stale = structuredClone(overview)
+    stale.reportingCurrency = 'EUR'
+    stale.reportingCurrencySource = 'client'
+    stale.summary.components = [summaryComponent('BTC', { equity: '1' })] as typeof stale.summary.components
+
+    render(<HubDashboard overview={stale} {...dashboardActions} />)
+    expect(screen.getByText(/saved account currency is not present/i)).toBeInTheDocument()
+    expect(screen.queryByTestId('hub-kpi-row')).toBeNull()
+    expect(screen.queryByTestId('hub-risk-row')).toBeNull()
+  })
+
+  it('asks for a choice instead of guessing when no funded currency exists', () => {
+    const empty = structuredClone(overview)
+    empty.reportingCurrency = null
+    empty.reportingCurrencySource = null
+    empty.summary.components = [
+      summaryComponent('BNB', { equity: '0', balance: '-0', collateral: null }),
+    ] as typeof empty.summary.components
+
+    render(<HubDashboard overview={empty} {...dashboardActions} />)
+    expect(screen.getByText(/No funded account currency was detected/i)).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'BNB' })).toBeInTheDocument()
+    expect(screen.queryByTestId('hub-kpi-row')).toBeNull()
+  })
+
+  it('resolves each field from the best same-currency component and keeps current values when history fails', () => {
+    const split = structuredClone(overview)
+    split.summary.components = [
+      summaryComponent('USDC', { componentScope: 'asset_balance', balance: '777.25' }),
+      summaryComponent('USDC', { componentScope: 'account', equity: '888.50' }),
+    ] as typeof split.summary.components
+
+    render(<HubDashboard overview={split} historyError="history offline" {...dashboardActions} />)
+    const performance = screen.getByTestId('hub-kpi-row')
+    expect(within(performance).getByText('888.50 USDC')).toBeInTheDocument()
+    expect(within(performance).getByText('777.25 USDC')).toBeInTheDocument()
+    expect(screen.getByText(/Historical trends could not be loaded/i)).toBeInTheDocument()
   })
 
   it('matches lowercase Hub summary currency to the canonical configured currency without conversion or summation', () => {
     const lowerCase = structuredClone(overview)
     lowerCase.reportingCurrency = ' usdc '
     lowerCase.summary.components = [{ ...lowerCase.summary.components[0], currency: 'usdc', componentScope: 'account', equity: '123.45' as any }]
-    render(<HubDashboard overview={lowerCase} onOpenPositions={() => {}} onOpenLedger={() => {}} onRefresh={() => {}} />)
+    render(<HubDashboard overview={lowerCase} {...dashboardActions} />)
     expect(screen.getAllByText('123.45 USDC').length).toBeGreaterThan(0)
   })
 
@@ -168,7 +279,7 @@ describe('Hub-backed portfolio views', () => {
       { ...margin.summary.components[0], componentScope: 'asset_balance', equity: '999.00' as any },
       { ...margin.summary.components[0], componentScope: 'margin_account', equity: '1250.00' as any },
     ]
-    render(<HubDashboard overview={margin} onOpenPositions={() => {}} onOpenLedger={() => {}} onRefresh={() => {}} />)
+    render(<HubDashboard overview={margin} {...dashboardActions} />)
     expect(screen.getAllByText('1,250.00 USDC').length).toBeGreaterThan(0)
   })
 
@@ -179,7 +290,7 @@ describe('Hub-backed portfolio views', () => {
       { ...balances.summary.components[0], currency: 'BTC', componentScope: 'asset_balance', balance: '0.00000000' as any },
       { ...balances.summary.components[0], currency: 'ETH', componentScope: 'asset_balance', balance: '-0' as any },
     ]
-    render(<HubDashboard overview={balances} onOpenPositions={() => {}} onOpenLedger={() => {}} onRefresh={() => {}} />)
+    render(<HubDashboard overview={balances} {...dashboardActions} />)
 
     const accountSummary = screen.getByRole('heading', { name: /account summary/i }).closest('section')
     expect(accountSummary).not.toBeNull()
@@ -194,7 +305,7 @@ describe('Hub-backed portfolio views', () => {
     preview.positions.items = Array.from({ length: 6 }, (_, index) => ({ ...preview.positions.items[0], id: `00000000-0000-4000-8000-00000000000${index}` }))
     preview.positions.snapshot.positionCount = 6
     preview.positions.nextCursor = null
-    render(<HubDashboard overview={preview} onOpenPositions={() => {}} onOpenLedger={() => {}} onRefresh={() => {}} />)
+    render(<HubDashboard overview={preview} {...dashboardActions} />)
     expect(screen.queryByText(/Loaded 5 unique rows, but this complete snapshot reports 6/i)).toBeNull()
   })
 

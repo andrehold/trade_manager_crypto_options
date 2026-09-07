@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useClientPositions } from '../useClientPositions'
 import { useSetupPersistence } from '../useSetupPersistence'
-import { usePortfolioDataHub } from '../usePortfolioDataHub'
+import { usePortfolioDataHub, useReportingCurrencySelection } from '../usePortfolioDataHub'
 import { DEFAULT_RISK_LIMITS } from '../risk/riskLimits'
 import { hasSupabaseClient } from '@/lib/supabase'
 import summaryFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/summary-latest.json'
@@ -26,6 +26,7 @@ const mockedHook = vi.mocked(useClientPositions)
 
 vi.mock('../usePortfolioDataHub', () => ({
   usePortfolioDataHub: vi.fn(),
+  useReportingCurrencySelection: vi.fn(),
 }))
 
 vi.mock('../useSetupPersistence', () => ({ useSetupPersistence: vi.fn() }))
@@ -70,6 +71,7 @@ const baseSetupPersistence = {
 beforeEach(() => {
   mockedHook.mockReturnValue({ positions: [], loading: false, error: null, reload: vi.fn() })
   vi.mocked(usePortfolioDataHub).mockReturnValue({ state: { status: 'not-configured' }, reload: vi.fn() })
+  vi.mocked(useReportingCurrencySelection).mockReturnValue({ saving: false, error: null, save: vi.fn() })
   // Reset the persistence mock every test so a per-test override never leaks forward.
   vi.mocked(useSetupPersistence).mockReturnValue(baseSetupPersistence)
   // Reset the Supabase-configured flag every test so a per-test override never leaks forward.
@@ -112,7 +114,7 @@ describe('ClientPortalShell', () => {
     expect(screen.queryByText('Sample data')).toBeNull()
   })
 
-  it('uses the currency supplied by the API for the ready Hub dashboard', async () => {
+  it('infers the sole funded API currency without persisting it', async () => {
     vi.mocked(hasSupabaseClient).mockReturnValue(true)
     vi.mocked(usePortfolioDataHub).mockReturnValue({
       state: {
@@ -134,8 +136,46 @@ describe('ClientPortalShell', () => {
       reload: vi.fn(),
     })
     render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/dashboard" onSignOut={() => {}} />)
-    expect(await screen.findByText('Currency USDC')).toBeInTheDocument()
-    expect(screen.queryByLabelText('Reporting currency')).toBeNull()
+    expect(await screen.findByLabelText('Account currency')).toHaveValue('USDC')
+    expect(screen.getByText('Detected from funded balance')).toBeInTheDocument()
+    expect(vi.mocked(useReportingCurrencySelection).mock.results[0].value.save).not.toHaveBeenCalled()
+  })
+
+  it('wires an explicit account currency save through the existing persistence hook', async () => {
+    const save = vi.fn()
+    const reloadHub = vi.fn()
+    const summary = parseHubSummary(summaryFixture)
+    summary.components = [
+      { ...summary.components[0], currency: 'BTC', equity: '1' as any },
+      { ...summary.components[0], currency: 'USDC', equity: '100' as any },
+    ]
+    vi.mocked(useReportingCurrencySelection).mockReturnValue({ saving: false, error: null, save })
+    vi.mocked(usePortfolioDataHub).mockReturnValue({
+      state: {
+        status: 'ready',
+        overview: {
+          summary,
+          positions: { ...parseHubLatestPositionPage(positionsFixture), pageToken: 'signed-page-token' },
+          reportingCurrency: null,
+          reportingCurrencySource: null,
+          alignment: {
+            runAligned: true, mixedAge: false,
+            summaryRunId: summaryFixture.run_id, positionsRunId: positionsFixture.snapshot.run_id,
+            summaryFetchedAt: summaryFixture.fetched_at, positionsFetchedAt: positionsFixture.snapshot.fetched_at,
+          },
+        },
+        history: [],
+        historyError: null,
+      },
+      reload: reloadHub,
+    })
+
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/dashboard" onSignOut={() => {}} />)
+    await userEvent.selectOptions(await screen.findByLabelText('Account currency'), 'BTC')
+    await userEvent.click(screen.getByRole('button', { name: /^save$/i }))
+
+    expect(save).toHaveBeenCalledWith('BTC')
+    expect(useReportingCurrencySelection).toHaveBeenCalledWith(reloadHub)
   })
 
   it('renders the Risk page and flips the risk setup status on apply', async () => {

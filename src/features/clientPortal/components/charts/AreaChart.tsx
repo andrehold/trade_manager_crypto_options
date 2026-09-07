@@ -3,11 +3,10 @@ import {
   Area, AreaChart as RAreaChart, ResponsiveContainer,
   XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
 } from 'recharts'
-import type { SeriesPoint } from '../../dashboard/series'
 import { CHART_COLORS } from '../../dashboard/chartTheme'
 
 type Props = {
-  data: SeriesPoint[]
+  data: Array<{ t: string; v: number | null }>
   color: string
   height?: number
   zeroBaseline?: boolean
@@ -17,10 +16,11 @@ type Props = {
 
 export function AreaChart({ data, color, height = 176, zeroBaseline, formatValue, testId }: Props) {
   const gid = useId().replace(/:/g, '')
-  const crossesZero = zeroBaseline && data.some((d) => d.v < 0) && data.some((d) => d.v > 0)
+  const values = data.flatMap(({ v }) => v === null ? [] : [v])
+  const crossesZero = zeroBaseline && values.some((value) => value < 0) && values.some((value) => value > 0)
   const zeroDomain: [number, number] = [
-    Math.min(0, ...data.map((d) => d.v)),
-    Math.max(0, ...data.map((d) => d.v)),
+    Math.min(0, ...values),
+    Math.max(0, ...values),
   ]
   return (
     <div data-testid={testId} style={{ width: '100%', height }}>
@@ -45,6 +45,7 @@ export function AreaChart({ data, color, height = 176, zeroBaseline, formatValue
           <Area
             type="monotone" dataKey="v" stroke={color} strokeWidth={2}
             fill={`url(#${gid})`} dot={false}
+            connectNulls={false}
             baseValue={zeroBaseline ? 0 : undefined}
             activeDot={{ r: 3.5, fill: color, stroke: '#101013', strokeWidth: 1.5 }}
           />
