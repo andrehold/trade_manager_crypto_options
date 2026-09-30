@@ -1,0 +1,60 @@
+{
+  "performance_schema_version": "1.0",
+  "id": "00000000-0000-4000-8000-000000000002",
+  "account_id": "00000000-0000-4000-8000-000000000001",
+  "revision": 7,
+  "as_of": "2026-01-01T00:00:00Z",
+  "time_basis": "collected_at",
+  "computed_at": "2026-01-01T00:00:00Z",
+  "reporting_currency": "USDC",
+  "equity": "10000.00",
+  "opening_equity": "9000.00",
+  "performance": {
+    "opening_equity": "9000.00",
+    "contributions": "200.00",
+    "distributions": "50.00",
+    "transfers_in": "800.00",
+    "transfers_out": "100.00",
+    "net_capital_flow": "850.00",
+    "pnl": "150.00"
+  },
+  "quality": {
+    "equity_status": "ready",
+    "performance_status": "provisional",
+    "freshness": "fresh",
+    "recalculation_pending": false,
+    "unresolved_movement_count": 0,
+    "ledger_coverage_from": "2026-01-01T00:00:00Z",
+    "ledger_coverage_through": "2026-01-01T00:00:00Z",
+    "reason_codes": [
+      "snapshot_time_approximate"
+    ],
+    "details": {
+      "contributions": "200.00",
+      "distributions": "50.00",
+      "transfers_in": "800.00",
+      "transfers_out": "100.00",
+      "time_basis": "collected_at",
+      "unresolved_movement_count": 0,
+      "ledger_coverage_from": "2026-01-01T00:00:00Z",
+      "ledger_coverage_through": "2026-01-01T00:00:00Z",
+      "reason_codes": [
+        "snapshot_time_approximate"
+      ],
+      "equity_status": "ready",
+      "performance_status": "provisional",
+      "coverage_evidence_ids": [
+        "00000000-0000-4000-8000-000000000005"
+      ]
+    }
+  },
+  "lineage": {
+    "summary_snapshot_id": "00000000-0000-4000-8000-000000000003",
+    "baseline_snapshot_id": "00000000-0000-4000-8000-000000000004",
+    "baseline_at": "2026-01-01T00:00:00Z",
+    "canonical_input_sequence": 1200,
+    "classification_sequence": 87,
+    "policy_revision": 3,
+    "calculation_version": "performance-v1"
+  }
+}

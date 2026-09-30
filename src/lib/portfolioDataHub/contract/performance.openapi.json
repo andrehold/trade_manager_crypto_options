@@ -1,0 +1,4082 @@
+{
+  "components": {
+    "schemas": {
+      "APIKeyCreateRequest": {
+        "properties": {
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "name": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "scopes"
+        ],
+        "title": "APIKeyCreateRequest",
+        "type": "object"
+      },
+      "APIKeyCreated": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "plaintext": {
+            "title": "Plaintext",
+            "type": "string"
+          },
+          "prefix": {
+            "title": "Prefix",
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "prefix",
+          "scopes",
+          "enabled",
+          "last_used_at",
+          "expires_at",
+          "created_at",
+          "plaintext"
+        ],
+        "title": "APIKeyCreated",
+        "type": "object"
+      },
+      "APIKeyPatchRequest": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "APIKeyPatchRequest",
+        "type": "object"
+      },
+      "APIKeyView": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "prefix": {
+            "title": "Prefix",
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "prefix",
+          "scopes",
+          "enabled",
+          "last_used_at",
+          "expires_at",
+          "created_at"
+        ],
+        "title": "APIKeyView",
+        "type": "object"
+      },
+      "AccountCreateRequest": {
+        "properties": {
+          "display_timezone": {
+            "default": "Europe/Berlin",
+            "title": "Display Timezone",
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "environment": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Environment",
+            "type": "string"
+          },
+          "external_account_identifier": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Account Identifier"
+          },
+          "label": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "venue": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Venue",
+            "type": "string"
+          }
+        },
+        "required": [
+          "venue",
+          "label",
+          "environment"
+        ],
+        "title": "AccountCreateRequest",
+        "type": "object"
+      },
+      "AccountPatchRequest": {
+        "properties": {
+          "display_timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Timezone"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "environment": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Environment"
+          },
+          "external_account_identifier": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Account Identifier"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "title": "AccountPatchRequest",
+        "type": "object"
+      },
+      "AccountResponse": {
+        "properties": {
+          "activated_at": {
+            "format": "date-time",
+            "title": "Activated At",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "display_timezone": {
+            "title": "Display Timezone",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "external_account_identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Account Identifier"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "venue": {
+            "title": "Venue",
+            "type": "string"
+          },
+          "venue_id": {
+            "format": "uuid",
+            "title": "Venue Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "venue_id",
+          "venue",
+          "label",
+          "environment",
+          "external_account_identifier",
+          "display_timezone",
+          "enabled",
+          "activated_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AccountResponse",
+        "type": "object"
+      },
+      "CanonicalChangePage": {
+        "properties": {
+          "account_id": {
+            "description": "Hub account owning this ordered change stream.",
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "canonical_schema_version": {
+            "const": "1.0",
+            "description": "Version of the public canonical field semantics; independent of the venue processor version.",
+            "title": "Canonical Schema Version",
+            "type": "string"
+          },
+          "has_more": {
+            "description": "True when more matching changes exist at or below this page's watermark.",
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "items": {
+            "description": "Changes after the supplied cursor in ascending account sequence.",
+            "items": {
+              "$ref": "#/components/schemas/CanonicalChangeView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "description": "Opaque checkpoint to persist and supply on the next poll.",
+            "title": "Next Cursor",
+            "type": "string"
+          },
+          "watermark_sequence": {
+            "description": "Highest committed account sequence visible when this page began.",
+            "minimum": 0.0,
+            "title": "Watermark Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "canonical_schema_version",
+          "account_id",
+          "items",
+          "next_cursor",
+          "has_more",
+          "watermark_sequence"
+        ],
+        "title": "CanonicalChangePage",
+        "type": "object"
+      },
+      "CanonicalChangeView": {
+        "properties": {
+          "account_id": {
+            "description": "Hub account owning this ordered change stream.",
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "canonical_schema_version": {
+            "const": "1.0",
+            "description": "Version of the public canonical field semantics; independent of the venue processor version.",
+            "title": "Canonical Schema Version",
+            "type": "string"
+          },
+          "ingested_at": {
+            "description": "UTC time the canonical record and change became durable.",
+            "format": "date-time",
+            "title": "Ingested At",
+            "type": "string"
+          },
+          "kind": {
+            "description": "Type of immutable canonical record inserted.",
+            "enum": [
+              "account_summary_snapshot",
+              "position_snapshot",
+              "ledger_event"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "record": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SummaryView"
+              },
+              {
+                "$ref": "#/components/schemas/PositionSnapshotView"
+              },
+              {
+                "$ref": "#/components/schemas/LedgerEventView"
+              }
+            ],
+            "description": "Immutable canonical record identified by kind and record_id.",
+            "title": "Record"
+          },
+          "record_id": {
+            "description": "Stable identifier of the inserted canonical record.",
+            "format": "uuid",
+            "title": "Record Id",
+            "type": "string"
+          },
+          "run_id": {
+            "description": "Collection run that atomically published this change.",
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "description": "Stable, gap-free, monotonically increasing sequence within the account.",
+            "minimum": 1.0,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "source_raw_batch_id": {
+            "description": "Canonical record's immutable raw provenance reference.",
+            "format": "uuid",
+            "title": "Source Raw Batch Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "canonical_schema_version",
+          "account_id",
+          "sequence",
+          "kind",
+          "record_id",
+          "run_id",
+          "source_raw_batch_id",
+          "ingested_at",
+          "record"
+        ],
+        "title": "CanonicalChangeView",
+        "type": "object"
+      },
+      "CanonicalWatermarkView": {
+        "properties": {
+          "account_id": {
+            "description": "Hub account owning this ordered change stream.",
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "canonical_schema_version": {
+            "const": "1.0",
+            "description": "Version of the public canonical field semantics; independent of the venue processor version.",
+            "title": "Canonical Schema Version",
+            "type": "string"
+          },
+          "cursor": {
+            "description": "Opaque checkpoint positioned immediately after this watermark.",
+            "title": "Cursor",
+            "type": "string"
+          },
+          "generated_at": {
+            "description": "UTC time at which the watermark was observed.",
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "watermark_sequence": {
+            "description": "Highest canonical change sequence committed for the account.",
+            "minimum": 0.0,
+            "title": "Watermark Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "canonical_schema_version",
+          "account_id",
+          "watermark_sequence",
+          "cursor",
+          "generated_at"
+        ],
+        "title": "CanonicalWatermarkView",
+        "type": "object"
+      },
+      "CashFlowPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CashFlowView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "CashFlowPage",
+        "type": "object"
+      },
+      "CashFlowView": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "attributes": {
+            "additionalProperties": true,
+            "title": "Attributes",
+            "type": "object"
+          },
+          "boundary_effect": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boundary Effect"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "classification_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classification Revision"
+          },
+          "classification_revision_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classification Revision Id"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direction"
+          },
+          "event_time": {
+            "format": "date-time",
+            "title": "Event Time",
+            "type": "string"
+          },
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "native_event_direction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Native Event Direction"
+          },
+          "native_event_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Native Event Source"
+          },
+          "native_event_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Native Event Type"
+          },
+          "principal_amount_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Principal Amount Mode"
+          },
+          "review_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review State"
+          },
+          "signed_capital_adjustment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signed Capital Adjustment"
+          }
+        },
+        "required": [
+          "id",
+          "account_id",
+          "event_type",
+          "event_time"
+        ],
+        "title": "CashFlowView",
+        "type": "object"
+      },
+      "ClassificationRevisionView": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "boundary_effect": {
+            "title": "Boundary Effect",
+            "type": "string"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "direction": {
+            "title": "Direction",
+            "type": "string"
+          },
+          "evidence_references": {
+            "additionalProperties": true,
+            "title": "Evidence References",
+            "type": "object"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ledger_event_id": {
+            "format": "uuid",
+            "title": "Ledger Event Id",
+            "type": "string"
+          },
+          "principal_amount_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Principal Amount Mode"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "review_state": {
+            "title": "Review State",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Id"
+          },
+          "rule_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Version"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "account_id",
+          "ledger_event_id",
+          "revision",
+          "category",
+          "direction",
+          "boundary_effect",
+          "review_state",
+          "source",
+          "actor",
+          "created_at"
+        ],
+        "title": "ClassificationRevisionView",
+        "type": "object"
+      },
+      "CredentialMetadataResponse": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "activated_at": {
+            "format": "date-time",
+            "title": "Activated At",
+            "type": "string"
+          },
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "credential_metadata": {
+            "additionalProperties": true,
+            "title": "Credential Metadata",
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_validated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Validated At"
+          },
+          "retired_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retired At"
+          },
+          "validation_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation Detail"
+          },
+          "validation_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation Status"
+          }
+        },
+        "required": [
+          "id",
+          "account_id",
+          "credential_metadata",
+          "active",
+          "activated_at",
+          "retired_at",
+          "last_validated_at",
+          "validation_status",
+          "validation_detail"
+        ],
+        "title": "CredentialMetadataResponse",
+        "type": "object"
+      },
+      "CredentialValidationResponse": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "adapter_version": {
+            "title": "Adapter Version",
+            "type": "string"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          },
+          "validated_at": {
+            "format": "date-time",
+            "title": "Validated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "valid",
+          "validated_at",
+          "adapter_version"
+        ],
+        "title": "CredentialValidationResponse",
+        "type": "object"
+      },
+      "CredentialWriteRequest": {
+        "properties": {
+          "credential_type": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Credential Type",
+            "type": "string"
+          },
+          "credentials": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Credentials",
+            "type": "object"
+          }
+        },
+        "required": [
+          "credentials",
+          "credential_type"
+        ],
+        "title": "CredentialWriteRequest",
+        "type": "object"
+      },
+      "DataAccountPage": {
+        "properties": {
+          "canonical_schema_version": {
+            "const": "1.0",
+            "description": "Version of the public canonical field semantics; independent of the venue processor version.",
+            "title": "Canonical Schema Version",
+            "type": "string"
+          },
+          "items": {
+            "description": "Consumer-safe account identities ordered by operator label.",
+            "items": {
+              "$ref": "#/components/schemas/DataAccountView"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "canonical_schema_version",
+          "items"
+        ],
+        "title": "DataAccountPage",
+        "type": "object"
+      },
+      "DataAccountView": {
+        "properties": {
+          "activated_at": {
+            "description": "UTC time at which the hub account was activated.",
+            "format": "date-time",
+            "title": "Activated At",
+            "type": "string"
+          },
+          "canonical_schema_version": {
+            "const": "1.0",
+            "description": "Version of the public canonical field semantics; independent of the venue processor version.",
+            "title": "Canonical Schema Version",
+            "type": "string"
+          },
+          "enabled": {
+            "description": "Whether future automatic/manual collection is enabled for the account.",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "environment": {
+            "description": "Venue environment, normally production or test.",
+            "title": "Environment",
+            "type": "string"
+          },
+          "external_account_identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Venue-native account identifier, or null when unavailable.",
+            "title": "External Account Identifier"
+          },
+          "id": {
+            "description": "Stable hub account identifier used by canonical endpoints.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "description": "Operator-assigned account label for consumer display.",
+            "title": "Label",
+            "type": "string"
+          },
+          "venue": {
+            "description": "Stable venue key such as deribit, coincall, or paradex.",
+            "title": "Venue",
+            "type": "string"
+          }
+        },
+        "required": [
+          "canonical_schema_version",
+          "id",
+          "label",
+          "venue",
+          "environment",
+          "external_account_identifier",
+          "enabled",
+          "activated_at"
+        ],
+        "title": "DataAccountView",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "InstrumentType": {
+        "enum": [
+          "spot",
+          "perpetual",
+          "future",
+          "option",
+          "unknown"
+        ],
+        "title": "InstrumentType",
+        "type": "string"
+      },
+      "JsonValue": {},
+      "LatestPositionPage": {
+        "properties": {
+          "canonical_schema_version": {
+            "const": "1.0",
+            "description": "Version of the public canonical field semantics; independent of the venue processor version.",
+            "title": "Canonical Schema Version",
+            "type": "string"
+          },
+          "items": {
+            "description": "Positions from one immutable snapshot.",
+            "items": {
+              "$ref": "#/components/schemas/PositionView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opaque cursor for the next page, or null at the end.",
+            "title": "Next Cursor"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/PositionSnapshotView",
+            "description": "Metadata for the immutable latest published snapshot containing every position page in this traversal."
+          }
+        },
+        "required": [
+          "canonical_schema_version",
+          "items",
+          "snapshot"
+        ],
+        "title": "LatestPositionPage",
+        "type": "object"
+      },
+      "LedgerEventPage": {
+        "properties": {
+          "canonical_schema_version": {
+            "const": "1.0",
+            "description": "Version of the public canonical field semantics; independent of the venue processor version.",
+            "title": "Canonical Schema Version",
+            "type": "string"
+          },
+          "items": {
+            "description": "Ledger components in descending economic event-time order.",
+            "items": {
+              "$ref": "#/components/schemas/LedgerEventView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opaque historical-browsing cursor for the next page, or null at the end.",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "canonical_schema_version",
+          "items"
+        ],
+        "title": "LedgerEventPage",
+        "type": "object"
+      },
+      "LedgerEventType": {
+        "enum": [
+          "trade",
+          "fee",
+          "rebate",
+          "funding",
+          "deposit",
+          "withdrawal",
+          "transfer",
+          "settlement",
+          "liquidation",
+          "interest",
+          "adjustment",
+          "other"
+        ],
+        "title": "LedgerEventType",
+        "type": "string"
+      },
+      "LedgerEventView": {
+        "properties": {
+          "account_id": {
+            "description": "Hub account that owns this event.",
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "account_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Operator-assigned account label; additive v1 identity field.",
+            "title": "Account Label"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native signed amount; v1 does not impose a cash-flow sign rule.",
+            "title": "Amount"
+          },
+          "attributes": {
+            "additionalProperties": true,
+            "description": "Unstable venue extension object outside the v1 compatibility guarantee.",
+            "title": "Attributes",
+            "type": "object"
+          },
+          "canonical_schema_version": {
+            "const": "1.0",
+            "description": "Version of the public canonical field semantics; independent of the venue processor version.",
+            "title": "Canonical Schema Version",
+            "type": "string"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Native currency of amount; present whenever amount is present.",
+            "title": "Currency"
+          },
+          "deduplication_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stable account-local idempotency key shared by components of one event group.",
+            "title": "Deduplication Key"
+          },
+          "event_component_index": {
+            "description": "Zero-based stable component index within the event group.",
+            "minimum": 0.0,
+            "title": "Event Component Index",
+            "type": "integer"
+          },
+          "event_group_identifier": {
+            "description": "Stable identifier shared by components derived from one venue record.",
+            "title": "Event Group Identifier",
+            "type": "string"
+          },
+          "event_time": {
+            "description": "UTC economic event time reported by the venue.",
+            "format": "date-time",
+            "title": "Event Time",
+            "type": "string"
+          },
+          "event_type": {
+            "$ref": "#/components/schemas/LedgerEventType",
+            "description": "Normalized ledger event category."
+          },
+          "id": {
+            "description": "Stable identifier of this canonical ledger component.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ingested_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "UTC time this canonical event was first persisted by the hub.",
+            "title": "Ingested At"
+          },
+          "native_event_direction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native direction when separate.",
+            "title": "Native Event Direction"
+          },
+          "native_event_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stable venue feed/endpoint source when available.",
+            "title": "Native Event Source"
+          },
+          "native_event_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native event type when available.",
+            "title": "Native Event Type"
+          },
+          "native_instrument_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native instrument identifier, or null when not applicable.",
+            "title": "Native Instrument Id"
+          },
+          "order_identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Venue-native order identifier, or null when unavailable.",
+            "title": "Order Identifier"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native event price, or null when not applicable.",
+            "title": "Price"
+          },
+          "price_currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Native currency of price; present whenever price is present.",
+            "title": "Price Currency"
+          },
+          "processing_version": {
+            "description": "Venue processor mapping version; independent of canonical schema version.",
+            "title": "Processing Version",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native event quantity; interpret only with quantity_unit.",
+            "title": "Quantity"
+          },
+          "quantity_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Native unit of quantity; present whenever quantity is present.",
+            "title": "Quantity Unit"
+          },
+          "run_id": {
+            "description": "First collection run that inserted this event.",
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "side": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lowercase venue-normalized side or flow direction; values are extensible.",
+            "title": "Side"
+          },
+          "source_raw_batch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact raw batch containing this event; access still requires raw:read.",
+            "title": "Source Raw Batch Id"
+          },
+          "trade_identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Venue-native trade/fill identifier, or null when unavailable.",
+            "title": "Trade Identifier"
+          },
+          "transaction_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Native on-chain transaction hash, or null when unavailable/not applicable.",
+            "title": "Transaction Hash"
+          },
+          "venue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stable venue key; additive v1 provenance field.",
+            "title": "Venue"
+          },
+          "venue_event_identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Venue event identifier, or null when the venue supplies none.",
+            "title": "Venue Event Identifier"
+          }
+        },
+        "required": [
+          "canonical_schema_version",
+          "id",
+          "account_id",
+          "run_id",
+          "event_group_identifier",
+          "event_component_index",
+          "venue_event_identifier",
+          "event_type",
+          "event_time",
+          "native_instrument_id",
+          "side",
+          "quantity",
+          "quantity_unit",
+          "amount",
+          "currency",
+          "price",
+          "price_currency",
+          "order_identifier",
+          "trade_identifier",
+          "transaction_hash",
+          "processing_version",
+          "attributes"
+        ],
+        "title": "LedgerEventView",
+        "type": "object"
+      },
+      "ManualRunResponse": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "created": {
+            "title": "Created",
+            "type": "boolean"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "trigger": {
+            "title": "Trigger",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "account_id",
+          "status",
+          "trigger",
+          "requested_at",
+          "created"
+        ],
+        "title": "ManualRunResponse",
+        "type": "object"
+      },
+      "OptionSide": {
+        "enum": [
+          "call",
+          "put"
+        ],
+        "title": "OptionSide",
+        "type": "string"
+      },
+      "PerformanceDatapointView": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "computed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Computed At"
+          },
+          "equity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equity"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "lineage": {
+            "$ref": "#/components/schemas/PerformanceLineageView"
+          },
+          "opening_equity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Equity"
+          },
+          "performance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PerformanceTotalsView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "performance_schema_version": {
+            "default": "1.0",
+            "title": "Performance Schema Version",
+            "type": "string"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/PerformanceQualityView"
+          },
+          "reporting_currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reporting Currency"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          },
+          "time_basis": {
+            "default": "venue_observed",
+            "title": "Time Basis",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "quality",
+          "lineage"
+        ],
+        "title": "PerformanceDatapointView",
+        "type": "object"
+      },
+      "PerformanceLineageView": {
+        "properties": {
+          "baseline_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline At"
+          },
+          "baseline_snapshot_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Snapshot Id"
+          },
+          "calculation_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculation Version"
+          },
+          "canonical_input_sequence": {
+            "default": 0,
+            "title": "Canonical Input Sequence",
+            "type": "integer"
+          },
+          "classification_sequence": {
+            "default": 0,
+            "title": "Classification Sequence",
+            "type": "integer"
+          },
+          "policy_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Revision"
+          },
+          "summary_snapshot_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Snapshot Id"
+          }
+        },
+        "title": "PerformanceLineageView",
+        "type": "object"
+      },
+      "PerformanceQualityView": {
+        "properties": {
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "equity_status": {
+            "title": "Equity Status",
+            "type": "string"
+          },
+          "freshness": {
+            "title": "Freshness",
+            "type": "string"
+          },
+          "ledger_coverage_from": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ledger Coverage From"
+          },
+          "ledger_coverage_through": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ledger Coverage Through"
+          },
+          "performance_status": {
+            "title": "Performance Status",
+            "type": "string"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reason Codes",
+            "type": "array"
+          },
+          "recalculation_pending": {
+            "title": "Recalculation Pending",
+            "type": "boolean"
+          },
+          "unresolved_movement_count": {
+            "default": 0,
+            "title": "Unresolved Movement Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "equity_status",
+          "performance_status",
+          "freshness",
+          "recalculation_pending"
+        ],
+        "title": "PerformanceQualityView",
+        "type": "object"
+      },
+      "PerformanceTotalsView": {
+        "properties": {
+          "contributions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contributions"
+          },
+          "distributions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distributions"
+          },
+          "net_capital_flow": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Capital Flow"
+          },
+          "opening_equity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Equity"
+          },
+          "pnl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pnl"
+          },
+          "transfers_in": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transfers In"
+          },
+          "transfers_out": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transfers Out"
+          }
+        },
+        "title": "PerformanceTotalsView",
+        "type": "object"
+      },
+      "PositionDirection": {
+        "enum": [
+          "long",
+          "short",
+          "flat",
+          "unknown"
+        ],
+        "title": "PositionDirection",
+        "type": "string"
+      },
+      "PositionPage": {
+        "properties": {
+          "canonical_schema_version": {
+            "const": "1.0",
+            "description": "Version of the public canonical field semantics; independent of the venue processor version.",
+            "title": "Canonical Schema Version",
+            "type": "string"
+          },
+          "items": {
+            "description": "Positions from one immutable snapshot.",
+            "items": {
+              "$ref": "#/components/schemas/PositionView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opaque cursor for the next page, or null at the end.",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "canonical_schema_version",
+          "items"
+        ],
+        "title": "PositionPage",
+        "type": "object"
+      },
+      "PositionSnapshotPage": {
+        "properties": {
+          "canonical_schema_version": {
+            "const": "1.0",
+            "description": "Version of the public canonical field semantics; independent of the venue processor version.",
+            "title": "Canonical Schema Version",
+            "type": "string"
+          },
+          "items": {
+            "description": "Position snapshots in descending fetch order.",
+            "items": {
+              "$ref": "#/components/schemas/PositionSnapshotView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opaque cursor for the next page, or null at the end.",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "canonical_schema_version",
+          "items"
+        ],
+        "title": "PositionSnapshotPage",
+        "type": "object"
+      },
+      "PositionSnapshotView": {
+        "properties": {
+          "account_id": {
+            "description": "Hub account that owns this snapshot.",
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "account_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Operator-assigned account label; additive v1 identity field.",
+            "title": "Account Label"
+          },
+          "canonical_schema_version": {
+            "const": "1.0",
+            "description": "Version of the public canonical field semantics; independent of the venue processor version.",
+            "title": "Canonical Schema Version",
+            "type": "string"
+          },
+          "fetched_at": {
+            "description": "UTC time of the latest raw page contributing to this snapshot.",
+            "format": "date-time",
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "id": {
+            "description": "Stable identifier of this immutable position snapshot.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ingested_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "UTC time this canonical snapshot was first persisted by the hub.",
+            "title": "Ingested At"
+          },
+          "position_count": {
+            "description": "Number of positions in the snapshot; zero is a successful empty state.",
+            "minimum": 0.0,
+            "title": "Position Count",
+            "type": "integer"
+          },
+          "processing_version": {
+            "description": "Venue processor mapping version; independent of canonical schema version.",
+            "title": "Processing Version",
+            "type": "string"
+          },
+          "run_id": {
+            "description": "Collection run that produced this snapshot.",
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "source_raw_batch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Primary source raw-batch reference; access still requires raw:read.",
+            "title": "Source Raw Batch Id"
+          },
+          "status": {
+            "description": "complete when all required inputs mapped; partial when usable data has gaps.",
+            "enum": [
+              "complete",
+              "partial"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "venue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stable venue key; additive v1 provenance field.",
+            "title": "Venue"
+          },
+          "venue_observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Latest venue-supplied observation time, or null when unavailable.",
+            "title": "Venue Observed At"
+          }
+        },
+        "required": [
+          "canonical_schema_version",
+          "id",
+          "account_id",
+          "run_id",
+          "fetched_at",
+          "venue_observed_at",
+          "status",
+          "position_count",
+          "processing_version"
+        ],
+        "title": "PositionSnapshotView",
+        "type": "object"
+      },
+      "PositionView": {
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Hub account owning the containing snapshot; additive v1 identity field.",
+            "title": "Account Id"
+          },
+          "account_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Operator-assigned account label; additive v1 identity field.",
+            "title": "Account Label"
+          },
+          "attributes": {
+            "additionalProperties": true,
+            "description": "Unstable venue extension object outside the v1 compatibility guarantee.",
+            "title": "Attributes",
+            "type": "object"
+          },
+          "average_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native average entry price, or null when unavailable.",
+            "title": "Average Price"
+          },
+          "base_currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Venue-native base asset identifier, or null when not reliable.",
+            "title": "Base Currency"
+          },
+          "canonical_schema_version": {
+            "const": "1.0",
+            "description": "Version of the public canonical field semantics; independent of the venue processor version.",
+            "title": "Canonical Schema Version",
+            "type": "string"
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PositionDirection"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Normalized economic direction; authoritative over the native quantity sign."
+          },
+          "expiry_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "UTC instrument expiry time, or null for non-expiring/unknown instruments.",
+            "title": "Expiry At"
+          },
+          "id": {
+            "description": "Stable identifier of this canonical position row.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "index_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native index price, or null when unavailable.",
+            "title": "Index Price"
+          },
+          "ingested_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "UTC time this canonical position was first persisted by the hub.",
+            "title": "Ingested At"
+          },
+          "initial_margin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native position initial margin, or null when unavailable.",
+            "title": "Initial Margin"
+          },
+          "instrument_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InstrumentType"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Normalized instrument category, or null for legacy/unclassified data."
+          },
+          "liquidation_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native estimated liquidation price, or null when unavailable.",
+            "title": "Liquidation Price"
+          },
+          "maintenance_margin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native position maintenance margin, or null when unavailable.",
+            "title": "Maintenance Margin"
+          },
+          "mark_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native mark price, or null when unavailable.",
+            "title": "Mark Price"
+          },
+          "native_instrument_id": {
+            "description": "Exact venue-native instrument or market identifier.",
+            "title": "Native Instrument Id",
+            "type": "string"
+          },
+          "notional": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native notional; interpret only with notional_unit.",
+            "title": "Notional"
+          },
+          "notional_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Native currency or unit of notional, or null when not reliable.",
+            "title": "Notional Unit"
+          },
+          "option_side": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OptionSide"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Normalized option side, or null for non-options/unknown values."
+          },
+          "pnl_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Native currency or unit of position PnL, or null when not reliable.",
+            "title": "Pnl Unit"
+          },
+          "processing_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Venue processor mapping version inherited from the containing snapshot.",
+            "title": "Processing Version"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native position quantity; interpret only with quantity_unit.",
+            "title": "Quantity"
+          },
+          "quantity_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Native unit of quantity, or null only for legacy/unavailable data.",
+            "title": "Quantity Unit"
+          },
+          "quote_currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Venue-native quote asset identifier, or null when not reliable.",
+            "title": "Quote Currency"
+          },
+          "realized_pnl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native realized position PnL, or null when unavailable.",
+            "title": "Realized Pnl"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Collection run producing the containing snapshot; additive v1 provenance field.",
+            "title": "Run Id"
+          },
+          "settlement_currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Venue-native settlement asset identifier, or null when not reliable.",
+            "title": "Settlement Currency"
+          },
+          "snapshot_id": {
+            "description": "Immutable position snapshot containing this row.",
+            "format": "uuid",
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "source_raw_batch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact raw batch containing this position; access still requires raw:read.",
+            "title": "Source Raw Batch Id"
+          },
+          "strike": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native option strike, or null for non-options/unknown values.",
+            "title": "Strike"
+          },
+          "unrealized_pnl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native unrealized position PnL, or null when unavailable.",
+            "title": "Unrealized Pnl"
+          },
+          "venue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stable venue key; additive v1 provenance field.",
+            "title": "Venue"
+          },
+          "venue_record_identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Venue position identifier, or null when the venue supplies none.",
+            "title": "Venue Record Identifier"
+          }
+        },
+        "required": [
+          "canonical_schema_version",
+          "id",
+          "snapshot_id",
+          "venue_record_identifier",
+          "native_instrument_id",
+          "instrument_type",
+          "base_currency",
+          "quote_currency",
+          "settlement_currency",
+          "direction",
+          "quantity",
+          "quantity_unit",
+          "average_price",
+          "mark_price",
+          "index_price",
+          "notional",
+          "notional_unit",
+          "realized_pnl",
+          "unrealized_pnl",
+          "pnl_unit",
+          "initial_margin",
+          "maintenance_margin",
+          "liquidation_price",
+          "expiry_at",
+          "strike",
+          "option_side",
+          "attributes"
+        ],
+        "title": "PositionView",
+        "type": "object"
+      },
+      "RawBatchDetail": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "adapter_version": {
+            "title": "Adapter Version",
+            "type": "string"
+          },
+          "collection_step_id": {
+            "format": "uuid",
+            "title": "Collection Step Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "fetched_at": {
+            "format": "date-time",
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "page_sequence": {
+            "title": "Page Sequence",
+            "type": "integer"
+          },
+          "payload": {
+            "title": "Payload"
+          },
+          "payload_sha256": {
+            "title": "Payload Sha256",
+            "type": "string"
+          },
+          "request_parameters": {
+            "additionalProperties": true,
+            "title": "Request Parameters",
+            "type": "object"
+          },
+          "response_metadata": {
+            "additionalProperties": true,
+            "title": "Response Metadata",
+            "type": "object"
+          },
+          "response_status": {
+            "title": "Response Status",
+            "type": "integer"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "source_endpoint": {
+            "title": "Source Endpoint",
+            "type": "string"
+          },
+          "venue": {
+            "title": "Venue",
+            "type": "string"
+          },
+          "venue_observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Observed At"
+          }
+        },
+        "required": [
+          "id",
+          "account_id",
+          "run_id",
+          "collection_step_id",
+          "venue",
+          "dataset",
+          "source_endpoint",
+          "fetched_at",
+          "venue_observed_at",
+          "page_sequence",
+          "response_status",
+          "payload_sha256",
+          "adapter_version",
+          "request_parameters",
+          "response_metadata",
+          "payload",
+          "created_at"
+        ],
+        "title": "RawBatchDetail",
+        "type": "object"
+      },
+      "RawBatchListItem": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "adapter_version": {
+            "title": "Adapter Version",
+            "type": "string"
+          },
+          "collection_step_id": {
+            "format": "uuid",
+            "title": "Collection Step Id",
+            "type": "string"
+          },
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "fetched_at": {
+            "format": "date-time",
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "page_sequence": {
+            "title": "Page Sequence",
+            "type": "integer"
+          },
+          "payload_sha256": {
+            "title": "Payload Sha256",
+            "type": "string"
+          },
+          "response_status": {
+            "title": "Response Status",
+            "type": "integer"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "source_endpoint": {
+            "title": "Source Endpoint",
+            "type": "string"
+          },
+          "venue": {
+            "title": "Venue",
+            "type": "string"
+          },
+          "venue_observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Observed At"
+          }
+        },
+        "required": [
+          "id",
+          "account_id",
+          "run_id",
+          "collection_step_id",
+          "venue",
+          "dataset",
+          "source_endpoint",
+          "fetched_at",
+          "venue_observed_at",
+          "page_sequence",
+          "response_status",
+          "payload_sha256",
+          "adapter_version"
+        ],
+        "title": "RawBatchListItem",
+        "type": "object"
+      },
+      "RawBatchPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RawBatchListItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "RawBatchPage",
+        "type": "object"
+      },
+      "RunPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RunView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "RunPage",
+        "type": "object"
+      },
+      "RunView": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "account_label": {
+            "title": "Account Label",
+            "type": "string"
+          },
+          "canonical_record_count": {
+            "title": "Canonical Record Count",
+            "type": "integer"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "raw_record_count": {
+            "title": "Raw Record Count",
+            "type": "integer"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "scheduled_for": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled For"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "title": "Summary",
+            "type": "object"
+          },
+          "trigger": {
+            "title": "Trigger",
+            "type": "string"
+          },
+          "venue": {
+            "title": "Venue",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "account_id",
+          "account_label",
+          "venue",
+          "trigger",
+          "status",
+          "scheduled_for",
+          "requested_at",
+          "started_at",
+          "completed_at",
+          "duration_seconds",
+          "raw_record_count",
+          "canonical_record_count",
+          "summary",
+          "error"
+        ],
+        "title": "RunView",
+        "type": "object"
+      },
+      "SchedulePutRequest": {
+        "properties": {
+          "cadence_hours": {
+            "enum": [
+              1,
+              4,
+              8,
+              24
+            ],
+            "title": "Cadence Hours",
+            "type": "integer"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "expected_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Version"
+          }
+        },
+        "required": [
+          "enabled",
+          "cadence_hours"
+        ],
+        "title": "SchedulePutRequest",
+        "type": "object"
+      },
+      "ScheduleResponse": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "cadence_hours": {
+            "title": "Cadence Hours",
+            "type": "integer"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_enqueued_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Enqueued At"
+          },
+          "next_run_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Run At"
+          },
+          "schedule_version": {
+            "title": "Schedule Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "account_id",
+          "enabled",
+          "cadence_hours",
+          "next_run_at",
+          "last_enqueued_at",
+          "schedule_version"
+        ],
+        "title": "ScheduleResponse",
+        "type": "object"
+      },
+      "StepView": {
+        "properties": {
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "error_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Category"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "fetched_count": {
+            "title": "Fetched Count",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "inserted_count": {
+            "title": "Inserted Count",
+            "type": "integer"
+          },
+          "rate_limit_metadata": {
+            "additionalProperties": true,
+            "title": "Rate Limit Metadata",
+            "type": "object"
+          },
+          "rejected_count": {
+            "title": "Rejected Count",
+            "type": "integer"
+          },
+          "retry_metadata": {
+            "additionalProperties": true,
+            "title": "Retry Metadata",
+            "type": "object"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "skipped_count": {
+            "title": "Skipped Count",
+            "type": "integer"
+          },
+          "source_endpoint": {
+            "title": "Source Endpoint",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_count": {
+            "title": "Updated Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "run_id",
+          "dataset",
+          "source_endpoint",
+          "status",
+          "attempt_count",
+          "started_at",
+          "completed_at",
+          "fetched_count",
+          "inserted_count",
+          "updated_count",
+          "skipped_count",
+          "rejected_count",
+          "retry_metadata",
+          "rate_limit_metadata",
+          "error_category",
+          "error_message"
+        ],
+        "title": "StepView",
+        "type": "object"
+      },
+      "SummaryComponentView": {
+        "properties": {
+          "attributes": {
+            "additionalProperties": true,
+            "description": "Unstable venue extension object outside the v1 compatibility guarantee.",
+            "title": "Attributes",
+            "type": "object"
+          },
+          "available_funds": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact funds available under venue margin rules, or null when unavailable.",
+            "title": "Available Funds"
+          },
+          "available_withdrawal_funds": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact currently withdrawable funds, or null when unavailable.",
+            "title": "Available Withdrawal Funds"
+          },
+          "balance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native balance in currency, or null when unavailable.",
+            "title": "Balance"
+          },
+          "collateral": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native collateral value in currency, or null when unavailable.",
+            "title": "Collateral"
+          },
+          "component_scope": {
+            "description": "Extensible venue-normalized scope that distinguishes component purpose.",
+            "title": "Component Scope",
+            "type": "string"
+          },
+          "currency": {
+            "description": "Venue-native currency or asset identifier for every monetary field.",
+            "title": "Currency",
+            "type": "string"
+          },
+          "equity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-native equity in currency, or null when unavailable.",
+            "title": "Equity"
+          },
+          "initial_margin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-reported initial margin in currency, or null when unavailable.",
+            "title": "Initial Margin"
+          },
+          "maintenance_margin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-reported maintenance margin in currency, or null when unavailable.",
+            "title": "Maintenance Margin"
+          },
+          "realized_pnl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-reported realized PnL in currency, or null when unavailable.",
+            "title": "Realized Pnl"
+          },
+          "unrealized_pnl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exact venue-reported unrealized PnL in currency, or null when unavailable.",
+            "title": "Unrealized Pnl"
+          }
+        },
+        "required": [
+          "currency",
+          "component_scope",
+          "equity",
+          "balance",
+          "collateral",
+          "available_funds",
+          "available_withdrawal_funds",
+          "initial_margin",
+          "maintenance_margin",
+          "realized_pnl",
+          "unrealized_pnl",
+          "attributes"
+        ],
+        "title": "SummaryComponentView",
+        "type": "object"
+      },
+      "SummaryPage": {
+        "properties": {
+          "canonical_schema_version": {
+            "const": "1.0",
+            "description": "Version of the public canonical field semantics; independent of the venue processor version.",
+            "title": "Canonical Schema Version",
+            "type": "string"
+          },
+          "items": {
+            "description": "Summary snapshots in descending fetch order.",
+            "items": {
+              "$ref": "#/components/schemas/SummaryView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opaque cursor for the next page, or null at the end.",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "canonical_schema_version",
+          "items"
+        ],
+        "title": "SummaryPage",
+        "type": "object"
+      },
+      "SummaryView": {
+        "properties": {
+          "account_id": {
+            "description": "Hub account that owns this snapshot.",
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "account_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Operator-assigned account label; additive v1 identity field.",
+            "title": "Account Label"
+          },
+          "attributes": {
+            "additionalProperties": true,
+            "description": "Unstable venue extension object outside the v1 compatibility guarantee.",
+            "title": "Attributes",
+            "type": "object"
+          },
+          "canonical_schema_version": {
+            "const": "1.0",
+            "description": "Version of the public canonical field semantics; independent of the venue processor version.",
+            "title": "Canonical Schema Version",
+            "type": "string"
+          },
+          "completeness": {
+            "description": "complete when all required inputs mapped; partial when usable data has gaps.",
+            "enum": [
+              "complete",
+              "partial"
+            ],
+            "title": "Completeness",
+            "type": "string"
+          },
+          "components": {
+            "description": "Currency-local components unique by component_scope and currency.",
+            "items": {
+              "$ref": "#/components/schemas/SummaryComponentView"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "fetched_at": {
+            "description": "UTC time of the latest raw page contributing to this snapshot.",
+            "format": "date-time",
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "id": {
+            "description": "Stable identifier of this immutable summary snapshot.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ingested_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "UTC time this canonical snapshot was first persisted by the hub.",
+            "title": "Ingested At"
+          },
+          "processing_version": {
+            "description": "Venue processor mapping version; independent of canonical schema version.",
+            "title": "Processing Version",
+            "type": "string"
+          },
+          "run_id": {
+            "description": "Collection run that produced this snapshot.",
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "source_raw_batch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Primary source raw-batch reference; access still requires raw:read.",
+            "title": "Source Raw Batch Id"
+          },
+          "venue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stable venue key; additive v1 provenance field.",
+            "title": "Venue"
+          },
+          "venue_observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Latest venue-supplied observation time, or null when unavailable.",
+            "title": "Venue Observed At"
+          }
+        },
+        "required": [
+          "canonical_schema_version",
+          "id",
+          "account_id",
+          "run_id",
+          "fetched_at",
+          "venue_observed_at",
+          "processing_version",
+          "completeness",
+          "attributes",
+          "components"
+        ],
+        "title": "SummaryView",
+        "type": "object"
+      },
+      "SystemStatusView": {
+        "properties": {
+          "enabled_accounts": {
+            "minimum": 0.0,
+            "title": "Enabled Accounts",
+            "type": "integer"
+          },
+          "failed_runs_last_24h": {
+            "minimum": 0.0,
+            "title": "Failed Runs Last 24H",
+            "type": "integer"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "latest_successful_run_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Successful Run At"
+          },
+          "queued_runs": {
+            "minimum": 0.0,
+            "title": "Queued Runs",
+            "type": "integer"
+          },
+          "running_runs": {
+            "minimum": 0.0,
+            "title": "Running Runs",
+            "type": "integer"
+          },
+          "status": {
+            "default": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "generated_at",
+          "enabled_accounts",
+          "queued_runs",
+          "running_runs",
+          "failed_runs_last_24h",
+          "latest_successful_run_at"
+        ],
+        "title": "SystemStatusView",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VenueResponse": {
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "supported_environments": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Supported Environments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "display_name",
+          "supported_environments",
+          "enabled"
+        ],
+        "title": "VenueResponse",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "Portfolio Data Hub",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/accounts/{account_id}/cash-flows": {
+      "get": {
+        "operationId": "cash_flows_api_v1_accounts__account_id__cash_flows_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Account Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "review_state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Review State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From At"
+            }
+          },
+          {
+            "in": "query",
+            "name": "through_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Through At"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashFlowPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cash Flows",
+        "tags": [
+          "account performance"
+        ]
+      }
+    },
+    "/api/v1/accounts/{account_id}/cash-flows/{event_id}/revisions": {
+      "get": {
+        "operationId": "cash_flow_revisions_api_v1_accounts__account_id__cash_flows__event_id__revisions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Account Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ClassificationRevisionView"
+                  },
+                  "title": "Response Cash Flow Revisions Api V1 Accounts  Account Id  Cash Flows  Event Id  Revisions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cash Flow Revisions",
+        "tags": [
+          "account performance"
+        ]
+      }
+    },
+    "/api/v1/accounts/{account_id}/performance/datapoints/{datapoint_id}": {
+      "get": {
+        "operationId": "datapoint_api_v1_accounts__account_id__performance_datapoints__datapoint_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Account Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "datapoint_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Datapoint Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerformanceDatapointView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Datapoint",
+        "tags": [
+          "account performance"
+        ]
+      }
+    },
+    "/api/v1/accounts/{account_id}/performance/datapoints/{datapoint_id}/cash-flows": {
+      "get": {
+        "operationId": "datapoint_cash_flows_api_v1_accounts__account_id__performance_datapoints__datapoint_id__cash_flows_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Account Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "datapoint_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Datapoint Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashFlowPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Datapoint Cash Flows",
+        "tags": [
+          "account performance"
+        ]
+      }
+    },
+    "/api/v1/accounts/{account_id}/performance/latest": {
+      "get": {
+        "operationId": "latest_performance_api_v1_accounts__account_id__performance_latest_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Account Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerformanceDatapointView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Latest Performance",
+        "tags": [
+          "account performance"
+        ]
+      }
+    }
+  }
+}

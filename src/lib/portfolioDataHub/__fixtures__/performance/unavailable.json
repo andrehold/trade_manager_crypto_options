@@ -1,0 +1,35 @@
+{
+  "performance_schema_version": "1.0",
+  "id": "00000000-0000-4000-8000-000000000002",
+  "account_id": "00000000-0000-4000-8000-000000000001",
+  "revision": 7,
+  "as_of": "2026-01-01T00:00:00Z",
+  "time_basis": "collected_at",
+  "computed_at": "2026-01-01T00:00:00Z",
+  "reporting_currency": "USDC",
+  "equity": null,
+  "opening_equity": null,
+  "performance": null,
+  "quality": {
+    "equity_status": "unavailable",
+    "performance_status": "unavailable",
+    "freshness": "unknown",
+    "recalculation_pending": false,
+    "unresolved_movement_count": 0,
+    "ledger_coverage_from": "2026-01-01T00:00:00Z",
+    "ledger_coverage_through": "2026-01-01T00:00:00Z",
+    "reason_codes": [
+      "policy_not_configured"
+    ],
+    "details": {}
+  },
+  "lineage": {
+    "summary_snapshot_id": "00000000-0000-4000-8000-000000000003",
+    "baseline_snapshot_id": "00000000-0000-4000-8000-000000000004",
+    "baseline_at": "2026-01-01T00:00:00Z",
+    "canonical_input_sequence": 1200,
+    "classification_sequence": 87,
+    "policy_revision": 3,
+    "calculation_version": "performance-v1"
+  }
+}
