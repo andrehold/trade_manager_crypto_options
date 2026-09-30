@@ -219,13 +219,14 @@ async function readJson(response: Response): Promise<unknown> {
 }
 
 function json(data: unknown, status = 200, extraHeaders: HeadersInit = {}): Response {
+  const headers = new Headers({
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'private, no-store',
+  })
+  new Headers(extraHeaders).forEach((value, name) => headers.set(name, value))
   return new Response(JSON.stringify(data), {
     status,
-    headers: {
-      'content-type': 'application/json; charset=utf-8',
-      'cache-control': 'private, no-store',
-      ...extraHeaders,
-    },
+    headers,
   })
 }
 
@@ -803,6 +804,7 @@ export async function handlePortfolioDataHubRequest(
   const correlationId = dataset === 'performance'
     ? (dependencies.correlationId?.() ?? globalThis.crypto.randomUUID())
     : null
+  let performanceContext: HubRequestContext | null = null
 
   const logPerformanceError = (
     code: HubRouteErrorCode,
@@ -826,6 +828,7 @@ export async function handlePortfolioDataHubRequest(
       return json({ data: await gateway.adminReportingCurrencies(req) })
     }
     const context = await gateway.resolveContext(req)
+    if (dataset === 'performance') performanceContext = context
     const requestUrl = new URL(req.url)
     if (dataset === 'summary') return json({ data: await gateway.summary(context) })
     if (dataset === 'summaries') return json({ data: await gateway.summaries(context, requestUrl) })
@@ -865,14 +868,22 @@ export async function handlePortfolioDataHubRequest(
   } catch (error) {
     if (error instanceof HubRouteError) {
       logPerformanceError(error.code, error.upstreamStatusClass)
+      const responseHeaders = new Headers(error.responseHeaders)
+      if (performanceContext) {
+        responseHeaders.set('x-portfolio-hub-account-id', performanceContext.hubAccountId)
+      }
       return json(
         { error: { code: error.code, message: error.message } },
         error.status,
-        error.responseHeaders,
+        responseHeaders,
       )
     }
     const code = error instanceof ZodError ? 'HUB_INVALID_RESPONSE' : 'HUB_UNAVAILABLE'
     logPerformanceError(code, 'none')
-    return json({ error: { code, message: 'The portfolio dataset could not be loaded' } }, 502)
+    const responseHeaders: Record<string, string> = {}
+    if (performanceContext) {
+      responseHeaders['x-portfolio-hub-account-id'] = performanceContext.hubAccountId
+    }
+    return json({ error: { code, message: 'The portfolio dataset could not be loaded' } }, 502, responseHeaders)
   }
 }

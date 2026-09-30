@@ -74,6 +74,7 @@ export class PortfolioHubClientError extends Error {
     message: string,
     public readonly status: number | null = null,
     public readonly retryAt: number | null = null,
+    public readonly mappedAccountId: string | null = null,
   ) {
     super(message)
   }
@@ -110,6 +111,12 @@ function validatedRetryAt(value: string | null, nowMs = Date.now()): number | nu
     : null
 }
 
+function validatedMappedAccountId(value: string | null): string | null {
+  return value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+    ? value
+    : null
+}
+
 async function readResponse<T>(response: Response): Promise<T> {
   let body: unknown
   try {
@@ -126,7 +133,8 @@ async function readResponse<T>(response: Response): Promise<T> {
     const retryAt = code === 'HUB_RATE_LIMITED'
       ? validatedRetryAt(response.headers.get('retry-after'))
       : null
-    throw new PortfolioHubClientError(code, message, response.status, retryAt)
+    const mappedAccountId = validatedMappedAccountId(response.headers.get('x-portfolio-hub-account-id'))
+    throw new PortfolioHubClientError(code, message, response.status, retryAt, mappedAccountId)
   }
   if (!isRecord(body) || !('data' in body)) {
     throw new PortfolioHubClientError('INVALID_RESPONSE', 'The portfolio service returned an invalid response', response.status)

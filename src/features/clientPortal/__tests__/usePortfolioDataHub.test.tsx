@@ -18,6 +18,7 @@ vi.mock('@/lib/portfolioDataHub/client', () => ({
       message: string,
       public status: number | null = null,
       public retryAt: number | null = null,
+      public mappedAccountId: string | null = null,
     ) {
       super(message)
     }
@@ -164,6 +165,28 @@ describe('usePortfolioHubPerformance', () => {
     expect(fetchPortfolioHubPerformance).toHaveBeenNthCalledWith(3, 'session-token', '"portal-v2"')
   })
 
+  it('does not retain a prior-account cache when remapping is followed by an upstream failure', async () => {
+    const first = performance(accountId, 1)
+    const remappedAccountId = '30000000-0000-4000-8000-000000000009'
+    vi.mocked(fetchPortfolioHubPerformance)
+      .mockResolvedValueOnce({ status: 'updated', data: first, etag: '"portal-v1"' })
+      .mockRejectedValueOnce(new PortfolioHubClientError(
+        'HUB_UNAVAILABLE',
+        'Hub unavailable',
+        502,
+        null,
+        remappedAccountId,
+      ))
+
+    const { result } = renderHook(() => usePortfolioHubPerformance())
+    await waitFor(() => expect(result.current.state.data).toBe(first))
+    await act(async () => { await result.current.refresh() })
+
+    expect(result.current.state.status).toBe('unavailable')
+    expect(result.current.state.data).toBeNull()
+    expect(result.current.state.errorCode).toBe('HUB_UNAVAILABLE')
+  })
+
   it('clears cached performance on sign-out and does not expose it to a later session', async () => {
     const first = performance()
     vi.mocked(fetchPortfolioHubPerformance)
@@ -270,11 +293,13 @@ describe('usePortfolioHubPerformance', () => {
     expect(result.current.state.status).toBe('ready')
   })
 
-  it('retains the last valid object when a manual transport refresh fails', async () => {
+  it('retains the last valid object only when a portal error confirms the same mapped account', async () => {
     const data = performance()
     vi.mocked(fetchPortfolioHubPerformance)
       .mockResolvedValueOnce({ status: 'updated', data, etag: '"portal-v1"' })
-      .mockRejectedValueOnce(new PortfolioHubClientError('NETWORK_ERROR', 'Network unavailable'))
+      .mockRejectedValueOnce(new PortfolioHubClientError(
+        'HUB_UNAVAILABLE', 'Hub unavailable', 502, null, accountId,
+      ))
     const { result } = renderHook(() => usePortfolioHubPerformance())
     await waitFor(() => expect(result.current.state.status).toBe('ready'))
 
@@ -282,8 +307,22 @@ describe('usePortfolioHubPerformance', () => {
 
     expect(result.current.state.status).toBe('ready')
     expect(result.current.state.data).toBe(data)
-    expect(result.current.state.refreshError).toBe('Network unavailable')
+    expect(result.current.state.refreshError).toBe('Hub unavailable')
     expect(result.current.state.canRefresh).toBe(true)
+  })
+
+  it('fails closed instead of retaining cached data when the portal cannot confirm the mapping', async () => {
+    const data = performance()
+    vi.mocked(fetchPortfolioHubPerformance)
+      .mockResolvedValueOnce({ status: 'updated', data, etag: '"portal-v1"' })
+      .mockRejectedValueOnce(new PortfolioHubClientError('NETWORK_ERROR', 'Network unavailable'))
+    const { result } = renderHook(() => usePortfolioHubPerformance())
+    await waitFor(() => expect(result.current.state.data).toBe(data))
+
+    await act(async () => { await result.current.refresh() })
+
+    expect(result.current.state.status).toBe('unavailable')
+    expect(result.current.state.data).toBeNull()
   })
 })
 

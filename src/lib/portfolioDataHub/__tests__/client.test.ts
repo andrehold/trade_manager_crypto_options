@@ -148,4 +148,20 @@ describe('Portfolio Data Hub browser client', () => {
     })
     vi.useRealTimers()
   })
+
+  it('accepts only a valid server-confirmed mapped account on error responses', async () => {
+    const valid = vi.fn<typeof fetch>().mockResolvedValue(response({
+      error: { code: 'HUB_UNAVAILABLE', message: 'Hub unavailable' },
+    }, 502, { 'x-portfolio-hub-account-id': '30000000-0000-4000-8000-000000000001' }))
+    await expect(fetchPortfolioHubPerformance('token', null, valid)).rejects.toMatchObject({
+      mappedAccountId: '30000000-0000-4000-8000-000000000001',
+    })
+
+    const invalid = vi.fn<typeof fetch>().mockResolvedValue(response({
+      error: { code: 'HUB_UNAVAILABLE', message: 'Hub unavailable' },
+    }, 502, { 'x-portfolio-hub-account-id': 'not-an-account-id' }))
+    await expect(fetchPortfolioHubPerformance('token', null, invalid)).rejects.toMatchObject({
+      mappedAccountId: null,
+    })
+  })
 })

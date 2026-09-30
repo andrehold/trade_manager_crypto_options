@@ -437,6 +437,7 @@ describe('mapped performance gateway', () => {
       { env, fetch: unauthenticatedFetch },
     )
     expect(unauthenticated.status).toBe(401)
+    expect(unauthenticated.headers.has('x-portfolio-hub-account-id')).toBe(false)
     expect(unauthenticatedFetch).not.toHaveBeenCalled()
 
     const unauthorizedFetch = vi.fn<typeof fetch>(async (input) => {
@@ -451,6 +452,7 @@ describe('mapped performance gateway', () => {
       { env, fetch: unauthorizedFetch },
     )
     expect(unauthorized.status).toBe(403)
+    expect(unauthorized.headers.has('x-portfolio-hub-account-id')).toBe(false)
     expect(unauthorizedFetch).toHaveBeenCalledTimes(2)
 
     const unmappedFetch = performanceGatewayFetch({ row: profile({ hub_account_id: null }) })
@@ -460,6 +462,7 @@ describe('mapped performance gateway', () => {
       { env, fetch: unmappedFetch },
     )
     expect(unmapped.status).toBe(409)
+    expect(unmapped.headers.has('x-portfolio-hub-account-id')).toBe(false)
     expect(unmappedFetch).toHaveBeenCalledTimes(2)
   })
 
@@ -478,6 +481,7 @@ describe('mapped performance gateway', () => {
     )
 
     expect(result.status).toBe(portalStatus)
+    expect(result.headers.get('x-portfolio-hub-account-id')).toBe(hubAccountId)
     expect(await result.json()).toMatchObject({ error: { code } })
   })
 
@@ -489,6 +493,7 @@ describe('mapped performance gateway', () => {
     )
     expect(valid.status).toBe(503)
     expect(valid.headers.get('retry-after')).toBe('120')
+    expect(valid.headers.get('x-portfolio-hub-account-id')).toBe(hubAccountId)
     expect(await valid.json()).toMatchObject({ error: { code: 'HUB_RATE_LIMITED' } })
 
     const invalid = await handlePortfolioDataHubRequest(
@@ -498,6 +503,7 @@ describe('mapped performance gateway', () => {
     )
     expect(invalid.status).toBe(503)
     expect(invalid.headers.has('retry-after')).toBe(false)
+    expect(invalid.headers.get('x-portfolio-hub-account-id')).toBe(hubAccountId)
   })
 
   it('maps a performance request timeout and network failure without retrying', async () => {
@@ -513,6 +519,7 @@ describe('mapped performance gateway', () => {
       { env, fetch: timeoutFetch },
     )
     expect(timeout.status).toBe(504)
+    expect(timeout.headers.get('x-portfolio-hub-account-id')).toBe(hubAccountId)
     expect(await timeout.json()).toMatchObject({ error: { code: 'UPSTREAM_TIMEOUT' } })
     expect(timeoutFetch).toHaveBeenCalledTimes(3)
 
@@ -528,6 +535,7 @@ describe('mapped performance gateway', () => {
       { env, fetch: networkFetch },
     )
     expect(network.status).toBe(502)
+    expect(network.headers.get('x-portfolio-hub-account-id')).toBe(hubAccountId)
     expect(await network.json()).toMatchObject({ error: { code: 'HUB_UNAVAILABLE' } })
     expect(networkFetch).toHaveBeenCalledTimes(3)
   })

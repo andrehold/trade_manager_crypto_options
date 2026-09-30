@@ -188,7 +188,7 @@ export function HubDashboard({
           <section className="flex flex-col gap-3">
             <SectionHead title="Account overview" meta={`values in ${resolution.currency}`} />
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="hub-kpi-row">
-              <Metric label="Equity" value={formatPortfolioValue(value('equity'), resolution.currency)} detail="Balance including reported P&L" />
+              {performanceState?.data == null && <Metric label="Equity" value={formatPortfolioValue(value('equity'), resolution.currency)} detail="Balance including reported P&L" />}
               <Metric label="Realized P&L" value={formatPortfolioValue(value('realizedPnl'), resolution.currency)} tone={metricTone(value('realizedPnl'))} detail="Reported by the venue" />
               <Metric label="Unrealized P&L" value={formatPortfolioValue(value('unrealizedPnl'), resolution.currency)} tone={metricTone(value('unrealizedPnl'))} detail="Reported by the venue" />
               <Metric label="Open positions" value={partial ? 'Partial collection' : String(overview.positions.snapshot.positionCount)} detail="Current venue snapshot" />

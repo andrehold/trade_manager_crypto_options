@@ -217,6 +217,14 @@ performance response and does not parse the response as JSON. A `304` without
 a matching cached response is an error and must not create empty or fabricated
 performance data.
 
+After authentication and RLS mapping resolution, portal error responses include
+`X-Portfolio-Hub-Account-Id` as a non-secret cache-binding value. The browser
+retains a last valid response after a transient failure only when this value
+matches the cached response account. A missing or different value evicts the
+cache, preventing data from a prior mapping remaining visible. Unauthenticated,
+unlinked, and unmapped responses do not include this header or the target account
+ID.
+
 Portal error codes remain explicit even when the Hub's original status differs:
 
 | Portal code | Meaning | Client behavior |

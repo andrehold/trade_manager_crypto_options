@@ -377,6 +377,38 @@ describe('Hub-backed portfolio views', () => {
     expect(screen.getByText('9,000.00 USD')).toBeInTheDocument()
   })
 
+  it('does not render summary equity beside an authoritative unavailable equity state', () => {
+    const data = parseHubPerformance(readyPerformanceFixture)
+    data.quality.equityStatus = 'unavailable'
+    data.equity = null
+    render(
+      <HubDashboard
+        overview={overview}
+        {...dashboardActions}
+        performanceState={performanceState(data)}
+      />,
+    )
+
+    expect(screen.getByText('Equity unavailable. No value has been substituted.')).toBeInTheDocument()
+    expect(within(screen.getByTestId('hub-kpi-row')).queryByText('Equity')).toBeNull()
+    expect(within(screen.getByTestId('hub-kpi-row')).queryByText('1,250.13 USDC')).toBeNull()
+  })
+
+  it('keeps independent summary equity visible when no performance response is available', () => {
+    render(
+      <HubDashboard
+        overview={overview}
+        {...dashboardActions}
+        performanceState={performanceState(undefined, {
+          status: 'unavailable', data: null, refreshError: 'offline', canRefresh: true,
+        })}
+      />,
+    )
+
+    expect(within(screen.getByTestId('hub-kpi-row')).getByText('Equity')).toBeInTheDocument()
+    expect(within(screen.getByTestId('hub-kpi-row')).getByText('1,250.13 USDC')).toBeInTheDocument()
+  })
+
   it('renders ready and provisional values with reviewed reasons, unresolved movements, and provenance', () => {
     const data = parseHubPerformance(provisionalPerformanceFixture)
     data.quality.unresolvedMovementCount = 2

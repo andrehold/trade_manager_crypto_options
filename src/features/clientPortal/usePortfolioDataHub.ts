@@ -267,8 +267,10 @@ export function usePortfolioHubPerformance() {
       const latest = cachedPerformance(identity)
       const message = error instanceof Error ? error.message : 'Portfolio performance is unavailable'
       const permanent = clientError ? PERMANENT_PERFORMANCE_ERRORS.has(clientError.code) : false
-      if (permanent) evictPerformanceIdentity(identityKey)
-      const retained = permanent ? null : latest
+      const currentAccountConfirmed = latest !== null
+        && clientError?.mappedAccountId === latest.accountId
+      const retained = !permanent && currentAccountConfirmed ? latest : null
+      if (retained === null) evictPerformanceIdentity(identityKey)
       setState({
         status: retained ? 'ready' : 'unavailable',
         data: retained?.data ?? null,
