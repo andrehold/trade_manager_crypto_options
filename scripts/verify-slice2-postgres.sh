@@ -43,6 +43,7 @@ fi
 # intentionally broad at the SQL privilege layer so this harness proves RLS, while
 # SECURITY DEFINER RPC grants remain exactly as defined by the real migration.
 docker exec "$container" psql -v ON_ERROR_STOP=1 -U "$database_user" -d "$database" -c "grant usage on schema public, auth, helpers to authenticated; grant select, insert, update, delete on all tables in schema public to authenticated;" >/dev/null
+docker exec "$container" psql -v ON_ERROR_STOP=1 -U "$database_user" -d "$database" -c "do \$\$ begin if to_regclass('public.auth_identity_admin_audit') is not null then revoke insert, update, delete on public.auth_identity_admin_audit from authenticated; end if; end \$\$;" >/dev/null
 
 run_sql_file "$workspace_dir/supabase/tests/slice2_acceptance.sql"
 

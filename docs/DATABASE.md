@@ -128,6 +128,38 @@ where email = 'you@example.com';
 
 Once the claims are in place, non-admin users automatically see only their own structures, legs, and fills, while admins retain full access (matching the client selection UX in `DashboardApp`).
 
+### Audited trusted-claim repair
+
+For a fixture or portal identity whose trusted `app_metadata.client_id` must be
+repaired, use `npm run auth:repair-client-claim -- ...`; do not write an
+authorization claim to editable `user_metadata`. The command requires an explicit
+subject user ID, target client ID, expected mapped Hub account ID, and non-secret
+change reference. It is a dry run unless `--apply` is present. Apply mode also
+requires the subject's current access token in the ephemeral, server-only
+`PORTAL_SUBJECT_ACCESS_TOKEN` environment variable so Supabase can revoke the old
+session globally. The tool rejects a valid token whose subject differs from the
+explicit subject user ID. Never put that token in a command line, repository file,
+log, or handover. The user must sign in again afterward to mint a JWT containing
+the new trusted claim.
+
+The tool verifies that the target portal client is the unique row mapped to the
+expected Hub account, merges only `app_metadata.client_id` while preserving other
+trusted claims, appends an `applied` event through the service-role-only
+`append_auth_identity_admin_audit` RPC, and then revokes existing sessions. If the
+audit append fails, it restores the exact prior app metadata and records a
+`rolled_back` event where possible.
+
+Migration `20260930120000_auth_identity_admin_audit.sql` stores that focused audit
+trail in `public.auth_identity_admin_audit`. The table is client-invisible,
+administrator-readable, and directly immutable to exposed roles. It contains user
+and client UUIDs, actor information, the non-secret change reference, and the
+operation result only—never email, passwords, JWTs, API keys, or complete Auth
+metadata. Validate its permissions in the guarded local database with:
+
+```sh
+npm run test:auth-identity-audit:postgres
+```
+
 ## Portfolio Data Hub account mappings
 
 The database work is deliberately separated into three ordered migrations:
@@ -265,7 +297,7 @@ The command refuses any database other than `trade_management_desk_dev`, never
 touches `portfolio_data_hub`, records a SHA-256 over the ordered three-migration
 set, and refuses to test a stale schema when that hash changes. Fixture data is enclosed
 in a rollback transaction; baseline objects and the migrations persist for repeatable
-checks. The plain-PostgreSQL bootstrap creates `authenticated` and `service_role`
-as **cluster-global roles** plus minimal `auth.*` claim shims. That is acceptable in
+checks. The plain-PostgreSQL bootstrap creates `anon`, `authenticated`, and
+`service_role` as **cluster-global roles** plus minimal `auth.*` claim shims. That is acceptable in
 the user-approved disposable shared container, but strict isolation should use a
 dedicated PostgreSQL container rather than this shared one.
