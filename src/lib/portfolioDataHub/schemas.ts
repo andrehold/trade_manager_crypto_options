@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import Decimal from 'decimal.js';
 
 /** Canonical Contract v1 accepts additive fields, but not a different major. */
 export const SUPPORTED_CANONICAL_MAJOR = 1;
@@ -200,6 +201,74 @@ export const ledgerEventPageSchema = contractObject({
   next_cursor: nullableStringSchema.optional(),
 });
 
+export const performanceStatusSchema = z.enum(['ready', 'provisional', 'unavailable']);
+export const performanceFreshnessSchema = z.enum(['fresh', 'stale', 'unknown']);
+
+const reasonCodeSchema = z.string().refine((value) => value.trim().length > 0, {
+  message: 'Expected a non-empty performance reason code',
+});
+
+export const performanceTotalsSchema = contractObject({
+  opening_equity: nullableExactDecimalSchema.default(null),
+  contributions: nullableExactDecimalSchema.default(null),
+  distributions: nullableExactDecimalSchema.default(null),
+  transfers_in: nullableExactDecimalSchema.default(null),
+  transfers_out: nullableExactDecimalSchema.default(null),
+  net_capital_flow: nullableExactDecimalSchema.default(null),
+  pnl: nullableExactDecimalSchema.default(null),
+});
+
+export const performanceQualitySchema = contractObject({
+  equity_status: performanceStatusSchema,
+  performance_status: performanceStatusSchema,
+  freshness: performanceFreshnessSchema,
+  recalculation_pending: z.boolean(),
+  unresolved_movement_count: z.number().int().default(0),
+  ledger_coverage_from: nullableDateTimeSchema.default(null),
+  ledger_coverage_through: nullableDateTimeSchema.default(null),
+  reason_codes: z.array(reasonCodeSchema).default([]),
+  details: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const performanceLineageSchema = contractObject({
+  summary_snapshot_id: nullableUuidSchema.default(null),
+  baseline_snapshot_id: nullableUuidSchema.default(null),
+  baseline_at: nullableDateTimeSchema.default(null),
+  canonical_input_sequence: z.number().int().default(0),
+  classification_sequence: z.number().int().default(0),
+  policy_revision: z.number().int().nullable().default(null),
+  calculation_version: nullableStringSchema.default(null),
+});
+
+export const performanceDatapointSchema = contractObject({
+  performance_schema_version: z.string().default('1.0'),
+  id: nullableUuidSchema.default(null),
+  account_id: z.string().uuid(),
+  revision: z.number().int().nullable().default(null),
+  as_of: nullableDateTimeSchema.default(null),
+  time_basis: z.string().default('venue_observed'),
+  computed_at: nullableDateTimeSchema.default(null),
+  reporting_currency: nullableStringSchema.default(null),
+  equity: nullableExactDecimalSchema.default(null),
+  opening_equity: nullableExactDecimalSchema.default(null),
+  performance: performanceTotalsSchema.nullable().default(null),
+  quality: performanceQualitySchema,
+  lineage: performanceLineageSchema,
+}).superRefine((value, context) => {
+  const nestedOpeningEquity = value.performance?.opening_equity;
+  if (
+    value.opening_equity !== null
+    && nestedOpeningEquity != null
+    && !new Decimal(value.opening_equity).equals(nestedOpeningEquity)
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['performance', 'opening_equity'],
+      message: 'Top-level and performance opening equity must agree',
+    });
+  }
+});
+
 export type CanonicalDataAccount = z.infer<typeof dataAccountSchema>;
 export type CanonicalDataAccountPage = z.infer<typeof dataAccountPageSchema>;
 export type CanonicalSummaryComponent = z.infer<typeof summaryComponentSchema>;
@@ -211,3 +280,7 @@ export type CanonicalPositionPage = z.infer<typeof positionPageSchema>;
 export type CanonicalLatestPositionPage = z.infer<typeof latestPositionPageSchema>;
 export type CanonicalLedgerEvent = z.infer<typeof ledgerEventSchema>;
 export type CanonicalLedgerEventPage = z.infer<typeof ledgerEventPageSchema>;
+export type CanonicalPerformanceTotals = z.infer<typeof performanceTotalsSchema>;
+export type CanonicalPerformanceQuality = z.infer<typeof performanceQualitySchema>;
+export type CanonicalPerformanceLineage = z.infer<typeof performanceLineageSchema>;
+export type CanonicalPerformanceDatapoint = z.infer<typeof performanceDatapointSchema>;

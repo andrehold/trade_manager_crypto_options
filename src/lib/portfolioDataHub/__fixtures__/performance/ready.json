@@ -19,5 +19,6 @@
     "freshness": "fresh",
     "recalculation_pending": false,
     "reason_codes": []
-  }
+  },
+  "lineage": {}
 }
