@@ -29,4 +29,16 @@ describe('Portfolio Data Hub preflight', () => {
     const result = evaluateHubPreflight({ ...validEnv, PORTFOLIO_DATA_HUB_API_KEY: secret, VITE_PORTFOLIO_DATA_HUB_API_KEY: secret })
     expect([...result.errors, ...result.warnings].join('\n')).not.toContain(secret)
   })
+
+  it('treats preflight as configuration-only and cannot claim to verify Hub key scope', () => {
+    const result = evaluateHubPreflight(validEnv)
+    expect(result.errors).toEqual([])
+    expect(result.warnings).toEqual([])
+  })
+
+  it('rejects Hub credentials exposed through Vite variables', () => {
+    const result = evaluateHubPreflight({ ...validEnv, VITE_PORTFOLIO_DATA_HUB_API_KEY: 'secret' })
+    expect(result.errors).toContain('VITE_PORTFOLIO_DATA_HUB_API_KEY must not be VITE_-prefixed; Hub settings are server-only')
+    expect(JSON.stringify(result)).not.toContain('secret')
+  })
 })
