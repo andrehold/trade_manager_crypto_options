@@ -5,8 +5,10 @@ import { Badge, DataTable, type Column } from '@/components/ui'
 import { decimalFrom } from '@/lib/portfolioDataHub/decimal'
 import type { HubLedgerEvent, HubPosition, HubSummary, HubSummaryComponent } from '@/lib/portfolioDataHub'
 import type { PortfolioHubOverview } from '@/lib/portfolioDataHub/client'
+import type { PortfolioHubPerformanceState } from '../usePortfolioDataHub'
 import { usePortfolioHubLedger, usePortfolioHubPositions } from '../usePortfolioDataHub'
 import { formatPortfolioValue } from './portfolioFormatters'
+import { HubPerformancePanel } from './HubPerformancePanel'
 import { HubPerformanceTrends } from './charts/HubPerformanceTrends'
 import { ReportingCurrencySelector } from './ReportingCurrencySelector'
 import {
@@ -123,6 +125,8 @@ export function HubDashboard({
   onSaveAccountCurrency,
   accountCurrencySaving,
   accountCurrencyError,
+  performanceState,
+  onRefreshPerformance = () => {},
 }: {
   overview: PortfolioHubOverview
   history?: HubSummary[]
@@ -134,6 +138,8 @@ export function HubDashboard({
   onSaveAccountCurrency: (currency: string | null) => void
   accountCurrencySaving?: boolean
   accountCurrencyError?: string | null
+  performanceState?: PortfolioHubPerformanceState
+  onRefreshPerformance?: () => void
 }) {
   const resolution = resolveAccountCurrency(
     overview.summary.components,
@@ -175,10 +181,12 @@ export function HubDashboard({
 
       <HubProvenance overview={overview} />
 
+      {performanceState && <HubPerformancePanel state={performanceState} onRefresh={onRefreshPerformance} />}
+
       {resolution.status === 'selection-required' ? selector('configuration') : (
         <>
           <section className="flex flex-col gap-3">
-            <SectionHead title="Performance" meta={`values in ${resolution.currency}`} />
+            <SectionHead title="Account overview" meta={`values in ${resolution.currency}`} />
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="hub-kpi-row">
               <Metric label="Equity" value={formatPortfolioValue(value('equity'), resolution.currency)} detail="Balance including reported P&L" />
               <Metric label="Realized P&L" value={formatPortfolioValue(value('realizedPnl'), resolution.currency)} tone={metricTone(value('realizedPnl'))} detail="Reported by the venue" />
