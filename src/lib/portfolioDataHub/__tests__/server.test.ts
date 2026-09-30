@@ -2,6 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 import summaryFixture from '../__fixtures__/deribit/summary-latest.json'
 import positionsFixture from '../__fixtures__/deribit/positions-latest.json'
 import ledgerFixture from '../__fixtures__/deribit/ledger-events.json'
+import performanceReadyFixture from '../__fixtures__/performance/ready.json'
+import performanceProvisionalFixture from '../__fixtures__/performance/provisional.json'
+import performanceUnavailableFixture from '../__fixtures__/performance/unavailable.json'
 import {
   compareDatasetAlignment,
   handlePortfolioDataHubRequest,
@@ -19,10 +22,10 @@ const env = {
   PORTFOLIO_DATA_HUB_API_KEY: 'hub-secret-test',
 }
 
-function response(body: unknown, status = 200): Response {
+function response(body: unknown, status = 200, headers: HeadersInit = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...headers },
   })
 }
 
@@ -39,9 +42,9 @@ function profile(overrides: Record<string, unknown> = {}) {
 
 function request(path: string, init: RequestInit = {}): Request {
   return new Request(`https://portal.example${path}`, {
-    method: 'GET',
-    headers: { authorization: 'Bearer client-jwt', ...init.headers },
     ...init,
+    method: init.method ?? 'GET',
+    headers: { authorization: 'Bearer client-jwt', ...init.headers },
   })
 }
 
@@ -60,6 +63,52 @@ function gatewayFetch(hubBody: unknown, row = profile()) {
     expect(new Headers(init?.headers).get('authorization')).toBe('Bearer hub-secret-test')
     return response(hubBody)
   })
+}
+
+function performanceBody(fixture: unknown = performanceProvisionalFixture, accountId = hubAccountId) {
+  return { ...structuredClone(fixture as Record<string, unknown>), account_id: accountId }
+}
+
+function performanceGatewayFetch(options: {
+  body?: unknown
+  status?: number
+  headers?: HeadersInit
+  row?: Record<string, unknown>
+  authUser?: string
+} = {}) {
+  return vi.fn<typeof fetch>(async (input, init) => {
+    const url = String(input)
+    if (url.endsWith('/auth/v1/user')) return response({ id: options.authUser ?? authUserId })
+    if (url.includes('/rest/v1/clients?')) return response([options.row ?? profile()])
+    return response(
+      options.body ?? performanceBody(),
+      options.status ?? 200,
+      options.headers ?? { etag: '"hub-performance-v1"' },
+    )
+  })
+}
+
+function base64Url(bytes: Uint8Array): string {
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+}
+
+async function signedPerformanceToken(payload: Record<string, unknown>): Promise<string> {
+  const encodedPayload = base64Url(new TextEncoder().encode(JSON.stringify(payload)))
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(env.PORTFOLIO_DATA_HUB_API_KEY),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+  const signature = new Uint8Array(await crypto.subtle.sign(
+    'HMAC',
+    key,
+    new TextEncoder().encode(encodedPayload),
+  ))
+  return `"${encodedPayload}.${base64Url(signature)}"`
 }
 
 describe('Portfolio Data Hub server boundary', () => {
@@ -327,6 +376,313 @@ describe('Portfolio Data Hub server boundary', () => {
     )
     expect(result.status).toBe(502)
     expect(await result.json()).toMatchObject({ error: { code: 'HUB_INVALID_RESPONSE' } })
+  })
+})
+
+describe('mapped performance gateway', () => {
+  it('requests only the RLS-mapped performance/latest endpoint', async () => {
+    const fetchMock = performanceGatewayFetch()
+    const result = await handlePortfolioDataHubRequest(
+      request('/api/portfolio-data-hub/performance?account_id=11111111-1111-4111-8111-111111111111&client_id=ignored'),
+      'performance',
+      { env, fetch: fetchMock },
+    )
+
+    expect(result.status).toBe(200)
+    const urls = fetchMock.mock.calls.map(([input]) => String(input))
+    expect(urls[2]).toBe(`http://127.0.0.1:8000/api/v1/accounts/${hubAccountId}/performance/latest`)
+    expect(urls.every((url) => !url.includes('/api/v1/data/accounts'))).toBe(true)
+    expect(urls[2]).not.toContain('11111111-1111-4111-8111-111111111111')
+    expect(await result.json()).toMatchObject({ data: { accountId: hubAccountId } })
+  })
+
+  it.each([
+    ['ready', performanceReadyFixture, 'ready'],
+    ['provisional', performanceProvisionalFixture, 'provisional'],
+    ['unavailable', performanceUnavailableFixture, 'unavailable'],
+  ] as const)('accepts a valid %s performance response', async (_name, fixture, status) => {
+    const result = await handlePortfolioDataHubRequest(
+      request('/api/portfolio-data-hub/performance'),
+      'performance',
+      { env, fetch: performanceGatewayFetch({ body: performanceBody(fixture) }) },
+    )
+
+    expect(result.status).toBe(200)
+    expect(await result.json()).toMatchObject({
+      data: { accountId: hubAccountId, quality: { performanceStatus: status } },
+    })
+  })
+
+  it('rejects a performance response for a different account', async () => {
+    const result = await handlePortfolioDataHubRequest(
+      request('/api/portfolio-data-hub/performance'),
+      'performance',
+      {
+        env,
+        fetch: performanceGatewayFetch({
+          body: performanceBody(performanceProvisionalFixture, '11111111-1111-4111-8111-111111111111'),
+        }),
+      },
+    )
+
+    expect(result.status).toBe(502)
+    expect(await result.json()).toMatchObject({ error: { code: 'HUB_INVALID_RESPONSE' } })
+  })
+
+  it('does not call the Hub for unauthenticated, unauthorized, or unmapped users', async () => {
+    const unauthenticatedFetch = vi.fn<typeof fetch>()
+    const unauthenticated = await handlePortfolioDataHubRequest(
+      new Request('https://portal.example/api/portfolio-data-hub/performance'),
+      'performance',
+      { env, fetch: unauthenticatedFetch },
+    )
+    expect(unauthenticated.status).toBe(401)
+    expect(unauthenticatedFetch).not.toHaveBeenCalled()
+
+    const unauthorizedFetch = vi.fn<typeof fetch>(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/auth/v1/user')) return response({ id: authUserId })
+      if (url.includes('/rest/v1/clients?')) return response([])
+      throw new Error('Hub must not be called')
+    })
+    const unauthorized = await handlePortfolioDataHubRequest(
+      request('/api/portfolio-data-hub/performance'),
+      'performance',
+      { env, fetch: unauthorizedFetch },
+    )
+    expect(unauthorized.status).toBe(403)
+    expect(unauthorizedFetch).toHaveBeenCalledTimes(2)
+
+    const unmappedFetch = performanceGatewayFetch({ row: profile({ hub_account_id: null }) })
+    const unmapped = await handlePortfolioDataHubRequest(
+      request('/api/portfolio-data-hub/performance'),
+      'performance',
+      { env, fetch: unmappedFetch },
+    )
+    expect(unmapped.status).toBe(409)
+    expect(unmappedFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it.each([
+    [401, 502, 'HUB_AUTHORIZATION_FAILED'],
+    [403, 502, 'HUB_AUTHORIZATION_FAILED'],
+    [404, 502, 'HUB_ACCOUNT_NOT_FOUND'],
+    [408, 504, 'UPSTREAM_TIMEOUT'],
+    [504, 504, 'UPSTREAM_TIMEOUT'],
+    [500, 502, 'HUB_UNAVAILABLE'],
+  ] as const)('maps Hub %s to portal %s %s', async (hubStatus, portalStatus, code) => {
+    const result = await handlePortfolioDataHubRequest(
+      request('/api/portfolio-data-hub/performance'),
+      'performance',
+      { env, fetch: performanceGatewayFetch({ status: hubStatus, body: { detail: 'not exposed' } }) },
+    )
+
+    expect(result.status).toBe(portalStatus)
+    expect(await result.json()).toMatchObject({ error: { code } })
+  })
+
+  it('maps Hub 429 and forwards only a validated Retry-After value', async () => {
+    const valid = await handlePortfolioDataHubRequest(
+      request('/api/portfolio-data-hub/performance'),
+      'performance',
+      { env, fetch: performanceGatewayFetch({ status: 429, headers: { 'retry-after': '120' } }) },
+    )
+    expect(valid.status).toBe(503)
+    expect(valid.headers.get('retry-after')).toBe('120')
+    expect(await valid.json()).toMatchObject({ error: { code: 'HUB_RATE_LIMITED' } })
+
+    const invalid = await handlePortfolioDataHubRequest(
+      request('/api/portfolio-data-hub/performance'),
+      'performance',
+      { env, fetch: performanceGatewayFetch({ status: 429, headers: { 'retry-after': 'tomorrow-ish' } }) },
+    )
+    expect(invalid.status).toBe(503)
+    expect(invalid.headers.has('retry-after')).toBe(false)
+  })
+
+  it('maps a performance request timeout and network failure without retrying', async () => {
+    const timeoutFetch = vi.fn<typeof fetch>(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/auth/v1/user')) return response({ id: authUserId })
+      if (url.includes('/rest/v1/clients?')) return response([profile()])
+      throw Object.assign(new Error('timed out'), { name: 'AbortError' })
+    })
+    const timeout = await handlePortfolioDataHubRequest(
+      request('/api/portfolio-data-hub/performance'),
+      'performance',
+      { env, fetch: timeoutFetch },
+    )
+    expect(timeout.status).toBe(504)
+    expect(await timeout.json()).toMatchObject({ error: { code: 'UPSTREAM_TIMEOUT' } })
+    expect(timeoutFetch).toHaveBeenCalledTimes(3)
+
+    const networkFetch = vi.fn<typeof fetch>(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/auth/v1/user')) return response({ id: authUserId })
+      if (url.includes('/rest/v1/clients?')) return response([profile()])
+      throw new Error('network secret detail')
+    })
+    const network = await handlePortfolioDataHubRequest(
+      request('/api/portfolio-data-hub/performance'),
+      'performance',
+      { env, fetch: networkFetch },
+    )
+    expect(network.status).toBe(502)
+    expect(await network.json()).toMatchObject({ error: { code: 'HUB_UNAVAILABLE' } })
+    expect(networkFetch).toHaveBeenCalledTimes(3)
+  })
+
+  it('forwards a same-context upstream ETag and returns an empty 304 without JSON parsing', async () => {
+    const initial = await handlePortfolioDataHubRequest(
+      request('/api/portfolio-data-hub/performance'),
+      'performance',
+      { env, fetch: performanceGatewayFetch() },
+    )
+    const portalEtag = initial.headers.get('etag')
+    expect(portalEtag).toMatch(/^"[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+"$/)
+
+    const notModified = new Response(null, {
+      status: 304,
+      headers: { etag: '"hub-performance-v1"' },
+    })
+    const jsonSpy = vi.spyOn(notModified, 'json')
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      const url = String(input)
+      if (url.endsWith('/auth/v1/user')) return response({ id: authUserId })
+      if (url.includes('/rest/v1/clients?')) return response([profile()])
+      expect(new Headers(init?.headers).get('if-none-match')).toBe('"hub-performance-v1"')
+      return notModified
+    })
+    const result = await handlePortfolioDataHubRequest(
+      request('/api/portfolio-data-hub/performance', { headers: { 'if-none-match': portalEtag! } }),
+      'performance',
+      { env, fetch: fetchMock },
+    )
+
+    expect(result.status).toBe(304)
+    expect(result.headers.get('etag')).toBe(portalEtag)
+    expect(await result.text()).toBe('')
+    expect(jsonSpy).not.toHaveBeenCalled()
+  })
+
+  it('ignores tampered, cross-context, wrong-version, and wrong-normalizer tokens', async () => {
+    const initial = await handlePortfolioDataHubRequest(
+      request('/api/portfolio-data-hub/performance'),
+      'performance',
+      { env, fetch: performanceGatewayFetch() },
+    )
+    const validToken = initial.headers.get('etag')!
+    const otherClientId = '11111111-1111-4111-8111-111111111112'
+    const otherAccountId = '11111111-1111-4111-8111-111111111113'
+    const cases = [
+      {
+        name: 'tampered',
+        token: `${validToken.slice(0, -2)}x"`,
+        authUser: authUserId,
+        row: profile(),
+        body: performanceBody(),
+      },
+      {
+        name: 'cross-user',
+        token: validToken,
+        authUser: '11111111-1111-4111-8111-111111111114',
+        row: profile(),
+        body: performanceBody(),
+      },
+      {
+        name: 'cross-client',
+        token: validToken,
+        authUser: authUserId,
+        row: profile({ client_id: otherClientId }),
+        body: performanceBody(),
+      },
+      {
+        name: 'cross-account',
+        token: validToken,
+        authUser: authUserId,
+        row: profile({ hub_account_id: otherAccountId }),
+        body: performanceBody(performanceProvisionalFixture, otherAccountId),
+      },
+      {
+        name: 'wrong-token-version',
+        token: await signedPerformanceToken({
+          version: 2,
+          authUserId,
+          clientId,
+          hubAccountId,
+          upstreamEtag: '"hub-performance-v1"',
+          normalizerVersion: '1',
+        }),
+        authUser: authUserId,
+        row: profile(),
+        body: performanceBody(),
+      },
+      {
+        name: 'wrong-normalizer-version',
+        token: await signedPerformanceToken({
+          version: 1,
+          authUserId,
+          clientId,
+          hubAccountId,
+          upstreamEtag: '"hub-performance-v1"',
+          normalizerVersion: 'old',
+        }),
+        authUser: authUserId,
+        row: profile(),
+        body: performanceBody(),
+      },
+    ]
+
+    for (const testCase of cases) {
+      const fetchMock = performanceGatewayFetch({
+        authUser: testCase.authUser,
+        row: testCase.row,
+        body: testCase.body,
+      })
+      const result = await handlePortfolioDataHubRequest(
+        request('/api/portfolio-data-hub/performance', {
+          headers: { 'if-none-match': testCase.token },
+        }),
+        'performance',
+        { env, fetch: fetchMock },
+      )
+      expect(result.status, testCase.name).toBe(200)
+      expect(new Headers(fetchMock.mock.calls[2]?.[1]?.headers).has('if-none-match'), testCase.name).toBe(false)
+    }
+  })
+
+  it('emits only approved structured fields and never logs secrets or payloads', async () => {
+    const logger = vi.fn()
+    const result = await handlePortfolioDataHubRequest(
+      request('/api/portfolio-data-hub/performance'),
+      'performance',
+      {
+        env,
+        fetch: performanceGatewayFetch({
+          status: 500,
+          body: { equity: '987654321.123', authorization: 'Bearer leaked-value' },
+          headers: { etag: '"raw-secret-etag"' },
+        }),
+        logger,
+        correlationId: () => 'correlation-test',
+        now: () => 1_000,
+      },
+    )
+
+    expect(result.status).toBe(502)
+    expect(logger).toHaveBeenCalledOnce()
+    expect(logger).toHaveBeenCalledWith({
+      correlationId: 'correlation-test',
+      route: 'performance',
+      portalErrorCode: 'HUB_UNAVAILABLE',
+      upstreamStatusClass: '5xx',
+      latencyMs: 0,
+    })
+    const logged = JSON.stringify(logger.mock.calls)
+    for (const forbidden of [
+      '987654321.123', 'Bearer leaked-value', 'raw-secret-etag',
+      env.PORTFOLIO_DATA_HUB_API_KEY, 'client-jwt',
+    ]) expect(logged).not.toContain(forbidden)
   })
 })
 
