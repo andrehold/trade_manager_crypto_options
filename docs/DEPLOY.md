@@ -5,7 +5,7 @@ This app uses **explicit Vercel Edge routes** for live data and a Vite proxy for
 ## Required files
 - `api/deribit/ticker.ts` — proxies `public/ticker` to Deribit and returns upstream JSON.
 - `api/coincall/price.ts` — aggregates Coincall detail + orderbook + last trade and returns `{ price, multiplier, greeks }`.
-- `api/portfolio-data-hub/*` — authenticated client summary, historical summaries, positions, ledger, and combined provenance routes.
+- `api/portfolio-data-hub/*` — authenticated client summary, historical summaries, positions, ledger, combined provenance, and account performance routes.
 
 ## Portfolio Data Hub environment
 
@@ -13,8 +13,14 @@ The Hub key is server-only and must never use a `VITE_` prefix:
 
 ```env
 PORTFOLIO_DATA_HUB_BASE_URL=https://hub.germanquantum.tech
-PORTFOLIO_DATA_HUB_API_KEY=<server-only bearer key with portal data-read scopes>
+PORTFOLIO_DATA_HUB_API_KEY=<server-only bearer key; exact data:read scope>
 ```
+
+For this integration, the deployed portal key must have **exactly** the `data:read`
+scope. Confirm that scope on the deployed key in Portfolio Data Hub key management.
+The portal preflight checks configuration placement and shape only; it cannot
+inspect the Hub key or establish its scopes. Do not expose the key when recording
+the verification result.
 
 The routes validate the caller with the existing Supabase publishable key and
 query `public.clients` under the caller's RLS context. They therefore use
@@ -55,7 +61,7 @@ EU region in Vercel at that point.
 ### Safe configuration preflight
 
 Run this in the same environment used to deploy, after exporting only the
-server environment variables. It validates shape and scope safety without
+server environment variables. It validates configuration shape and placement without
 contacting the Hub or printing URLs, keys, or other values:
 
 ```bash
@@ -70,7 +76,9 @@ npm run hub:preflight
 ```
 
 The command fails if a Hub variable uses a `VITE_` prefix, a production Hub URL
-is not HTTPS, required configuration is missing, or the timeout is invalid.
+is not HTTPS, required configuration is missing, or the timeout is invalid. It
+does not contact the Hub and does not verify the key's permissions; verify the
+exact `data:read` scope separately in Hub key management.
 
 On Vercel this runs automatically as a deploy gate: `vercel.json` sets the
 build command to run `hub:preflight:production` before `npm run build`, gated
@@ -84,8 +92,9 @@ in Vercel for the build to see them.
 
 This opt-in test directly calls the configured Hub URL with its consumer key,
 then parses a mapped test account's summary, latest positions, and first ledger
-page. It does not print credentials. Supabase authentication and portal-client
-mapping are intentionally stubbed in this test, so it is **not** an end-to-end
+page. It does not print credentials. Supabase
+authentication and portal-client mapping are intentionally stubbed in this
+test, so it is **not** an end-to-end
 portal deployment check. Run it only from a trusted shell or CI secret context:
 
 ```bash
@@ -106,7 +115,7 @@ the Hub's public API smoke check rather than this direct parser check.
 
 ### Key rotation
 
-1. Create a new read-only Hub consumer key with only the portal data-read scope.
+1. Create a new Hub consumer key with exactly the `data:read` scope.
 2. Replace `PORTFOLIO_DATA_HUB_API_KEY` in Vercel **Production**.
 3. Redeploy Production, run the preflight, and run the direct Hub contract/parser smoke.
 4. Verify the signed-in portal account still loads overview, positions, and ledger.
@@ -118,8 +127,8 @@ Direct production switch. The old Hub stays reachable until the new one is
 verified, so rollback is immediate.
 
 **Preconditions**
-- The new `PORTFOLIO_DATA_HUB_API_KEY` carries the portal data-read scopes
-  (data accounts, summaries, positions, ledger-events); `raw:read` is not needed.
+- The new `PORTFOLIO_DATA_HUB_API_KEY` has exactly the `data:read` scope,
+  verified in Hub key management; no additional scope is required.
 - A reviewer has an `expected.json` of known figures — one row per client:
   `{ client_id, currency, component_scope, field, expected, tolerance }`.
 
@@ -188,7 +197,73 @@ DWF test client and verify:
 5. Refresh works after a normal Hub collection run.
 6. An expired portal session asks the user to sign in again rather than exposing portfolio data.
 7. Temporarily unreachable Hub requests display the safe unavailable state; restore connectivity afterwards.
-8. Browser DevTools shows requests only to `/api/portfolio-data-hub/*`; no Hub key, direct Hub request, or Hub routing ID appears in browser-accessible responses.
+8. Browser DevTools shows requests only to `/api/portfolio-data-hub/*`; no Hub key or direct Hub request appears. Normalized performance responses include `accountId` as a routing identifier, so it can appear in the browser response. It is not a credential. Verify that the browser cannot choose the account ID and that unauthorized users receive no mapping or performance response.
+
+### Performance route acceptance
+
+The portal endpoint is `GET /api/portfolio-data-hub/performance`. The server
+resolves the Hub account exclusively from the authenticated caller's RLS-visible
+`public.clients.hub_account_id`, then requests only
+`GET /api/v1/accounts/{mapped_hub_account_id}/performance/latest`. The browser
+does not supply the Hub account ID and ordinary portal traffic never enumerates
+Hub accounts.
+
+The first release loads performance when the view is opened and supports a
+manual **Refresh** action. It does not poll in the background or refresh on
+focus. Refresh sends the portal's integrity-protected ETag token as
+`If-None-Match`. The portal translates it to the Hub's upstream ETag. A valid
+portal `304` has no JSON body: the client retains its last valid cached
+performance response and does not parse the response as JSON. A `304` without
+a matching cached response is an error and must not create empty or fabricated
+performance data.
+
+After authentication and RLS mapping resolution, portal error responses include
+`X-Portfolio-Hub-Account-Id` as a non-secret cache-binding value. The browser
+retains a last valid response after a transient failure only when this value
+matches the cached response account. A missing or different value evicts the
+cache, preventing data from a prior mapping remaining visible. Unauthenticated,
+unlinked, and unmapped responses do not include this header or the target account
+ID.
+
+Portal error codes remain explicit even when the Hub's original status differs:
+
+| Portal code | Meaning | Client behavior |
+| --- | --- | --- |
+| `HUB_AUTHORIZATION_FAILED` | Hub rejected the server credential (`401`/`403`) | Show unavailable; do not retry automatically |
+| `HUB_ACCOUNT_NOT_FOUND` | Mapped account is not available (`404`) | Show unavailable; do not retry automatically |
+| `HUB_RATE_LIMITED` | Hub rate limit (`429`) | Show rate-limited state; accept only a validated `Retry-After`; no automatic retry |
+| `HUB_UNAVAILABLE` | Other upstream/network failure, including `5xx` | Show unavailable; no automatic retry |
+| `UPSTREAM_TIMEOUT` | Hub request timed out | Show unavailable; no automatic retry |
+| `HUB_INVALID_RESPONSE` | Invalid contract, account mismatch, or unsupported conditional response | Show unavailable; do not retry automatically |
+
+Only `HUB_RATE_LIMITED` may carry `Retry-After`. The portal forwards it only
+when it is a valid bounded delay/date; the client ignores malformed or
+out-of-range values. The user can manually refresh after the indicated time.
+
+For live positive and negative acceptance, use the deployed Production URL and
+two separate authenticated sessions:
+
+1. Sign in as the intended authorized test identity. Confirm its RLS-visible
+   client mapping resolves exactly one client and the browser receives only
+   that mapped account's performance through the portal endpoint.
+2. Inspect gateway request evidence to confirm the only Hub performance request
+   is the exact mapped `/api/v1/accounts/{id}/performance/latest` path. Confirm
+   there are no account list or enumeration requests. Do not capture credentials
+   or financial payloads.
+3. Sign in as an unauthorized identity with no mapping to that account. Confirm
+   it resolves no mapping, the portal returns no performance data, and no Hub
+   performance request is triggered.
+4. Verify an authorized manual refresh sends `If-None-Match`; a `304` retains
+   the last valid displayed values. Verify stale, provisional, unavailable, and
+   recalculation-pending states remain explicit and null financial values are
+   not rendered as zero.
+5. In Hub key management, inspect the exact key configured in Vercel Production
+   and confirm its scope set is exactly `data:read`. Record only the result and
+   a non-secret key reference.
+
+Record the deployment URL and commit, test outcomes, positive/negative login
+results, and key-scope confirmation without personal information, JWTs, API
+keys, or performance payloads.
 
 ## Local development
 ### Option A — `vercel dev` (preferred)

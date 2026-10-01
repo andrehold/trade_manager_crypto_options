@@ -6,6 +6,10 @@ import type {
   CanonicalLedgerEventPage,
   CanonicalPosition,
   CanonicalPositionSnapshot,
+  CanonicalPerformanceDatapoint,
+  CanonicalPerformanceLineage,
+  CanonicalPerformanceQuality,
+  CanonicalPerformanceTotals,
   CanonicalSummary,
   CanonicalSummaryComponent,
   ExactDecimal,
@@ -15,6 +19,7 @@ import {
   dataAccountSchema,
   latestPositionPageSchema,
   ledgerEventPageSchema,
+  performanceDatapointSchema,
   positionPageSchema,
   positionSchema,
   positionSnapshotSchema,
@@ -152,6 +157,56 @@ export interface HubPage<T> {
 
 export interface HubLatestPositionPage extends HubPage<HubPosition> {
   snapshot: HubPositionSnapshot;
+}
+
+export type HubPerformanceStatus = 'ready' | 'provisional' | 'unavailable';
+export type HubPerformanceFreshness = 'fresh' | 'stale' | 'unknown';
+
+export interface HubPerformanceTotals {
+  openingEquity: ExactDecimal | null;
+  contributions: ExactDecimal | null;
+  distributions: ExactDecimal | null;
+  transfersIn: ExactDecimal | null;
+  transfersOut: ExactDecimal | null;
+  netCapitalFlow: ExactDecimal | null;
+  pnl: ExactDecimal | null;
+}
+
+export interface HubPerformanceQuality {
+  equityStatus: HubPerformanceStatus;
+  performanceStatus: HubPerformanceStatus;
+  freshness: HubPerformanceFreshness;
+  recalculationPending: boolean;
+  unresolvedMovementCount: number;
+  ledgerCoverageFrom: string | null;
+  ledgerCoverageThrough: string | null;
+  reasonCodes: string[];
+}
+
+export interface HubPerformanceLineage {
+  summarySnapshotId: string | null;
+  baselineSnapshotId: string | null;
+  baselineAt: string | null;
+  canonicalInputSequence: number;
+  classificationSequence: number;
+  policyRevision: number | null;
+  calculationVersion: string | null;
+}
+
+export interface HubPerformance {
+  performanceSchemaVersion: string;
+  id: string | null;
+  accountId: string;
+  revision: number | null;
+  asOf: string | null;
+  timeBasis: string;
+  computedAt: string | null;
+  reportingCurrency: string | null;
+  equity: ExactDecimal | null;
+  openingEquity: ExactDecimal | null;
+  performance: HubPerformanceTotals | null;
+  quality: HubPerformanceQuality;
+  lineage: HubPerformanceLineage;
 }
 
 function nullableOptional(value: string | null | undefined): string | null {
@@ -298,6 +353,71 @@ export function normalizeHubLedgerEvent(event: CanonicalLedgerEvent): HubLedgerE
   };
 }
 
+export function normalizeHubPerformanceTotals(
+  totals: CanonicalPerformanceTotals,
+): HubPerformanceTotals {
+  return {
+    openingEquity: totals.opening_equity,
+    contributions: totals.contributions,
+    distributions: totals.distributions,
+    transfersIn: totals.transfers_in,
+    transfersOut: totals.transfers_out,
+    netCapitalFlow: totals.net_capital_flow,
+    pnl: totals.pnl,
+  };
+}
+
+export function normalizeHubPerformanceQuality(
+  quality: CanonicalPerformanceQuality,
+): HubPerformanceQuality {
+  return {
+    equityStatus: quality.equity_status,
+    performanceStatus: quality.performance_status,
+    freshness: quality.freshness,
+    recalculationPending: quality.recalculation_pending,
+    unresolvedMovementCount: quality.unresolved_movement_count,
+    ledgerCoverageFrom: quality.ledger_coverage_from,
+    ledgerCoverageThrough: quality.ledger_coverage_through,
+    reasonCodes: quality.reason_codes,
+  };
+}
+
+export function normalizeHubPerformanceLineage(
+  lineage: CanonicalPerformanceLineage,
+): HubPerformanceLineage {
+  return {
+    summarySnapshotId: lineage.summary_snapshot_id,
+    baselineSnapshotId: lineage.baseline_snapshot_id,
+    baselineAt: lineage.baseline_at,
+    canonicalInputSequence: lineage.canonical_input_sequence,
+    classificationSequence: lineage.classification_sequence,
+    policyRevision: lineage.policy_revision,
+    calculationVersion: lineage.calculation_version,
+  };
+}
+
+export function normalizeHubPerformance(
+  datapoint: CanonicalPerformanceDatapoint,
+): HubPerformance {
+  return {
+    performanceSchemaVersion: datapoint.performance_schema_version,
+    id: datapoint.id,
+    accountId: datapoint.account_id,
+    revision: datapoint.revision,
+    asOf: datapoint.as_of,
+    timeBasis: datapoint.time_basis,
+    computedAt: datapoint.computed_at,
+    reportingCurrency: datapoint.reporting_currency,
+    equity: datapoint.equity,
+    openingEquity: datapoint.opening_equity,
+    performance: datapoint.performance === null
+      ? null
+      : normalizeHubPerformanceTotals(datapoint.performance),
+    quality: normalizeHubPerformanceQuality(datapoint.quality),
+    lineage: normalizeHubPerformanceLineage(datapoint.lineage),
+  };
+}
+
 export function parseHubAccount(input: unknown): HubAccount {
   return normalizeHubAccount(dataAccountSchema.parse(input));
 }
@@ -341,4 +461,8 @@ export function parseHubLatestPositionPage(input: unknown): HubLatestPositionPag
 export function parseHubLedgerEventPage(input: unknown): HubPage<HubLedgerEvent> {
   const page: CanonicalLedgerEventPage = ledgerEventPageSchema.parse(input);
   return { items: page.items.map(normalizeHubLedgerEvent), nextCursor: page.next_cursor ?? null };
+}
+
+export function parseHubPerformance(input: unknown): HubPerformance {
+  return normalizeHubPerformance(performanceDatapointSchema.parse(input));
 }

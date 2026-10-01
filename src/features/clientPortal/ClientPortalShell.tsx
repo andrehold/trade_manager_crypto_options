@@ -8,7 +8,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { PositionsPage } from './pages/PositionsPage'
 import { HubDashboard, HubLedgerPage, HubPositionsPage } from './components/HubPortfolioView'
 import { useClientPositions } from './useClientPositions'
-import { usePortfolioDataHub, useReportingCurrencySelection } from './usePortfolioDataHub'
+import { usePortfolioDataHub, usePortfolioHubPerformance, useReportingCurrencySelection } from './usePortfolioDataHub'
 import { usePositionInterventions } from './usePositionInterventions'
 import { useSetupPersistence } from './useSetupPersistence'
 import { type AppropriatenessInput } from '@/lib/clientPortal/appropriatenessRepo'
@@ -40,6 +40,11 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const [active, setActive] = React.useState(false)
   const { positions, loading, error, reload } = useClientPositions(clientName)
   const { state: hubState, reload: reloadHub } = usePortfolioDataHub()
+  const { state: performanceState, refresh: refreshPerformance } = usePortfolioHubPerformance()
+  const refreshDashboard = React.useCallback(() => {
+    reloadHub()
+    void refreshPerformance()
+  }, [reloadHub, refreshPerformance])
   const accountCurrencySelection = useReportingCurrencySelection(reloadHub)
   const { interventions, record } = usePositionInterventions(clientName)
   const persistence = useSetupPersistence(clientName)
@@ -198,10 +203,12 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
                   historyError={hubState.historyError}
                   onOpenPositions={() => navigate('positions')}
                   onOpenLedger={() => navigate('ledger')}
-                  onRefresh={reloadHub}
+                  onRefresh={refreshDashboard}
                   onSaveAccountCurrency={accountCurrencySelection.save}
                   accountCurrencySaving={accountCurrencySelection.saving}
                   accountCurrencyError={accountCurrencySelection.error}
+                  performanceState={performanceState}
+                  onRefreshPerformance={() => { void refreshPerformance() }}
                 />
               ) : page === 'positions' ? <HubPositionsPage overview={hubState.overview} onRefresh={reloadHub} /> : <HubLedgerPage onRefresh={reloadHub} />
             ) : hubState.status === 'session-expired' ? (

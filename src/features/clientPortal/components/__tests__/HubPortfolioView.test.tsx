@@ -4,8 +4,12 @@ import userEvent from '@testing-library/user-event'
 import summaryFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/summary-latest.json'
 import positionsFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/positions-latest.json'
 import ledgerFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/ledger-events.json'
-import { parseHubLatestPositionPage, parseHubLedgerEventPage, parseHubSummary } from '@/lib/portfolioDataHub'
+import readyPerformanceFixture from '@/lib/portfolioDataHub/__fixtures__/performance/ready.json'
+import provisionalPerformanceFixture from '@/lib/portfolioDataHub/__fixtures__/performance/provisional.json'
+import unavailablePerformanceFixture from '@/lib/portfolioDataHub/__fixtures__/performance/unavailable.json'
+import { parseHubLatestPositionPage, parseHubLedgerEventPage, parseHubPerformance, parseHubSummary } from '@/lib/portfolioDataHub'
 import type { PortfolioHubOverview } from '@/lib/portfolioDataHub/client'
+import type { PortfolioHubPerformanceState } from '../../usePortfolioDataHub'
 
 vi.mock('../../usePortfolioDataHub', () => ({ usePortfolioHubLedger: vi.fn(), usePortfolioHubPositions: vi.fn() }))
 vi.mock('recharts', async (importOriginal) => {
@@ -19,6 +23,7 @@ vi.mock('recharts', async (importOriginal) => {
 })
 
 import { HubDashboard, HubLedgerHistory, HubNativePositionsTable, HubPositionsPage } from '../HubPortfolioView'
+import { HubPerformancePanel } from '../HubPerformancePanel'
 import { usePortfolioHubLedger, usePortfolioHubPositions } from '../../usePortfolioDataHub'
 
 const mixedPositions = structuredClone(positionsFixture)
@@ -43,6 +48,14 @@ const dashboardActions = {
   onOpenLedger: () => {},
   onRefresh: () => {},
   onSaveAccountCurrency: () => {},
+}
+
+function performanceState(data = parseHubPerformance(readyPerformanceFixture), overrides: Partial<PortfolioHubPerformanceState> = {}): PortfolioHubPerformanceState {
+  return {
+    status: 'ready', data, refreshing: false, refreshError: null,
+    errorCode: null, retryAt: null, canRefresh: true,
+    ...overrides,
+  }
 }
 
 function summaryComponent(currency: string, values: Record<string, unknown> = {}) {
@@ -319,5 +332,155 @@ describe('Hub-backed portfolio views', () => {
     expect(screen.getAllByText('Deposit')).toHaveLength(2)
     await userEvent.click(screen.getByRole('button', { name: /load more/i }))
     expect(loadMore).toHaveBeenCalledOnce()
+  })
+
+  it('keeps ready equity visible when performance is unavailable, and never fills unavailable values from the summary', () => {
+    const data = parseHubPerformance(unavailablePerformanceFixture)
+    data.quality.equityStatus = 'ready'
+    data.equity = '125.5' as typeof data.equity
+    render(<HubPerformancePanel state={performanceState(data)} onRefresh={() => {}} />)
+
+    expect(screen.getByRole('heading', { name: 'Equity' }).closest('section')).toHaveTextContent('125.50 USDC')
+    expect(screen.getByText('Performance unavailable. No value has been substituted.')).toBeInTheDocument()
+    expect(screen.queryByText('Opening equity')).toBeNull()
+  })
+
+  it('renders an unavailable Hub response as a valid state with its reviewed reason, not as fabricated data', () => {
+    render(<HubPerformancePanel state={performanceState(parseHubPerformance(unavailablePerformanceFixture))} onRefresh={() => {}} />)
+
+    expect(screen.getAllByText('Unavailable')).toHaveLength(2)
+    expect(screen.getByText('Performance calculation is not configured for this account.')).toBeInTheDocument()
+    expect(screen.queryByText('P&L')).toBeNull()
+  })
+
+  it('renders loading and transport-unavailable states without inventing performance values', () => {
+    const { rerender } = render(<HubPerformancePanel state={performanceState(undefined, {
+      status: 'loading', data: null, refreshing: true, canRefresh: false,
+    })} onRefresh={() => {}} />)
+    expect(screen.getByText('Loading performance data…')).toBeInTheDocument()
+
+    rerender(<HubPerformancePanel state={performanceState(undefined, {
+      status: 'unavailable', data: null, refreshing: false, refreshError: 'offline', canRefresh: true,
+    })} onRefresh={() => {}} />)
+    expect(screen.getByText(/Performance unavailable\. No values have been substituted/i)).toBeInTheDocument()
+    expect(screen.queryByText('Opening equity')).toBeNull()
+  })
+
+  it('keeps performance visible when equity is unavailable without substituting summary equity', () => {
+    const data = parseHubPerformance(readyPerformanceFixture)
+    data.quality.equityStatus = 'unavailable'
+    data.equity = null
+    render(<HubPerformancePanel state={performanceState(data)} onRefresh={() => {}} />)
+
+    expect(screen.getByText('Equity unavailable. No value has been substituted.')).toBeInTheDocument()
+    expect(screen.getByText('Opening equity')).toBeInTheDocument()
+    expect(screen.getByText('9,000.00 USD')).toBeInTheDocument()
+  })
+
+  it('does not render summary equity beside an authoritative unavailable equity state', () => {
+    const data = parseHubPerformance(readyPerformanceFixture)
+    data.quality.equityStatus = 'unavailable'
+    data.equity = null
+    render(
+      <HubDashboard
+        overview={overview}
+        {...dashboardActions}
+        performanceState={performanceState(data)}
+      />,
+    )
+
+    expect(screen.getByText('Equity unavailable. No value has been substituted.')).toBeInTheDocument()
+    expect(within(screen.getByTestId('hub-kpi-row')).queryByText('Equity')).toBeNull()
+    expect(within(screen.getByTestId('hub-kpi-row')).queryByText('1,250.13 USDC')).toBeNull()
+  })
+
+  it('keeps independent summary equity visible when no performance response is available', () => {
+    render(
+      <HubDashboard
+        overview={overview}
+        {...dashboardActions}
+        performanceState={performanceState(undefined, {
+          status: 'unavailable', data: null, refreshError: 'offline', canRefresh: true,
+        })}
+      />,
+    )
+
+    expect(within(screen.getByTestId('hub-kpi-row')).getByText('Equity')).toBeInTheDocument()
+    expect(within(screen.getByTestId('hub-kpi-row')).getByText('1,250.13 USDC')).toBeInTheDocument()
+  })
+
+  it('renders ready and provisional values with reviewed reasons, unresolved movements, and provenance', () => {
+    const data = parseHubPerformance(provisionalPerformanceFixture)
+    data.quality.unresolvedMovementCount = 2
+    render(<HubPerformancePanel state={performanceState(data)} onRefresh={() => {}} />)
+
+    expect(screen.getAllByText('Provisional').length).toBeGreaterThan(0)
+    expect(screen.getByText(/snapshot time is approximate/i)).toBeInTheDocument()
+    expect(screen.getByText('2 unresolved movements')).toBeInTheDocument()
+    expect(screen.getByText('Policy revision 3')).toBeInTheDocument()
+    expect(screen.getByText('Calculation performance-v1')).toBeInTheDocument()
+  })
+
+  it('renders every availability state independently with stale/unknown freshness and recalculation pending', () => {
+    const statuses = ['ready', 'provisional', 'unavailable'] as const
+    for (const equityStatus of statuses) {
+      for (const performanceStatus of statuses) {
+        const data = parseHubPerformance(readyPerformanceFixture)
+        data.quality.equityStatus = equityStatus
+        data.quality.performanceStatus = performanceStatus
+        data.quality.freshness = equityStatus === 'ready' ? 'stale' : 'unknown'
+        data.quality.recalculationPending = true
+        if (equityStatus === 'unavailable') data.equity = null
+        if (performanceStatus === 'unavailable') {
+          data.openingEquity = null
+          data.performance = null
+        }
+        const { unmount } = render(<HubPerformancePanel state={performanceState(data)} onRefresh={() => {}} />)
+        expect(screen.getByText('Recalculation pending')).toBeInTheDocument()
+        expect(screen.getByText(equityStatus === 'ready' ? 'Data may be stale' : 'Freshness unavailable')).toBeInTheDocument()
+        expect(screen.getAllByText(equityStatus === 'ready' ? 'Ready' : equityStatus === 'provisional' ? 'Provisional' : 'Unavailable').length).toBeGreaterThan(0)
+        expect(screen.getAllByText(performanceStatus === 'ready' ? 'Ready' : performanceStatus === 'provisional' ? 'Provisional' : 'Unavailable').length).toBeGreaterThan(0)
+        unmount()
+      }
+    }
+  })
+
+  it('preserves null, exact zero, and the top-level opening equity display source', () => {
+    const data = parseHubPerformance(readyPerformanceFixture)
+    data.equity = null
+    data.openingEquity = '0' as typeof data.openingEquity
+    const totals = data.performance
+    if (totals === null) throw new Error('ready fixture must include totals')
+    totals.openingEquity = '999' as typeof totals.openingEquity
+    totals.pnl = '-0' as typeof totals.pnl
+    render(<HubPerformancePanel state={performanceState(data)} onRefresh={() => {}} />)
+
+    expect(screen.getByRole('heading', { name: 'Equity' }).closest('section')).toHaveTextContent('—')
+    expect(screen.getAllByText('0.00 USD')).toHaveLength(2)
+    expect(screen.queryByText('999.00 USD')).toBeNull()
+  })
+
+  it('uses generic safe copy for unknown reasons and never exposes opaque details', () => {
+    const data = parseHubPerformance(readyPerformanceFixture)
+    data.quality.reasonCodes = ['future_internal_reason']
+    ;(data.quality as typeof data.quality & { details?: unknown }).details = { secret: 'do-not-render' }
+    render(<HubPerformancePanel state={performanceState(data)} onRefresh={() => {}} />)
+
+    expect(screen.getByText('Additional performance data qualification is available.')).toBeInTheDocument()
+    expect(screen.queryByText(/future_internal_reason|do-not-render/i)).toBeNull()
+  })
+
+  it('retains valid data after a refresh failure and disables rate-limited refresh until retry time', () => {
+    const onRefresh = vi.fn()
+    const data = parseHubPerformance(readyPerformanceFixture)
+    const retryAt = Date.now() + 60_000
+    render(<HubPerformancePanel state={performanceState(data, {
+      refreshError: 'network failure', errorCode: 'HUB_RATE_LIMITED', retryAt, canRefresh: false,
+    })} onRefresh={onRefresh} />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/last valid performance result is shown/i)
+    expect(screen.getByText('10,000.00 USD')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /refresh performance/i })).toBeDisabled()
+    expect(screen.getByText(/refresh available/i)).toBeInTheDocument()
   })
 })

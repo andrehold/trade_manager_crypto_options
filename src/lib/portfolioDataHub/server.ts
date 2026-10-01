@@ -2,12 +2,14 @@ import { ZodError } from 'zod'
 import {
   parseHubLatestPositionPage,
   parseHubLedgerEventPage,
+  parseHubPerformance,
   parseHubSummary,
   parseHubSummaryPage,
   type HubLatestPositionPage,
   type HubPage,
   type HubLedgerEvent,
   type HubPosition,
+  type HubPerformance,
   type HubSummary,
 } from './index'
 
@@ -16,7 +18,9 @@ const DEFAULT_TIMEOUT_MS = 10_000
 
 type RuntimeEnv = Record<string, string | undefined>
 
-export type HubDataset = 'summary' | 'summaries' | 'positions' | 'ledger'
+export const PERFORMANCE_NORMALIZER_VERSION = '1'
+
+export type HubDataset = 'summary' | 'summaries' | 'positions' | 'ledger' | 'performance'
 
 export type HubRouteErrorCode =
   | 'METHOD_NOT_ALLOWED'
@@ -28,6 +32,9 @@ export type HubRouteErrorCode =
   | 'SUPABASE_UNAVAILABLE'
   | 'HUB_UNAVAILABLE'
   | 'HUB_INVALID_RESPONSE'
+  | 'HUB_AUTHORIZATION_FAILED'
+  | 'HUB_ACCOUNT_NOT_FOUND'
+  | 'HUB_RATE_LIMITED'
   | 'SERVER_MISCONFIGURED'
   | 'FORBIDDEN'
   | 'CLIENT_NOT_FOUND'
@@ -38,6 +45,8 @@ export class HubRouteError extends Error {
     public readonly code: HubRouteErrorCode,
     message: string,
     public readonly cause?: unknown,
+    public readonly upstreamStatusClass: 'none' | '4xx' | '5xx' | 'network' | 'timeout' = 'none',
+    public readonly responseHeaders: HeadersInit = {},
   ) {
     super(message)
   }
@@ -72,7 +81,18 @@ export interface DatasetAlignment {
 
 /** A page token is server-signed so a client can only page the snapshot selected for its own Hub account. */
 type SnapshotPageToken = { version: 1; accountId: string; snapshotId: string }
+type PerformanceConditionalToken = {
+  version: 1
+  authUserId: string
+  clientId: string
+  hubAccountId: string
+  upstreamEtag: string
+  normalizerVersion: string
+}
 type HubPositionRoutePage = (HubLatestPositionPage | HubPage<HubPosition>) & { pageToken: string }
+type HubPerformanceRouteResult =
+  | { status: 'updated'; data: HubPerformance; etag: string | null }
+  | { status: 'not-modified'; etag: string }
 
 type ServerConfig = {
   supabaseUrl: string
@@ -99,6 +119,17 @@ type SupabaseAuthUser = {
 export type GatewayDependencies = {
   env?: RuntimeEnv
   fetch?: typeof globalThis.fetch
+  logger?: (event: HubSafeLogEvent) => void
+  correlationId?: () => string
+  now?: () => number
+}
+
+export type HubSafeLogEvent = {
+  correlationId: string
+  route: 'performance'
+  portalErrorCode: HubRouteErrorCode
+  upstreamStatusClass: 'none' | '4xx' | '5xx' | 'network' | 'timeout'
+  latencyMs: number
 }
 
 function requiredEnv(env: RuntimeEnv, names: string[]): string {
@@ -171,7 +202,7 @@ async function fetchWithTimeout(
     return await fetchImpl(input, { ...init, signal: controller.signal })
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new HubRouteError(504, 'UPSTREAM_TIMEOUT', 'An upstream request timed out', error)
+      throw new HubRouteError(504, 'UPSTREAM_TIMEOUT', 'An upstream request timed out', error, 'timeout')
     }
     throw error
   } finally {
@@ -188,13 +219,14 @@ async function readJson(response: Response): Promise<unknown> {
 }
 
 function json(data: unknown, status = 200, extraHeaders: HeadersInit = {}): Response {
+  const headers = new Headers({
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'private, no-store',
+  })
+  new Headers(extraHeaders).forEach((value, name) => headers.set(name, value))
   return new Response(JSON.stringify(data), {
     status,
-    headers: {
-      'content-type': 'application/json; charset=utf-8',
-      'cache-control': 'private, no-store',
-      ...extraHeaders,
-    },
+    headers,
   })
 }
 
@@ -254,8 +286,8 @@ function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
   return difference === 0
 }
 
-async function snapshotTokenSignature(payload: string, key: string): Promise<Uint8Array> {
-  if (!globalThis.crypto?.subtle) throw new HubRouteError(500, 'SERVER_MISCONFIGURED', 'Web Crypto is required for secure position pagination')
+async function tokenSignature(payload: string, key: string): Promise<Uint8Array> {
+  if (!globalThis.crypto?.subtle) throw new HubRouteError(500, 'SERVER_MISCONFIGURED', 'Web Crypto is required for signed portal tokens')
   const cryptoKey = await globalThis.crypto.subtle.importKey(
     'raw', new TextEncoder().encode(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
   )
@@ -264,14 +296,14 @@ async function snapshotTokenSignature(payload: string, key: string): Promise<Uin
 
 async function createSnapshotPageToken(accountId: string, snapshotId: string, hubApiKey: string): Promise<string> {
   const payload = base64UrlEncode(JSON.stringify({ version: 1, accountId, snapshotId } satisfies SnapshotPageToken))
-  return `${payload}.${base64UrlEncode(await snapshotTokenSignature(payload, hubApiKey))}`
+  return `${payload}.${base64UrlEncode(await tokenSignature(payload, hubApiKey))}`
 }
 
 async function parseSnapshotPageToken(value: string, context: HubRequestContext, hubApiKey: string): Promise<string> {
   const [payload, encodedSignature, extra] = value.split('.')
   if (!payload || !encodedSignature || extra) throw new HubRouteError(400, 'INVALID_QUERY', 'page_token is invalid')
   try {
-    const expected = await snapshotTokenSignature(payload, hubApiKey)
+    const expected = await tokenSignature(payload, hubApiKey)
     if (!sameBytes(expected, base64UrlDecode(encodedSignature))) throw new Error('Invalid signature')
     const parsed = JSON.parse(new TextDecoder().decode(base64UrlDecode(payload))) as Partial<SnapshotPageToken>
     if (parsed.version !== 1 || parsed.accountId !== context.hubAccountId || !parsed.snapshotId || !UUID_PATTERN.test(parsed.snapshotId)) {
@@ -282,6 +314,77 @@ async function parseSnapshotPageToken(value: string, context: HubRequestContext,
     if (error instanceof HubRouteError) throw error
     throw new HubRouteError(400, 'INVALID_QUERY', 'page_token is invalid')
   }
+}
+
+function safeUpstreamEtag(value: string | null): string | null {
+  if (!value || value.length > 1_024 || /[\u0000-\u001f\u007f]/.test(value)) return null
+  return value
+}
+
+function conditionalTokenValue(value: string | null): string | null {
+  if (!value || value.length > 4_096 || /[\u0000-\u001f\u007f]/.test(value)) return null
+  const match = /^"([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)"$/.exec(value)
+  return match?.[1] ?? null
+}
+
+async function createPerformanceConditionalToken(
+  context: HubRequestContext,
+  upstreamEtag: string,
+  hubApiKey: string,
+): Promise<string> {
+  const token: PerformanceConditionalToken = {
+    version: 1,
+    authUserId: context.authUserId,
+    clientId: context.clientId,
+    hubAccountId: context.hubAccountId,
+    upstreamEtag,
+    normalizerVersion: PERFORMANCE_NORMALIZER_VERSION,
+  }
+  const payload = base64UrlEncode(JSON.stringify(token))
+  return `"${payload}.${base64UrlEncode(await tokenSignature(payload, hubApiKey))}"`
+}
+
+async function parsePerformanceConditionalToken(
+  headerValue: string | null,
+  context: HubRequestContext,
+  hubApiKey: string,
+): Promise<{ upstreamEtag: string; portalEtag: string } | null> {
+  const token = conditionalTokenValue(headerValue)
+  if (!token) return null
+  const [payload, encodedSignature, extra] = token.split('.')
+  if (!payload || !encodedSignature || extra) return null
+  try {
+    const expected = await tokenSignature(payload, hubApiKey)
+    if (!sameBytes(expected, base64UrlDecode(encodedSignature))) return null
+    const parsed = JSON.parse(new TextDecoder().decode(base64UrlDecode(payload))) as Partial<PerformanceConditionalToken>
+    const upstreamEtag = typeof parsed.upstreamEtag === 'string'
+      ? safeUpstreamEtag(parsed.upstreamEtag)
+      : null
+    if (
+      parsed.version !== 1
+      || parsed.normalizerVersion !== PERFORMANCE_NORMALIZER_VERSION
+      || parsed.authUserId !== context.authUserId
+      || parsed.clientId !== context.clientId
+      || parsed.hubAccountId !== context.hubAccountId
+      || upstreamEtag === null
+    ) return null
+    return { upstreamEtag, portalEtag: headerValue! }
+  } catch (error) {
+    if (error instanceof HubRouteError) throw error
+    return null
+  }
+}
+
+function validatedRetryAfter(value: string | null, nowMs: number): string | null {
+  if (!value || value.length > 128 || /[\u0000-\u001f\u007f]/.test(value)) return null
+  if (/^\d{1,6}$/.test(value)) {
+    const seconds = Number(value)
+    return seconds <= 86_400 ? String(seconds) : null
+  }
+  const timestamp = Date.parse(value)
+  return Number.isFinite(timestamp) && timestamp >= nowMs && timestamp <= nowMs + 86_400_000
+    ? value
+    : null
 }
 
 export function compareDatasetAlignment(
@@ -302,6 +405,7 @@ export function compareDatasetAlignment(
 export function createPortfolioDataHubGateway(dependencies: GatewayDependencies = {}) {
   const env = dependencies.env ?? process.env
   const fetchImpl = dependencies.fetch ?? globalThis.fetch
+  const now = dependencies.now ?? Date.now
   const config = readConfig(env)
 
   async function authenticate(req: Request): Promise<{ token: string; user: SupabaseAuthUser; headers: HeadersInit }> {
@@ -557,7 +661,135 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
     return fetchHub(context, accountPath(context, 'ledger-events'), search, parseHubLedgerEventPage)
   }
 
-  return { resolveContext, summary, summaries, positions, latestPositions, ledger, adminReportingCurrencies }
+  async function performance(
+    context: HubRequestContext,
+    ifNoneMatch: string | null,
+  ): Promise<HubPerformanceRouteResult> {
+    const conditional = await parsePerformanceConditionalToken(
+      ifNoneMatch,
+      context,
+      config.hubApiKey,
+    )
+    const headers = new Headers({
+      authorization: `Bearer ${config.hubApiKey}`,
+      accept: 'application/json',
+    })
+    if (conditional) headers.set('if-none-match', conditional.upstreamEtag)
+
+    let response: Response
+    try {
+      response = await fetchWithTimeout(
+        fetchImpl,
+        `${config.hubBaseUrl}${accountPath(context, 'performance/latest')}`,
+        { headers },
+        config.timeoutMs,
+      )
+    } catch (error) {
+      if (error instanceof HubRouteError) throw error
+      throw new HubRouteError(
+        502,
+        'HUB_UNAVAILABLE',
+        'Portfolio Data Hub is unavailable',
+        error,
+        'network',
+      )
+    }
+
+    if (response.status === 304) {
+      if (!conditional) {
+        throw new HubRouteError(
+          502,
+          'HUB_INVALID_RESPONSE',
+          'Portfolio Data Hub returned an unsupported conditional response',
+          undefined,
+          'none',
+        )
+      }
+      return { status: 'not-modified', etag: conditional.portalEtag }
+    }
+
+    if (!response.ok) {
+      const statusClass = response.status >= 500 ? '5xx' : '4xx'
+      if (response.status === 401 || response.status === 403) {
+        throw new HubRouteError(
+          502,
+          'HUB_AUTHORIZATION_FAILED',
+          'Portfolio Data Hub rejected the portal credential',
+          undefined,
+          statusClass,
+        )
+      }
+      if (response.status === 404) {
+        throw new HubRouteError(
+          502,
+          'HUB_ACCOUNT_NOT_FOUND',
+          'The mapped Portfolio Data Hub account was not found',
+          undefined,
+          statusClass,
+        )
+      }
+      if (response.status === 429) {
+        const retryAfter = validatedRetryAfter(response.headers.get('retry-after'), now())
+        throw new HubRouteError(
+          503,
+          'HUB_RATE_LIMITED',
+          'Portfolio Data Hub is rate limited',
+          undefined,
+          statusClass,
+          retryAfter ? { 'retry-after': retryAfter } : {},
+        )
+      }
+      if (response.status === 408 || response.status === 504) {
+        throw new HubRouteError(
+          504,
+          'UPSTREAM_TIMEOUT',
+          'Portfolio Data Hub timed out',
+          undefined,
+          'timeout',
+        )
+      }
+      throw new HubRouteError(
+        502,
+        'HUB_UNAVAILABLE',
+        'Portfolio Data Hub could not provide performance data',
+        undefined,
+        statusClass,
+      )
+    }
+
+    const body = await readJson(response)
+    let data: HubPerformance
+    try {
+      data = parseHubPerformance(body)
+      if (data.accountId !== context.hubAccountId) {
+        throw new Error('Hub response account does not match the mapped account')
+      }
+    } catch (error) {
+      throw new HubRouteError(
+        502,
+        'HUB_INVALID_RESPONSE',
+        'Portfolio Data Hub returned an unsupported performance response',
+        error,
+      )
+    }
+
+    const upstreamEtag = safeUpstreamEtag(response.headers.get('etag'))
+    const etag = upstreamEtag
+      ? await createPerformanceConditionalToken(context, upstreamEtag, config.hubApiKey)
+      : null
+    return { status: 'updated', data, etag }
+  }
+
+  return {
+    resolveContext,
+    summary,
+    summaries,
+    positions,
+    latestPositions,
+    ledger,
+    performance,
+    adminReportingCurrencies,
+  }
 }
 
 export async function handlePortfolioDataHubRequest(
@@ -567,17 +799,58 @@ export async function handlePortfolioDataHubRequest(
 ): Promise<Response> {
   const methodError = methodGuard(req)
   if (methodError) return methodError
+  const now = dependencies.now ?? Date.now
+  const startedAt = now()
+  const correlationId = dataset === 'performance'
+    ? (dependencies.correlationId?.() ?? globalThis.crypto.randomUUID())
+    : null
+  let performanceContext: HubRequestContext | null = null
+
+  const logPerformanceError = (
+    code: HubRouteErrorCode,
+    upstreamStatusClass: HubSafeLogEvent['upstreamStatusClass'],
+  ) => {
+    if (dataset !== 'performance' || correlationId === null) return
+    const event: HubSafeLogEvent = {
+      correlationId,
+      route: 'performance',
+      portalErrorCode: code,
+      upstreamStatusClass,
+      latencyMs: Math.max(0, Math.round(now() - startedAt)),
+    }
+    if (dependencies.logger) dependencies.logger(event)
+    else if (process.env.NODE_ENV !== 'test') console.error(JSON.stringify(event))
+  }
+
   try {
     const gateway = createPortfolioDataHubGateway(dependencies)
     if (dataset === 'admin-reporting-currencies') {
       return json({ data: await gateway.adminReportingCurrencies(req) })
     }
     const context = await gateway.resolveContext(req)
+    if (dataset === 'performance') performanceContext = context
     const requestUrl = new URL(req.url)
     if (dataset === 'summary') return json({ data: await gateway.summary(context) })
     if (dataset === 'summaries') return json({ data: await gateway.summaries(context, requestUrl) })
     if (dataset === 'positions') return json({ data: await gateway.positions(context, requestUrl) })
     if (dataset === 'ledger') return json({ data: await gateway.ledger(context, requestUrl) })
+    if (dataset === 'performance') {
+      const result = await gateway.performance(context, req.headers.get('if-none-match'))
+      if (result.status === 'not-modified') {
+        return new Response(null, {
+          status: 304,
+          headers: {
+            etag: result.etag,
+            'cache-control': 'private, no-store',
+          },
+        })
+      }
+      return json(
+        { data: result.data },
+        200,
+        result.etag ? { etag: result.etag } : {},
+      )
+    }
     const [summary, positions] = await Promise.all([
       gateway.summary(context),
       gateway.latestPositions(context, requestUrl),
@@ -594,9 +867,23 @@ export async function handlePortfolioDataHubRequest(
     })
   } catch (error) {
     if (error instanceof HubRouteError) {
-      return json({ error: { code: error.code, message: error.message } }, error.status)
+      logPerformanceError(error.code, error.upstreamStatusClass)
+      const responseHeaders = new Headers(error.responseHeaders)
+      if (performanceContext) {
+        responseHeaders.set('x-portfolio-hub-account-id', performanceContext.hubAccountId)
+      }
+      return json(
+        { error: { code: error.code, message: error.message } },
+        error.status,
+        responseHeaders,
+      )
     }
     const code = error instanceof ZodError ? 'HUB_INVALID_RESPONSE' : 'HUB_UNAVAILABLE'
-    return json({ error: { code, message: 'The portfolio dataset could not be loaded' } }, 502)
+    logPerformanceError(code, 'none')
+    const responseHeaders: Record<string, string> = {}
+    if (performanceContext) {
+      responseHeaders['x-portfolio-hub-account-id'] = performanceContext.hubAccountId
+    }
+    return json({ error: { code, message: 'The portfolio dataset could not be loaded' } }, 502, responseHeaders)
   }
 }

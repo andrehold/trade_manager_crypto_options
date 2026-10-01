@@ -2,6 +2,7 @@ import type {
   HubLatestPositionPage,
   HubLedgerEvent,
   HubPage,
+  HubPerformance,
   HubPosition,
   HubSummary,
 } from './index'
@@ -58,6 +59,9 @@ export type HubClientErrorCode =
   | 'SUPABASE_UNAVAILABLE'
   | 'HUB_UNAVAILABLE'
   | 'HUB_INVALID_RESPONSE'
+  | 'HUB_AUTHORIZATION_FAILED'
+  | 'HUB_ACCOUNT_NOT_FOUND'
+  | 'HUB_RATE_LIMITED'
   | 'SERVER_MISCONFIGURED'
   | 'FORBIDDEN'
   | 'CLIENT_NOT_FOUND'
@@ -69,6 +73,8 @@ export class PortfolioHubClientError extends Error {
     public readonly code: HubClientErrorCode,
     message: string,
     public readonly status: number | null = null,
+    public readonly retryAt: number | null = null,
+    public readonly mappedAccountId: string | null = null,
   ) {
     super(message)
   }
@@ -85,11 +91,30 @@ function apiErrorCode(value: unknown): HubClientErrorCode {
   const codes: HubClientErrorCode[] = [
     'UNAUTHENTICATED', 'HUB_ACCOUNT_NOT_CONFIGURED', 'CLIENT_NOT_LINKED', 'INVALID_QUERY',
     'UPSTREAM_TIMEOUT', 'SUPABASE_UNAVAILABLE', 'HUB_UNAVAILABLE', 'HUB_INVALID_RESPONSE',
+    'HUB_AUTHORIZATION_FAILED', 'HUB_ACCOUNT_NOT_FOUND', 'HUB_RATE_LIMITED',
     'SERVER_MISCONFIGURED', 'FORBIDDEN', 'CLIENT_NOT_FOUND',
   ]
   return typeof value === 'string' && codes.includes(value as HubClientErrorCode)
     ? value as HubClientErrorCode
     : 'INVALID_RESPONSE'
+}
+
+function validatedRetryAt(value: string | null, nowMs = Date.now()): number | null {
+  if (!value || value.length > 128 || /[\u0000-\u001f\u007f]/.test(value)) return null
+  if (/^\d{1,6}$/.test(value)) {
+    const seconds = Number(value)
+    return seconds <= 86_400 ? nowMs + seconds * 1_000 : null
+  }
+  const timestamp = Date.parse(value)
+  return Number.isFinite(timestamp) && timestamp >= nowMs && timestamp <= nowMs + 86_400_000
+    ? timestamp
+    : null
+}
+
+function validatedMappedAccountId(value: string | null): string | null {
+  return value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+    ? value
+    : null
 }
 
 async function readResponse<T>(response: Response): Promise<T> {
@@ -104,13 +129,22 @@ async function readResponse<T>(response: Response): Promise<T> {
     const message = typeof error?.error.message === 'string'
       ? error.error.message
       : 'The portfolio service could not load this data'
-    throw new PortfolioHubClientError(apiErrorCode(error?.error.code), message, response.status)
+    const code = apiErrorCode(error?.error.code)
+    const retryAt = code === 'HUB_RATE_LIMITED'
+      ? validatedRetryAt(response.headers.get('retry-after'))
+      : null
+    const mappedAccountId = validatedMappedAccountId(response.headers.get('x-portfolio-hub-account-id'))
+    throw new PortfolioHubClientError(code, message, response.status, retryAt, mappedAccountId)
   }
   if (!isRecord(body) || !('data' in body)) {
     throw new PortfolioHubClientError('INVALID_RESPONSE', 'The portfolio service returned an invalid response', response.status)
   }
   return (body as ApiEnvelope<T>).data
 }
+
+export type ConditionalResult<T> =
+  | { status: 'updated'; data: T; etag: string | null }
+  | { status: 'not-modified'; etag: string | null }
 
 /**
  * Calls only the portal's protected server routes. The Hub API key never
@@ -137,6 +171,33 @@ export async function requestPortfolioHub<T>(
 
 export function fetchPortfolioHubOverview(accessToken: string, fetchImpl?: typeof fetch) {
   return requestPortfolioHub<PortfolioHubOverview>('/api/portfolio-data-hub/overview', accessToken, fetchImpl)
+}
+
+export async function fetchPortfolioHubPerformance(
+  accessToken: string,
+  etag: string | null,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ConditionalResult<HubPerformance>> {
+  const headers: Record<string, string> = {
+    authorization: `Bearer ${accessToken}`,
+    accept: 'application/json',
+  }
+  if (etag) headers['if-none-match'] = etag
+
+  let response: Response
+  try {
+    response = await fetchImpl('/api/portfolio-data-hub/performance', { headers })
+  } catch (error) {
+    throw new PortfolioHubClientError(
+      'NETWORK_ERROR',
+      error instanceof Error ? error.message : 'The portfolio service is unavailable',
+    )
+  }
+  if (response.status === 304) {
+    return { status: 'not-modified', etag: response.headers.get('etag') }
+  }
+  const data = await readResponse<HubPerformance>(response)
+  return { status: 'updated', data, etag: response.headers.get('etag') }
 }
 
 export function fetchPortfolioHubSummaries(

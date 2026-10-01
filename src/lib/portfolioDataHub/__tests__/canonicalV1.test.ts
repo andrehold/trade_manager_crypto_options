@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import contractSnapshot from '../contract/openapi.v1.json';
+import performanceContract from '../contract/performance.openapi.json';
 import accountsFixture from '../__fixtures__/accounts.json';
 import deribitSummary from '../__fixtures__/deribit/summary-latest.json';
 import deribitPositions from '../__fixtures__/deribit/positions-latest.json';
@@ -204,5 +205,26 @@ describe('Portfolio Data Hub Canonical Contract v1', () => {
       'canonical_schema_version', 'items', 'snapshot',
     ]);
     expect(contractSnapshot.components.schemas.LedgerEventView.properties.deduplication_key).toBeDefined();
+  });
+
+  it('pins the performance endpoint and its integer-or-null revision contract', () => {
+    const performancePath = performanceContract.paths[
+      '/api/v1/accounts/{account_id}/performance/latest'
+    ];
+    const datapointRef = performancePath?.get.responses['200']
+      ?.content['application/json'].schema.$ref;
+
+    expect(datapointRef).toBe('#/components/schemas/PerformanceDatapointView');
+
+    const datapoint = performanceContract.components.schemas.PerformanceDatapointView;
+    const lineage = performanceContract.components.schemas.PerformanceLineageView;
+    expect(datapoint.properties.revision.anyOf).toEqual([
+      { type: 'integer' },
+      { type: 'null' },
+    ]);
+    expect(lineage.properties.policy_revision.anyOf).toEqual([
+      { type: 'integer' },
+      { type: 'null' },
+    ]);
   });
 });

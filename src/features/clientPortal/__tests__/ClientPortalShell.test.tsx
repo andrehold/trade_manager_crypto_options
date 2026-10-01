@@ -3,12 +3,13 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useClientPositions } from '../useClientPositions'
 import { useSetupPersistence } from '../useSetupPersistence'
-import { usePortfolioDataHub, useReportingCurrencySelection } from '../usePortfolioDataHub'
+import { usePortfolioDataHub, usePortfolioHubPerformance, useReportingCurrencySelection } from '../usePortfolioDataHub'
 import { DEFAULT_RISK_LIMITS } from '../risk/riskLimits'
 import { hasSupabaseClient } from '@/lib/supabase'
 import summaryFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/summary-latest.json'
 import positionsFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/positions-latest.json'
-import { parseHubLatestPositionPage, parseHubSummary } from '@/lib/portfolioDataHub'
+import readyPerformanceFixture from '@/lib/portfolioDataHub/__fixtures__/performance/ready.json'
+import { parseHubLatestPositionPage, parseHubPerformance, parseHubSummary } from '@/lib/portfolioDataHub'
 
 // Recharts' ResponsiveContainer measures 0×0 in jsdom; give it a fixed size.
 vi.mock('recharts', async (importOriginal) => {
@@ -26,6 +27,7 @@ const mockedHook = vi.mocked(useClientPositions)
 
 vi.mock('../usePortfolioDataHub', () => ({
   usePortfolioDataHub: vi.fn(),
+  usePortfolioHubPerformance: vi.fn(),
   useReportingCurrencySelection: vi.fn(),
 }))
 
@@ -71,6 +73,10 @@ const baseSetupPersistence = {
 beforeEach(() => {
   mockedHook.mockReturnValue({ positions: [], loading: false, error: null, reload: vi.fn() })
   vi.mocked(usePortfolioDataHub).mockReturnValue({ state: { status: 'not-configured' }, reload: vi.fn() })
+  vi.mocked(usePortfolioHubPerformance).mockReturnValue({
+    state: { status: 'not-configured', data: null, refreshing: false, refreshError: null, errorCode: null, retryAt: null, canRefresh: false },
+    refresh: vi.fn(),
+  })
   vi.mocked(useReportingCurrencySelection).mockReturnValue({ saving: false, error: null, save: vi.fn() })
   // Reset the persistence mock every test so a per-test override never leaks forward.
   vi.mocked(useSetupPersistence).mockReturnValue(baseSetupPersistence)
@@ -426,5 +432,32 @@ describe('ClientPortalShell', () => {
     expect(saveAuditEvent).toHaveBeenCalled()
     rerender(<ClientPortalShell {...base} hash="#/portal/audit" />)
     expect(screen.getByText(/reviewed & approved v2\.4\.1/i)).toBeInTheDocument()
+  })
+
+  it('passes the frozen performance state and its manual refresh callback into the dashboard', async () => {
+    const refresh = vi.fn()
+    const reload = vi.fn()
+    vi.mocked(hasSupabaseClient).mockReturnValue(true)
+    vi.mocked(usePortfolioDataHub).mockReturnValue({
+      state: {
+        status: 'ready',
+        overview: {
+          summary: parseHubSummary(summaryFixture),
+          positions: { ...parseHubLatestPositionPage(positionsFixture), pageToken: 'signed-page-token' },
+          reportingCurrency: 'USDC', reportingCurrencySource: 'client',
+          alignment: { runAligned: true, mixedAge: false, summaryRunId: summaryFixture.run_id, positionsRunId: positionsFixture.snapshot.run_id, summaryFetchedAt: summaryFixture.fetched_at, positionsFetchedAt: positionsFixture.snapshot.fetched_at },
+        }, history: [], historyError: null,
+      }, reload,
+    })
+    vi.mocked(usePortfolioHubPerformance).mockReturnValue({
+      state: { status: 'ready', data: parseHubPerformance(readyPerformanceFixture), refreshing: false, refreshError: null, errorCode: null, retryAt: null, canRefresh: true },
+      refresh,
+    })
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/dashboard" onSignOut={() => {}} />)
+    await userEvent.click(await screen.findByRole('button', { name: /^refresh$/i }))
+    expect(reload).toHaveBeenCalledOnce()
+    expect(refresh).toHaveBeenCalledOnce()
+    await userEvent.click(await screen.findByRole('button', { name: /refresh performance/i }))
+    expect(refresh).toHaveBeenCalledTimes(2)
   })
 })

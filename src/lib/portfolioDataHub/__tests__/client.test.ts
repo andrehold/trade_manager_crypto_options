@@ -3,12 +3,16 @@ import {
   fetchPortfolioHubLedger,
   fetchPortfolioHubOverview,
   fetchPortfolioHubPositionSnapshot,
+  fetchPortfolioHubPerformance,
   fetchPortfolioHubSummaries,
   fetchAdminReportingCurrencies,
 } from '../client'
 
-function response(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
+function response(body: unknown, status = 200, headers: HeadersInit = {}) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'content-type': 'application/json', ...headers },
+  })
 }
 
 describe('Portfolio Data Hub browser client', () => {
@@ -63,5 +67,101 @@ describe('Portfolio Data Hub browser client', () => {
       '/api/portfolio-data-hub/admin/reporting-currencies?client_id=038cd955-e117-4596-aaee-b46360dcf138',
       { headers: { authorization: 'Bearer current-access-token', accept: 'application/json' } },
     )
+  })
+
+  it('calls only the performance portal route with bearer auth and an optional matching ETag', async () => {
+    const data = { accountId: '00000000-0000-4000-8000-000000000001' }
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response({ data }, 200, { etag: '"portal-v1"' }))
+      .mockResolvedValueOnce(response({ data }, 200, { etag: '"portal-v2"' }))
+
+    await fetchPortfolioHubPerformance('current-access-token', null, fetchMock)
+    await fetchPortfolioHubPerformance('current-access-token', '"matching-cache-etag"', fetchMock)
+
+    expect(fetchMock.mock.calls[0]).toEqual([
+      '/api/portfolio-data-hub/performance',
+      { headers: { authorization: 'Bearer current-access-token', accept: 'application/json' } },
+    ])
+    expect(fetchMock.mock.calls[1]).toEqual([
+      '/api/portfolio-data-hub/performance',
+      {
+        headers: {
+          authorization: 'Bearer current-access-token',
+          accept: 'application/json',
+          'if-none-match': '"matching-cache-etag"',
+        },
+      },
+    ])
+  })
+
+  it('returns not-modified for 304 without attempting to read JSON', async () => {
+    const notModified = new Response(null, { status: 304, headers: { etag: '"portal-v1"' } })
+    const jsonSpy = vi.spyOn(notModified, 'json')
+    const result = await fetchPortfolioHubPerformance(
+      'current-access-token',
+      '"portal-v1"',
+      vi.fn<typeof fetch>().mockResolvedValue(notModified),
+    )
+
+    expect(result).toEqual({ status: 'not-modified', etag: '"portal-v1"' })
+    expect(jsonSpy).not.toHaveBeenCalled()
+  })
+
+  it('returns updated normalized data and its portal ETag', async () => {
+    const data = { accountId: '00000000-0000-4000-8000-000000000001' }
+    const result = await fetchPortfolioHubPerformance(
+      'current-access-token',
+      null,
+      vi.fn<typeof fetch>().mockResolvedValue(response({ data }, 200, { etag: '"portal-v1"' })),
+    )
+
+    expect(result).toEqual({ status: 'updated', data, etag: '"portal-v1"' })
+  })
+
+  it('maps permanent performance failures and validates rate-limit Retry-After', async () => {
+    const permanent = vi.fn<typeof fetch>().mockResolvedValue(response({
+      error: { code: 'HUB_ACCOUNT_NOT_FOUND', message: 'Mapped account not found' },
+    }, 502))
+    await expect(fetchPortfolioHubPerformance('token', null, permanent)).rejects.toMatchObject({
+      code: 'HUB_ACCOUNT_NOT_FOUND',
+      status: 502,
+      retryAt: null,
+    })
+
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-30T10:00:00Z'))
+    const limited = vi.fn<typeof fetch>().mockResolvedValue(response({
+      error: { code: 'HUB_RATE_LIMITED', message: 'Try later' },
+    }, 503, { 'retry-after': '120' }))
+    await expect(fetchPortfolioHubPerformance('token', null, limited)).rejects.toMatchObject({
+      code: 'HUB_RATE_LIMITED',
+      status: 503,
+      retryAt: Date.parse('2026-09-30T10:02:00Z'),
+    })
+
+    const invalid = vi.fn<typeof fetch>().mockResolvedValue(response({
+      error: { code: 'HUB_RATE_LIMITED', message: 'Try later' },
+    }, 503, { 'retry-after': 'not-valid' }))
+    await expect(fetchPortfolioHubPerformance('token', null, invalid)).rejects.toMatchObject({
+      code: 'HUB_RATE_LIMITED',
+      retryAt: null,
+    })
+    vi.useRealTimers()
+  })
+
+  it('accepts only a valid server-confirmed mapped account on error responses', async () => {
+    const valid = vi.fn<typeof fetch>().mockResolvedValue(response({
+      error: { code: 'HUB_UNAVAILABLE', message: 'Hub unavailable' },
+    }, 502, { 'x-portfolio-hub-account-id': '30000000-0000-4000-8000-000000000001' }))
+    await expect(fetchPortfolioHubPerformance('token', null, valid)).rejects.toMatchObject({
+      mappedAccountId: '30000000-0000-4000-8000-000000000001',
+    })
+
+    const invalid = vi.fn<typeof fetch>().mockResolvedValue(response({
+      error: { code: 'HUB_UNAVAILABLE', message: 'Hub unavailable' },
+    }, 502, { 'x-portfolio-hub-account-id': 'not-an-account-id' }))
+    await expect(fetchPortfolioHubPerformance('token', null, invalid)).rejects.toMatchObject({
+      mappedAccountId: null,
+    })
   })
 })

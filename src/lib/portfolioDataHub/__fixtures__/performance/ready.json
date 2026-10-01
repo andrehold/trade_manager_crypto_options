@@ -1,0 +1,24 @@
+{
+  "performance_schema_version": "1.0",
+  "account_id": "00000000-0000-4000-8000-000000000001",
+  "reporting_currency": "USD",
+  "equity": "10000.00",
+  "opening_equity": "9000.00",
+  "performance": {
+    "opening_equity": "9000.00",
+    "contributions": "200.00",
+    "distributions": "50.00",
+    "transfers_in": "800.00",
+    "transfers_out": "100.00",
+    "net_capital_flow": "850.00",
+    "pnl": "150.00"
+  },
+  "quality": {
+    "equity_status": "ready",
+    "performance_status": "ready",
+    "freshness": "fresh",
+    "recalculation_pending": false,
+    "reason_codes": []
+  },
+  "lineage": {}
+}

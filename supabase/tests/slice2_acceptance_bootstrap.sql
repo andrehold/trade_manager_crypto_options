@@ -6,6 +6,9 @@ create extension if not exists pgcrypto;
 
 do $$
 begin
+  if not exists (select 1 from pg_roles where rolname = 'anon') then
+    create role anon nologin;
+  end if;
   if not exists (select 1 from pg_roles where rolname = 'authenticated') then
     create role authenticated nologin;
   end if;
@@ -15,6 +18,7 @@ begin
 end;
 $$;
 
+grant anon to portfolio_data_hub;
 grant authenticated to portfolio_data_hub;
 grant service_role to portfolio_data_hub;
 
@@ -140,5 +144,14 @@ on conflict do nothing;
 
 grant usage on schema public, auth to authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
+-- Later acceptance migrations may add security-sensitive append-only tables.
+-- Preserve their explicit grants when this persistent bootstrap is rerun.
+do $$
+begin
+  if to_regclass('public.auth_identity_admin_audit') is not null then
+    revoke insert, update, delete on public.auth_identity_admin_audit from authenticated;
+  end if;
+end;
+$$;
 grant execute on function auth.jwt(), auth.role(), auth.uid() to authenticated;
 grant execute on function public._slice2_assert(boolean, text) to authenticated;

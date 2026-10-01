@@ -2,13 +2,15 @@ import React from 'react'
 import {
   fetchPortfolioHubLedger,
   fetchPortfolioHubOverview,
+  fetchPortfolioHubPerformance,
   fetchPortfolioHubPositionSnapshot,
   fetchPortfolioHubSummaries,
   PortfolioHubClientError,
   type HubLedgerFilters,
+  type HubClientErrorCode,
   type PortfolioHubOverview,
 } from '@/lib/portfolioDataHub/client'
-import type { HubLedgerEvent, HubPosition, HubSummary } from '@/lib/portfolioDataHub'
+import type { HubLedgerEvent, HubPerformance, HubPosition, HubSummary } from '@/lib/portfolioDataHub'
 import { getSupabaseClient, hasSupabaseClient } from '@/lib/supabase'
 import { setOwnReportingCurrency } from '@/lib/clientPortal/reportingCurrencyRepo'
 
@@ -47,6 +49,268 @@ async function currentSessionIdentity(): Promise<string> {
   // A normal Supabase token refresh changes access_token without changing the signed-in user.
   // Prefer the stable auth user ID so that only an actual account switch invalidates this save.
   return data.session.user?.id ?? data.session.access_token
+}
+
+type PerformanceIdentity = {
+  userId: string
+  clientId: string
+  accessToken: string
+}
+
+type PerformanceCacheEntry = Pick<PerformanceIdentity, 'userId' | 'clientId'> & {
+  accountId: string
+  data: HubPerformance
+  etag: string | null
+}
+
+export type PortfolioHubPerformanceState = {
+  status: 'not-configured' | 'loading' | 'ready' | 'unavailable'
+  data: HubPerformance | null
+  refreshing: boolean
+  refreshError: string | null
+  errorCode: HubClientErrorCode | null
+  retryAt: number | null
+  canRefresh: boolean
+}
+
+const performanceCache = new Map<string, PerformanceCacheEntry>()
+
+function performanceIdentityKey(identity: Pick<PerformanceIdentity, 'userId' | 'clientId'>): string {
+  return `${identity.userId}\u0000${identity.clientId}`
+}
+
+function performanceCacheKey(entry: Pick<PerformanceCacheEntry, 'userId' | 'clientId' | 'accountId'>): string {
+  return `${performanceIdentityKey(entry)}\u0000${entry.accountId}`
+}
+
+function cachedPerformance(identity: PerformanceIdentity): PerformanceCacheEntry | null {
+  const prefix = `${performanceIdentityKey(identity)}\u0000`
+  for (const [key, entry] of performanceCache) {
+    if (key.startsWith(prefix)) return entry
+  }
+  return null
+}
+
+function evictPerformanceIdentity(identityKey: string): void {
+  const prefix = `${identityKey}\u0000`
+  for (const key of performanceCache.keys()) {
+    if (key.startsWith(prefix)) performanceCache.delete(key)
+  }
+}
+
+export function clearPortfolioPerformanceCache(): void {
+  performanceCache.clear()
+}
+
+async function currentPerformanceIdentity(): Promise<PerformanceIdentity> {
+  const { data, error } = await getSupabaseClient().auth.getSession()
+  const session = data.session
+  if (error || !session?.access_token || !session.user?.id) {
+    throw new PortfolioHubClientError('UNAUTHENTICATED', 'Your session has expired. Please sign in again.')
+  }
+  const clientId = session.user.app_metadata?.client_id
+  if (typeof clientId !== 'string' || clientId.length === 0) {
+    throw new PortfolioHubClientError('CLIENT_NOT_LINKED', 'Your session is not linked to a portal client.')
+  }
+  return { userId: session.user.id, clientId, accessToken: session.access_token }
+}
+
+const PERMANENT_PERFORMANCE_ERRORS = new Set<HubClientErrorCode>([
+  'UNAUTHENTICATED',
+  'CLIENT_NOT_LINKED',
+  'HUB_ACCOUNT_NOT_CONFIGURED',
+  'HUB_AUTHORIZATION_FAILED',
+  'HUB_ACCOUNT_NOT_FOUND',
+  'HUB_INVALID_RESPONSE',
+  'INVALID_RESPONSE',
+  'FORBIDDEN',
+])
+
+function validRetryAt(error: PortfolioHubClientError): number | null {
+  const now = Date.now()
+  return error.code === 'HUB_RATE_LIMITED'
+    && error.retryAt !== null
+    && Number.isFinite(error.retryAt)
+    && error.retryAt > now
+    && error.retryAt <= now + 86_400_000
+    ? error.retryAt
+    : null
+}
+
+const initialPerformanceState = (): PortfolioHubPerformanceState => ({
+  status: hasSupabaseClient() ? 'loading' : 'not-configured',
+  data: null,
+  refreshing: false,
+  refreshError: null,
+  errorCode: null,
+  retryAt: null,
+  canRefresh: hasSupabaseClient(),
+})
+
+/** Initial load plus explicit refresh only; there is no polling or focus-triggered fetch. */
+export function usePortfolioHubPerformance() {
+  const [state, setState] = React.useState<PortfolioHubPerformanceState>(initialPerformanceState)
+  const mounted = React.useRef(true)
+  const generation = React.useRef(0)
+  const activeIdentity = React.useRef<string | null>(null)
+  const inFlightIdentity = React.useRef<string | null>(null)
+
+  React.useEffect(() => () => {
+    mounted.current = false
+    generation.current += 1
+    if (activeIdentity.current) evictPerformanceIdentity(activeIdentity.current)
+    activeIdentity.current = null
+  }, [])
+
+  const load = React.useCallback(async () => {
+    if (!hasSupabaseClient()) {
+      if (activeIdentity.current) evictPerformanceIdentity(activeIdentity.current)
+      activeIdentity.current = null
+      if (mounted.current) setState(initialPerformanceState())
+      return
+    }
+
+    let identity: PerformanceIdentity
+    try {
+      identity = await currentPerformanceIdentity()
+    } catch (error) {
+      generation.current += 1
+      if (activeIdentity.current) evictPerformanceIdentity(activeIdentity.current)
+      activeIdentity.current = null
+      inFlightIdentity.current = null
+      if (!mounted.current) return
+      const clientError = error instanceof PortfolioHubClientError ? error : null
+      setState({
+        status: 'unavailable',
+        data: null,
+        refreshing: false,
+        refreshError: error instanceof Error ? error.message : 'Portfolio performance is unavailable',
+        errorCode: clientError?.code ?? 'NETWORK_ERROR',
+        retryAt: null,
+        canRefresh: false,
+      })
+      return
+    }
+
+    if (!mounted.current) return
+
+    const identityKey = performanceIdentityKey(identity)
+    if (activeIdentity.current !== identityKey) {
+      generation.current += 1
+      if (activeIdentity.current) evictPerformanceIdentity(activeIdentity.current)
+      activeIdentity.current = identityKey
+      setState(initialPerformanceState())
+    }
+    if (inFlightIdentity.current === identityKey) return
+
+    const requestGeneration = ++generation.current
+    inFlightIdentity.current = identityKey
+    const cached = cachedPerformance(identity)
+    if (mounted.current) {
+      setState(cached
+        ? {
+            status: 'ready', data: cached.data, refreshing: true, refreshError: null,
+            errorCode: null, retryAt: null, canRefresh: false,
+          }
+        : {
+            status: 'loading', data: null, refreshing: true, refreshError: null,
+            errorCode: null, retryAt: null, canRefresh: false,
+          })
+    }
+
+    try {
+      let result = await fetchPortfolioHubPerformance(identity.accessToken, cached?.etag ?? null)
+      if (result.status === 'not-modified' && cached === null) {
+        result = await fetchPortfolioHubPerformance(identity.accessToken, null)
+      }
+      if (
+        !mounted.current
+        || generation.current !== requestGeneration
+        || activeIdentity.current !== identityKey
+      ) return
+
+      if (result.status === 'not-modified') {
+        if (cached === null) throw new PortfolioHubClientError(
+          'INVALID_RESPONSE',
+          'Portfolio performance could not recover from an empty conditional response.',
+        )
+        const preserved = { ...cached, etag: result.etag ?? cached.etag }
+        performanceCache.set(performanceCacheKey(preserved), preserved)
+        setState({
+          status: 'ready', data: cached.data, refreshing: false, refreshError: null,
+          errorCode: null, retryAt: null, canRefresh: true,
+        })
+        return
+      }
+
+      evictPerformanceIdentity(identityKey)
+      const entry: PerformanceCacheEntry = {
+        userId: identity.userId,
+        clientId: identity.clientId,
+        accountId: result.data.accountId,
+        data: result.data,
+        etag: result.etag,
+      }
+      performanceCache.set(performanceCacheKey(entry), entry)
+      setState({
+        status: 'ready', data: result.data, refreshing: false, refreshError: null,
+        errorCode: null, retryAt: null, canRefresh: true,
+      })
+    } catch (error) {
+      if (
+        !mounted.current
+        || generation.current !== requestGeneration
+        || activeIdentity.current !== identityKey
+      ) return
+      const clientError = error instanceof PortfolioHubClientError ? error : null
+      const retryAt = clientError ? validRetryAt(clientError) : null
+      const latest = cachedPerformance(identity)
+      const message = error instanceof Error ? error.message : 'Portfolio performance is unavailable'
+      const permanent = clientError ? PERMANENT_PERFORMANCE_ERRORS.has(clientError.code) : false
+      const currentAccountConfirmed = latest !== null
+        && clientError?.mappedAccountId === latest.accountId
+      const retained = !permanent && currentAccountConfirmed ? latest : null
+      if (retained === null) evictPerformanceIdentity(identityKey)
+      setState({
+        status: retained ? 'ready' : 'unavailable',
+        data: retained?.data ?? null,
+        refreshing: false,
+        refreshError: message,
+        errorCode: clientError?.code ?? 'NETWORK_ERROR',
+        retryAt,
+        canRefresh: !permanent && retryAt === null,
+      })
+    } finally {
+      if (inFlightIdentity.current === identityKey) inFlightIdentity.current = null
+    }
+  }, [])
+
+  React.useEffect(() => { void load() }, [load])
+
+  React.useEffect(() => {
+    if (state.retryAt === null) return
+    const delay = state.retryAt - Date.now()
+    if (delay <= 0) {
+      setState((current) => ({ ...current, retryAt: null, canRefresh: true }))
+      return
+    }
+    const timeout = setTimeout(() => {
+      setState((current) => (
+        current.retryAt === state.retryAt
+          ? { ...current, retryAt: null, canRefresh: true }
+          : current
+      ))
+    }, delay)
+    return () => clearTimeout(timeout)
+  }, [state.retryAt])
+
+  const refresh = React.useCallback(async () => {
+    if (state.retryAt !== null && Date.now() < state.retryAt) return
+    if (!state.canRefresh && state.retryAt === null && !state.refreshing) return
+    await load()
+  }, [load, state.canRefresh, state.refreshing, state.retryAt])
+
+  return { state, refresh }
 }
 
 /** Fetches the independently-provenanced summary and position datasets together. */

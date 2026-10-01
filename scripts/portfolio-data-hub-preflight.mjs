@@ -2,7 +2,9 @@
 
 /**
  * Checks deployment configuration without contacting the Hub or emitting any
- * values. It is intentionally safe to run in CI logs and on a Vercel build.
+ * values. It checks local configuration placement and shape only; it does not
+ * contact the Hub or prove the configured key's permissions. It is safe to run
+ * in CI logs and on a Vercel build.
  */
 export function evaluateHubPreflight(env, { production = false } = {}) {
   const errors = []
