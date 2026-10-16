@@ -474,32 +474,64 @@ describe('mapped performance gateway', () => {
     [504, 504, 'UPSTREAM_TIMEOUT'],
     [500, 502, 'HUB_UNAVAILABLE'],
   ] as const)('maps Hub %s to portal %s %s', async (hubStatus, portalStatus, code) => {
+    const fetchMock = performanceGatewayFetch({ status: hubStatus, body: { detail: 'not exposed' } })
     const result = await handlePortfolioDataHubRequest(
       request('/api/portfolio-data-hub/performance'),
       'performance',
-      { env, fetch: performanceGatewayFetch({ status: hubStatus, body: { detail: 'not exposed' } }) },
+      { env, fetch: fetchMock, sleep: async () => {} },
     )
 
     expect(result.status).toBe(portalStatus)
     expect(result.headers.get('x-portfolio-hub-account-id')).toBe(hubAccountId)
     expect(await result.json()).toMatchObject({ error: { code } })
+    expect(fetchMock).toHaveBeenCalledTimes([401, 403, 404].includes(hubStatus) ? 3 : 5)
+  })
+
+  it.each([408, 429, 500] as const)('retries transient Hub %s responses with bounded backoff', async (hubStatus) => {
+    let upstreamAttempts = 0
+    const sleep = vi.fn(async () => {})
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/auth/v1/user')) return response({ id: authUserId })
+      if (url.includes('/rest/v1/clients?')) return response([profile()])
+      upstreamAttempts += 1
+      return upstreamAttempts < 3
+        ? response({ detail: 'transient' }, hubStatus)
+        : response(performanceBody(performanceReadyFixture), 200, { etag: '"hub-performance-v2"' })
+    })
+
+    const result = await handlePortfolioDataHubRequest(
+      request('/api/portfolio-data-hub/performance'),
+      'performance',
+      { env, fetch: fetchMock, sleep, random: () => 0.5 },
+    )
+
+    expect(result.status).toBe(200)
+    expect(upstreamAttempts).toBe(3)
+    expect(sleep.mock.calls).toEqual([[100], [200]])
   })
 
   it('maps Hub 429 and forwards only a validated Retry-After value', async () => {
+    const validFetch = performanceGatewayFetch({ status: 429, headers: { 'retry-after': '120' } })
     const valid = await handlePortfolioDataHubRequest(
       request('/api/portfolio-data-hub/performance'),
       'performance',
-      { env, fetch: performanceGatewayFetch({ status: 429, headers: { 'retry-after': '120' } }) },
+      { env, fetch: validFetch },
     )
     expect(valid.status).toBe(503)
     expect(valid.headers.get('retry-after')).toBe('120')
     expect(valid.headers.get('x-portfolio-hub-account-id')).toBe(hubAccountId)
     expect(await valid.json()).toMatchObject({ error: { code: 'HUB_RATE_LIMITED' } })
+    expect(validFetch).toHaveBeenCalledTimes(3)
 
     const invalid = await handlePortfolioDataHubRequest(
       request('/api/portfolio-data-hub/performance'),
       'performance',
-      { env, fetch: performanceGatewayFetch({ status: 429, headers: { 'retry-after': 'tomorrow-ish' } }) },
+      {
+        env,
+        fetch: performanceGatewayFetch({ status: 429, headers: { 'retry-after': 'tomorrow-ish' } }),
+        sleep: async () => {},
+      },
     )
     expect(invalid.status).toBe(503)
     expect(invalid.headers.has('retry-after')).toBe(false)
@@ -691,6 +723,7 @@ describe('mapped performance gateway', () => {
         logger,
         correlationId: () => 'correlation-test',
         now: () => 1_000,
+        sleep: async () => {},
       },
     )
 

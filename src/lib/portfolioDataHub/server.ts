@@ -15,6 +15,8 @@ import {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const DEFAULT_TIMEOUT_MS = 10_000
+const PERFORMANCE_MAX_ATTEMPTS = 3
+const PERFORMANCE_RETRY_BASE_MS = 100
 
 type RuntimeEnv = Record<string, string | undefined>
 
@@ -123,6 +125,9 @@ export type GatewayDependencies = {
   logger?: (event: HubSafeLogEvent) => void
   correlationId?: () => string
   now?: () => number
+  retryNow?: () => number
+  random?: () => number
+  sleep?: (delayMs: number) => Promise<void>
 }
 
 export type HubSafeLogEvent = {
@@ -390,6 +395,13 @@ function validatedRetryAfter(value: string | null, nowMs: number): string | null
     : null
 }
 
+function retryAfterDelayMs(value: string | null, nowMs: number): number | null {
+  const validated = validatedRetryAfter(value, nowMs)
+  if (validated === null) return null
+  if (/^\d+$/.test(validated)) return Number(validated) * 1_000
+  return Math.max(0, Date.parse(validated) - nowMs)
+}
+
 export function compareDatasetAlignment(
   summary: HubSummary,
   positions: HubLatestPositionPage,
@@ -409,6 +421,11 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
   const env = dependencies.env ?? process.env
   const fetchImpl = dependencies.fetch ?? globalThis.fetch
   const now = dependencies.now ?? Date.now
+  const retryNow = dependencies.retryNow ?? Date.now
+  const random = dependencies.random ?? Math.random
+  const sleep = dependencies.sleep ?? ((delayMs: number) => new Promise<void>((resolve) => {
+    setTimeout(resolve, delayMs)
+  }))
   const config = readConfig(env)
 
   async function authenticate(req: Request): Promise<{ token: string; user: SupabaseAuthUser; headers: HeadersInit }> {
@@ -679,14 +696,32 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
     })
     if (conditional) headers.set('if-none-match', conditional.upstreamEtag)
 
+    const performanceUrl = `${config.hubBaseUrl}${accountPath(context, 'performance/lifetime/latest')}`
+    const retryStartedAt = retryNow()
     let response: Response
     try {
-      response = await fetchWithTimeout(
-        fetchImpl,
-        `${config.hubBaseUrl}${accountPath(context, 'performance/lifetime/latest')}`,
-        { headers },
-        config.timeoutMs,
-      )
+      let attempt = 0
+      while (true) {
+        attempt += 1
+        const elapsed = Math.max(0, retryNow() - retryStartedAt)
+        const remainingMs = Math.max(1, config.timeoutMs - elapsed)
+        response = await fetchWithTimeout(fetchImpl, performanceUrl, { headers }, remainingMs)
+        const retryableStatus = response.status === 408
+          || response.status === 429
+          || response.status >= 500
+        if (!retryableStatus || attempt >= PERFORMANCE_MAX_ATTEMPTS) break
+
+        const exponentialDelay = PERFORMANCE_RETRY_BASE_MS * 2 ** (attempt - 1)
+        const jitteredDelay = Math.round(exponentialDelay * (0.75 + random() * 0.5))
+        const retryAfterDelay = response.status === 429
+          ? retryAfterDelayMs(response.headers.get('retry-after'), retryNow())
+          : null
+        const delayMs = retryAfterDelay ?? jitteredDelay
+        const remainingAfterResponse = config.timeoutMs - Math.max(0, retryNow() - retryStartedAt)
+        if (delayMs >= remainingAfterResponse) break
+        await response.body?.cancel()
+        await sleep(delayMs)
+      }
     } catch (error) {
       if (error instanceof HubRouteError) throw error
       throw new HubRouteError(
