@@ -1,0 +1,36 @@
+{
+  "performance_schema_version": "1.0",
+  "id": null,
+  "account_id": "00000000-0000-4000-8000-000000000001",
+  "revision": null,
+  "as_of": null,
+  "time_basis": "venue_observed",
+  "computed_at": null,
+  "reporting_currency": null,
+  "equity": null,
+  "opening_equity": null,
+  "performance": null,
+  "quality": {
+    "equity_status": "unavailable",
+    "performance_status": "unavailable",
+    "freshness": "unknown",
+    "recalculation_pending": false,
+    "unresolved_movement_count": 0,
+    "ledger_coverage_from": null,
+    "ledger_coverage_through": null,
+    "reason_codes": [
+      "policy_not_configured"
+    ],
+    "details": {}
+  },
+  "lineage": {
+    "summary_snapshot_id": null,
+    "lifetime_anchor_id": null,
+    "start_event_id": null,
+    "start_at": null,
+    "opening_basis": null,
+    "canonical_input_sequence": 0,
+    "classification_sequence": 0,
+    "calculation_version": null
+  }
+}

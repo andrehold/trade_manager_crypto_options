@@ -1,0 +1,42 @@
+{
+  "performance_schema_version": "1.0",
+  "id": "10000000-0000-4000-8000-000000000002",
+  "account_id": "00000000-0000-4000-8000-000000000001",
+  "revision": 12,
+  "as_of": "2026-10-15T12:00:00Z",
+  "time_basis": "venue_observed",
+  "computed_at": "2026-10-15T12:00:03Z",
+  "reporting_currency": "USD",
+  "equity": "10000.00",
+  "opening_equity": "9000.00",
+  "performance": {
+    "opening_equity": "9000.00",
+    "contributions": "200.00",
+    "distributions": "50.00",
+    "transfers_in": "800.00",
+    "transfers_out": "100.00",
+    "net_capital_flow": "850.00",
+    "pnl": "150.00"
+  },
+  "quality": {
+    "equity_status": "ready",
+    "performance_status": "ready",
+    "freshness": "fresh",
+    "recalculation_pending": false,
+    "unresolved_movement_count": 0,
+    "ledger_coverage_from": "2026-01-01T00:00:00Z",
+    "ledger_coverage_through": "2026-10-15T12:00:00Z",
+    "reason_codes": [],
+    "details": {}
+  },
+  "lineage": {
+    "summary_snapshot_id": "10000000-0000-4000-8000-000000000003",
+    "lifetime_anchor_id": "10000000-0000-4000-8000-000000000004",
+    "start_event_id": "10000000-0000-4000-8000-000000000005",
+    "start_at": "2026-01-01T00:00:00Z",
+    "opening_basis": "reviewed_source",
+    "canonical_input_sequence": 2400,
+    "classification_sequence": 144,
+    "calculation_version": "performance-v1"
+  }
+}
