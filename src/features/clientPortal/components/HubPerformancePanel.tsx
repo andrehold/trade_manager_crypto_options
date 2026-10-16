@@ -9,7 +9,7 @@ import {
   type HubLifetimePerformance,
   type HubPerformanceStatus,
 } from '@/lib/portfolioDataHub'
-import type { PortfolioHubPerformanceState } from '../usePortfolioDataHub'
+import type { PortfolioHubLifetimePerformanceState } from '../usePortfolioDataHub'
 import { formatPortfolioValue } from './portfolioFormatters'
 
 const REASON_COPY: Record<string, string> = {
@@ -112,7 +112,7 @@ function QualityProvenance({ data }: { data: HubLifetimePerformance }) {
   )
 }
 
-function RefreshButton({ state, onRefresh }: { state: PortfolioHubPerformanceState; onRefresh: () => void }) {
+function RefreshButton({ state, onRefresh }: { state: PortfolioHubLifetimePerformanceState; onRefresh: () => void }) {
   const rateLimited = state.retryAt !== null && state.retryAt > Date.now()
   const disabled = state.refreshing || !state.canRefresh
   return (
@@ -127,7 +127,7 @@ function RefreshButton({ state, onRefresh }: { state: PortfolioHubPerformanceSta
 
 /** A pure presentation boundary for normalized, account-scoped Hub performance data. */
 export function HubPerformancePanel({ state, onRefresh }: {
-  state: PortfolioHubPerformanceState
+  state: PortfolioHubLifetimePerformanceState
   onRefresh: () => void
 }) {
   if (state.status === 'loading' && state.data === null) {

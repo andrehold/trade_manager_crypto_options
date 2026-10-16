@@ -7,9 +7,9 @@ import ledgerFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/ledger-ev
 import readyPerformanceFixture from '@/lib/portfolioDataHub/__fixtures__/performance/lifetime-ready.json'
 import provisionalPerformanceFixture from '@/lib/portfolioDataHub/__fixtures__/performance/lifetime-provisional.json'
 import unavailablePerformanceFixture from '@/lib/portfolioDataHub/__fixtures__/performance/lifetime-unavailable.json'
-import { parseHubLatestPositionPage, parseHubLedgerEventPage, parseHubPerformance, parseHubSummary } from '@/lib/portfolioDataHub'
+import { parseHubLatestPositionPage, parseHubLedgerEventPage, parseHubLifetimePerformance, parseHubSummary } from '@/lib/portfolioDataHub'
 import type { PortfolioHubOverview } from '@/lib/portfolioDataHub/client'
-import type { PortfolioHubPerformanceState } from '../../usePortfolioDataHub'
+import type { PortfolioHubLifetimePerformanceState } from '../../usePortfolioDataHub'
 
 vi.mock('../../usePortfolioDataHub', () => ({ usePortfolioHubLedger: vi.fn(), usePortfolioHubPositions: vi.fn() }))
 vi.mock('recharts', async (importOriginal) => {
@@ -50,7 +50,7 @@ const dashboardActions = {
   onSaveAccountCurrency: () => {},
 }
 
-function performanceState(data = parseHubPerformance(readyPerformanceFixture), overrides: Partial<PortfolioHubPerformanceState> = {}): PortfolioHubPerformanceState {
+function performanceState(data = parseHubLifetimePerformance(readyPerformanceFixture), overrides: Partial<PortfolioHubLifetimePerformanceState> = {}): PortfolioHubLifetimePerformanceState {
   return {
     status: 'ready', data, refreshing: false, refreshError: null,
     errorCode: null, retryAt: null, canRefresh: true,
@@ -335,7 +335,7 @@ describe('Hub-backed portfolio views', () => {
   })
 
   it('keeps ready equity visible when performance is unavailable, and never fills unavailable values from the summary', () => {
-    const data = parseHubPerformance(unavailablePerformanceFixture)
+    const data = parseHubLifetimePerformance(unavailablePerformanceFixture)
     data.quality.equityStatus = 'ready'
     data.equity = '125.5' as typeof data.equity
     data.reportingCurrency = 'USDC'
@@ -347,7 +347,7 @@ describe('Hub-backed portfolio views', () => {
   })
 
   it('renders an unavailable Hub response as a valid state with its reviewed reason, not as fabricated data', () => {
-    render(<HubPerformancePanel state={performanceState(parseHubPerformance(unavailablePerformanceFixture))} onRefresh={() => {}} />)
+    render(<HubPerformancePanel state={performanceState(parseHubLifetimePerformance(unavailablePerformanceFixture))} onRefresh={() => {}} />)
 
     expect(screen.getAllByText('Unavailable')).toHaveLength(2)
     expect(screen.getByText('Performance calculation is not configured for this account.')).toBeInTheDocument()
@@ -368,7 +368,7 @@ describe('Hub-backed portfolio views', () => {
   })
 
   it('keeps performance visible when equity is unavailable without substituting summary equity', () => {
-    const data = parseHubPerformance(readyPerformanceFixture)
+    const data = parseHubLifetimePerformance(readyPerformanceFixture)
     data.quality.equityStatus = 'unavailable'
     data.equity = null
     render(<HubPerformancePanel state={performanceState(data)} onRefresh={() => {}} />)
@@ -379,7 +379,7 @@ describe('Hub-backed portfolio views', () => {
   })
 
   it('does not render summary equity beside an authoritative unavailable equity state', () => {
-    const data = parseHubPerformance(readyPerformanceFixture)
+    const data = parseHubLifetimePerformance(readyPerformanceFixture)
     data.quality.equityStatus = 'unavailable'
     data.equity = null
     render(
@@ -411,7 +411,7 @@ describe('Hub-backed portfolio views', () => {
   })
 
   it('renders ready and provisional values with reviewed reasons, unresolved movements, and provenance', () => {
-    const data = parseHubPerformance(provisionalPerformanceFixture)
+    const data = parseHubLifetimePerformance(provisionalPerformanceFixture)
     data.quality.unresolvedMovementCount = 2
     render(<HubPerformancePanel state={performanceState(data)} onRefresh={() => {}} />)
 
@@ -426,7 +426,7 @@ describe('Hub-backed portfolio views', () => {
     const statuses = ['ready', 'provisional', 'unavailable'] as const
     for (const equityStatus of statuses) {
       for (const performanceStatus of statuses) {
-        const data = parseHubPerformance(readyPerformanceFixture)
+        const data = parseHubLifetimePerformance(readyPerformanceFixture)
         data.quality.equityStatus = equityStatus
         data.quality.performanceStatus = performanceStatus
         data.quality.freshness = equityStatus === 'ready' ? 'stale' : 'unknown'
@@ -450,7 +450,7 @@ describe('Hub-backed portfolio views', () => {
   })
 
   it('preserves null and exact zero while using nested lifetime opening equity', () => {
-    const data = parseHubPerformance(readyPerformanceFixture)
+    const data = parseHubLifetimePerformance(readyPerformanceFixture)
     data.equity = null
     data.openingEquity = '0' as typeof data.openingEquity
     const totals = data.performance
@@ -465,7 +465,7 @@ describe('Hub-backed portfolio views', () => {
   })
 
   it('uses generic safe copy for unknown reasons and never exposes opaque details', () => {
-    const data = parseHubPerformance(readyPerformanceFixture)
+    const data = parseHubLifetimePerformance(readyPerformanceFixture)
     data.quality.reasonCodes = ['future_internal_reason']
     ;(data.quality as typeof data.quality & { details?: unknown }).details = { secret: 'do-not-render' }
     render(<HubPerformancePanel state={performanceState(data)} onRefresh={() => {}} />)
@@ -486,7 +486,7 @@ describe('Hub-backed portfolio views', () => {
     ['recalculation_disabled', 'Performance recalculation is disabled for this account.'],
     ['projection_not_published', 'A lifetime performance result has not been published yet.'],
   ] as const)('renders safe copy for the %s reason', (reasonCode, expectedCopy) => {
-    const data = parseHubPerformance(readyPerformanceFixture)
+    const data = parseHubLifetimePerformance(readyPerformanceFixture)
     data.quality.reasonCodes = [reasonCode]
     render(<HubPerformancePanel state={performanceState(data)} onRefresh={() => {}} />)
 
@@ -497,7 +497,7 @@ describe('Hub-backed portfolio views', () => {
 
   it('retains valid data after a refresh failure and disables rate-limited refresh until retry time', () => {
     const onRefresh = vi.fn()
-    const data = parseHubPerformance(readyPerformanceFixture)
+    const data = parseHubLifetimePerformance(readyPerformanceFixture)
     const retryAt = Date.now() + 60_000
     render(<HubPerformancePanel state={performanceState(data, {
       refreshError: 'network failure', errorCode: 'HUB_RATE_LIMITED', retryAt, canRefresh: false,

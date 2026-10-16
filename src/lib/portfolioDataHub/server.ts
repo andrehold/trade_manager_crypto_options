@@ -93,7 +93,7 @@ type PerformanceConditionalToken = {
   normalizerVersion: string
 }
 type HubPositionRoutePage = (HubLatestPositionPage | HubPage<HubPosition>) & { pageToken: string }
-type HubPerformanceRouteResult =
+type HubLifetimePerformanceRouteResult =
   | { status: 'updated'; data: HubLifetimePerformance; etag: string | null }
   | { status: 'not-modified'; etag: string }
 
@@ -684,7 +684,7 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
   async function performance(
     context: HubRequestContext,
     ifNoneMatch: string | null,
-  ): Promise<HubPerformanceRouteResult> {
+  ): Promise<HubLifetimePerformanceRouteResult> {
     const conditional = await parsePerformanceConditionalToken(
       ifNoneMatch,
       context,

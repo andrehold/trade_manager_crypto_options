@@ -3,7 +3,7 @@ import {
   fetchPortfolioHubLedger,
   fetchPortfolioHubOverview,
   fetchPortfolioHubPositionSnapshot,
-  fetchPortfolioHubPerformance,
+  fetchPortfolioHubLifetimePerformance,
   fetchPortfolioHubSummaries,
   fetchAdminReportingCurrencies,
 } from '../client'
@@ -75,8 +75,8 @@ describe('Portfolio Data Hub browser client', () => {
       .mockResolvedValueOnce(response({ data }, 200, { etag: '"portal-v1"' }))
       .mockResolvedValueOnce(response({ data }, 200, { etag: '"portal-v2"' }))
 
-    await fetchPortfolioHubPerformance('current-access-token', null, fetchMock)
-    await fetchPortfolioHubPerformance('current-access-token', '"matching-cache-etag"', fetchMock)
+    await fetchPortfolioHubLifetimePerformance('current-access-token', null, fetchMock)
+    await fetchPortfolioHubLifetimePerformance('current-access-token', '"matching-cache-etag"', fetchMock)
 
     expect(fetchMock.mock.calls[0]).toEqual([
       '/api/portfolio-data-hub/performance',
@@ -97,7 +97,7 @@ describe('Portfolio Data Hub browser client', () => {
   it('returns not-modified for 304 without attempting to read JSON', async () => {
     const notModified = new Response(null, { status: 304, headers: { etag: '"portal-v1"' } })
     const jsonSpy = vi.spyOn(notModified, 'json')
-    const result = await fetchPortfolioHubPerformance(
+    const result = await fetchPortfolioHubLifetimePerformance(
       'current-access-token',
       '"portal-v1"',
       vi.fn<typeof fetch>().mockResolvedValue(notModified),
@@ -109,7 +109,7 @@ describe('Portfolio Data Hub browser client', () => {
 
   it('returns updated normalized data and its portal ETag', async () => {
     const data = { accountId: '00000000-0000-4000-8000-000000000001' }
-    const result = await fetchPortfolioHubPerformance(
+    const result = await fetchPortfolioHubLifetimePerformance(
       'current-access-token',
       null,
       vi.fn<typeof fetch>().mockResolvedValue(response({ data }, 200, { etag: '"portal-v1"' })),
@@ -122,7 +122,7 @@ describe('Portfolio Data Hub browser client', () => {
     const permanent = vi.fn<typeof fetch>().mockResolvedValue(response({
       error: { code: 'HUB_ACCOUNT_NOT_FOUND', message: 'Mapped account not found' },
     }, 502))
-    await expect(fetchPortfolioHubPerformance('token', null, permanent)).rejects.toMatchObject({
+    await expect(fetchPortfolioHubLifetimePerformance('token', null, permanent)).rejects.toMatchObject({
       code: 'HUB_ACCOUNT_NOT_FOUND',
       status: 502,
       retryAt: null,
@@ -133,7 +133,7 @@ describe('Portfolio Data Hub browser client', () => {
     const limited = vi.fn<typeof fetch>().mockResolvedValue(response({
       error: { code: 'HUB_RATE_LIMITED', message: 'Try later' },
     }, 503, { 'retry-after': '120' }))
-    await expect(fetchPortfolioHubPerformance('token', null, limited)).rejects.toMatchObject({
+    await expect(fetchPortfolioHubLifetimePerformance('token', null, limited)).rejects.toMatchObject({
       code: 'HUB_RATE_LIMITED',
       status: 503,
       retryAt: Date.parse('2026-09-30T10:02:00Z'),
@@ -142,7 +142,7 @@ describe('Portfolio Data Hub browser client', () => {
     const invalid = vi.fn<typeof fetch>().mockResolvedValue(response({
       error: { code: 'HUB_RATE_LIMITED', message: 'Try later' },
     }, 503, { 'retry-after': 'not-valid' }))
-    await expect(fetchPortfolioHubPerformance('token', null, invalid)).rejects.toMatchObject({
+    await expect(fetchPortfolioHubLifetimePerformance('token', null, invalid)).rejects.toMatchObject({
       code: 'HUB_RATE_LIMITED',
       retryAt: null,
     })
@@ -153,14 +153,14 @@ describe('Portfolio Data Hub browser client', () => {
     const valid = vi.fn<typeof fetch>().mockResolvedValue(response({
       error: { code: 'HUB_UNAVAILABLE', message: 'Hub unavailable' },
     }, 502, { 'x-portfolio-hub-account-id': '30000000-0000-4000-8000-000000000001' }))
-    await expect(fetchPortfolioHubPerformance('token', null, valid)).rejects.toMatchObject({
+    await expect(fetchPortfolioHubLifetimePerformance('token', null, valid)).rejects.toMatchObject({
       mappedAccountId: '30000000-0000-4000-8000-000000000001',
     })
 
     const invalid = vi.fn<typeof fetch>().mockResolvedValue(response({
       error: { code: 'HUB_UNAVAILABLE', message: 'Hub unavailable' },
     }, 502, { 'x-portfolio-hub-account-id': 'not-an-account-id' }))
-    await expect(fetchPortfolioHubPerformance('token', null, invalid)).rejects.toMatchObject({
+    await expect(fetchPortfolioHubLifetimePerformance('token', null, invalid)).rejects.toMatchObject({
       mappedAccountId: null,
     })
   })

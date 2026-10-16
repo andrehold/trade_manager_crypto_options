@@ -9,7 +9,7 @@ vi.mock('@/lib/supabase', () => ({
 vi.mock('@/lib/portfolioDataHub/client', () => ({
   fetchPortfolioHubLedger: vi.fn(),
   fetchPortfolioHubOverview: vi.fn(),
-  fetchPortfolioHubPerformance: vi.fn(),
+  fetchPortfolioHubLifetimePerformance: vi.fn(),
   fetchPortfolioHubPositionSnapshot: vi.fn(),
   fetchPortfolioHubSummaries: vi.fn(),
   PortfolioHubClientError: class PortfolioHubClientError extends Error {
@@ -27,13 +27,13 @@ vi.mock('@/lib/portfolioDataHub/client', () => ({
 
 import {
   fetchPortfolioHubLedger,
-  fetchPortfolioHubPerformance,
+  fetchPortfolioHubLifetimePerformance,
   fetchPortfolioHubPositionSnapshot,
   PortfolioHubClientError,
 } from '@/lib/portfolioDataHub/client'
 import {
   clearPortfolioPerformanceCache,
-  usePortfolioHubPerformance,
+  usePortfolioHubLifetimePerformance,
   usePortfolioHubLedger,
   usePortfolioHubPositions,
 } from '../usePortfolioDataHub'
@@ -79,22 +79,22 @@ function performance(account = accountId, revision = 1) {
   } as any
 }
 
-describe('usePortfolioHubPerformance', () => {
+describe('usePortfolioHubLifetimePerformance', () => {
   beforeEach(() => {
     clearPortfolioPerformanceCache()
     getSession.mockReset()
     getSession.mockResolvedValue(session())
-    vi.mocked(fetchPortfolioHubPerformance).mockReset()
+    vi.mocked(fetchPortfolioHubLifetimePerformance).mockReset()
     vi.useRealTimers()
   })
 
   it('keys cached data by user, client, and response account and preserves object identity on 304', async () => {
     const data = performance()
-    vi.mocked(fetchPortfolioHubPerformance)
+    vi.mocked(fetchPortfolioHubLifetimePerformance)
       .mockResolvedValueOnce({ status: 'updated', data, etag: '"portal-v1"' })
       .mockResolvedValueOnce({ status: 'not-modified', etag: '"portal-v1"' })
 
-    const { result } = renderHook(() => usePortfolioHubPerformance())
+    const { result } = renderHook(() => usePortfolioHubLifetimePerformance())
     await waitFor(() => expect(result.current.state.status).toBe('ready'))
     const firstObject = result.current.state.data
 
@@ -102,23 +102,23 @@ describe('usePortfolioHubPerformance', () => {
 
     expect(result.current.state.status).toBe('ready')
     expect(result.current.state.data).toBe(firstObject)
-    expect(fetchPortfolioHubPerformance).toHaveBeenNthCalledWith(1, 'session-token', null)
-    expect(fetchPortfolioHubPerformance).toHaveBeenNthCalledWith(2, 'session-token', '"portal-v1"')
+    expect(fetchPortfolioHubLifetimePerformance).toHaveBeenNthCalledWith(1, 'session-token', null)
+    expect(fetchPortfolioHubLifetimePerformance).toHaveBeenNthCalledWith(2, 'session-token', '"portal-v1"')
   })
 
   it('recovers once with an unconditional request from a cacheless 304', async () => {
     const data = performance()
-    vi.mocked(fetchPortfolioHubPerformance)
+    vi.mocked(fetchPortfolioHubLifetimePerformance)
       .mockResolvedValueOnce({ status: 'not-modified', etag: '"orphan"' })
       .mockResolvedValueOnce({ status: 'updated', data, etag: '"portal-v1"' })
 
-    const { result } = renderHook(() => usePortfolioHubPerformance())
+    const { result } = renderHook(() => usePortfolioHubLifetimePerformance())
     await waitFor(() => expect(result.current.state.status).toBe('ready'))
 
     expect(result.current.state.data).toBe(data)
-    expect(fetchPortfolioHubPerformance).toHaveBeenCalledTimes(2)
-    expect(fetchPortfolioHubPerformance).toHaveBeenNthCalledWith(1, 'session-token', null)
-    expect(fetchPortfolioHubPerformance).toHaveBeenNthCalledWith(2, 'session-token', null)
+    expect(fetchPortfolioHubLifetimePerformance).toHaveBeenCalledTimes(2)
+    expect(fetchPortfolioHubLifetimePerformance).toHaveBeenNthCalledWith(1, 'session-token', null)
+    expect(fetchPortfolioHubLifetimePerformance).toHaveBeenNthCalledWith(2, 'session-token', null)
   })
 
   it('does not reuse cache entries across user, client, or account changes', async () => {
@@ -127,48 +127,48 @@ describe('usePortfolioHubPerformance', () => {
     const second = performance(secondAccount, 2)
     const thirdClient = '20000000-0000-4000-8000-000000000002'
     const third = performance('30000000-0000-4000-8000-000000000003', 3)
-    vi.mocked(fetchPortfolioHubPerformance)
+    vi.mocked(fetchPortfolioHubLifetimePerformance)
       .mockResolvedValueOnce({ status: 'updated', data: first, etag: '"portal-v1"' })
       .mockResolvedValueOnce({ status: 'updated', data: second, etag: '"portal-v2"' })
       .mockResolvedValueOnce({ status: 'updated', data: third, etag: '"portal-v3"' })
 
-    const { result } = renderHook(() => usePortfolioHubPerformance())
+    const { result } = renderHook(() => usePortfolioHubLifetimePerformance())
     await waitFor(() => expect(result.current.state.data).toBe(first))
 
     getSession.mockResolvedValue(session('10000000-0000-4000-8000-000000000002'))
     await act(async () => { await result.current.refresh() })
     expect(result.current.state.data).toBe(second)
-    expect(fetchPortfolioHubPerformance).toHaveBeenNthCalledWith(2, 'session-token', null)
+    expect(fetchPortfolioHubLifetimePerformance).toHaveBeenNthCalledWith(2, 'session-token', null)
 
     getSession.mockResolvedValue(session('10000000-0000-4000-8000-000000000002', thirdClient))
     await act(async () => { await result.current.refresh() })
     expect(result.current.state.data).toBe(third)
-    expect(fetchPortfolioHubPerformance).toHaveBeenNthCalledWith(3, 'session-token', null)
+    expect(fetchPortfolioHubLifetimePerformance).toHaveBeenNthCalledWith(3, 'session-token', null)
   })
 
   it('replaces the full cache key when the mapped response account changes', async () => {
     const first = performance(accountId, 1)
     const replacement = performance('30000000-0000-4000-8000-000000000009', 2)
-    vi.mocked(fetchPortfolioHubPerformance)
+    vi.mocked(fetchPortfolioHubLifetimePerformance)
       .mockResolvedValueOnce({ status: 'updated', data: first, etag: '"portal-v1"' })
       .mockResolvedValueOnce({ status: 'updated', data: replacement, etag: '"portal-v2"' })
       .mockResolvedValueOnce({ status: 'not-modified', etag: '"portal-v2"' })
 
-    const { result } = renderHook(() => usePortfolioHubPerformance())
+    const { result } = renderHook(() => usePortfolioHubLifetimePerformance())
     await waitFor(() => expect(result.current.state.data).toBe(first))
     await act(async () => { await result.current.refresh() })
     expect(result.current.state.data).toBe(replacement)
-    expect(fetchPortfolioHubPerformance).toHaveBeenNthCalledWith(2, 'session-token', '"portal-v1"')
+    expect(fetchPortfolioHubLifetimePerformance).toHaveBeenNthCalledWith(2, 'session-token', '"portal-v1"')
 
     await act(async () => { await result.current.refresh() })
     expect(result.current.state.data).toBe(replacement)
-    expect(fetchPortfolioHubPerformance).toHaveBeenNthCalledWith(3, 'session-token', '"portal-v2"')
+    expect(fetchPortfolioHubLifetimePerformance).toHaveBeenNthCalledWith(3, 'session-token', '"portal-v2"')
   })
 
   it('does not retain a prior-account cache when remapping is followed by an upstream failure', async () => {
     const first = performance(accountId, 1)
     const remappedAccountId = '30000000-0000-4000-8000-000000000009'
-    vi.mocked(fetchPortfolioHubPerformance)
+    vi.mocked(fetchPortfolioHubLifetimePerformance)
       .mockResolvedValueOnce({ status: 'updated', data: first, etag: '"portal-v1"' })
       .mockRejectedValueOnce(new PortfolioHubClientError(
         'HUB_UNAVAILABLE',
@@ -178,7 +178,7 @@ describe('usePortfolioHubPerformance', () => {
         remappedAccountId,
       ))
 
-    const { result } = renderHook(() => usePortfolioHubPerformance())
+    const { result } = renderHook(() => usePortfolioHubLifetimePerformance())
     await waitFor(() => expect(result.current.state.data).toBe(first))
     await act(async () => { await result.current.refresh() })
 
@@ -189,10 +189,10 @@ describe('usePortfolioHubPerformance', () => {
 
   it('clears cached performance on sign-out and does not expose it to a later session', async () => {
     const first = performance()
-    vi.mocked(fetchPortfolioHubPerformance)
+    vi.mocked(fetchPortfolioHubLifetimePerformance)
       .mockResolvedValueOnce({ status: 'updated', data: first, etag: '"portal-v1"' })
       .mockResolvedValueOnce({ status: 'updated', data: performance(accountId, 2), etag: '"portal-v2"' })
-    const { result } = renderHook(() => usePortfolioHubPerformance())
+    const { result } = renderHook(() => usePortfolioHubLifetimePerformance())
     await waitFor(() => expect(result.current.state.data).toBe(first))
 
     getSession.mockResolvedValue({ data: { session: null }, error: null })
@@ -202,9 +202,9 @@ describe('usePortfolioHubPerformance', () => {
 
     getSession.mockResolvedValue(session('10000000-0000-4000-8000-000000000002'))
     // A fresh hook models the portal mounting after the next successful login.
-    const next = renderHook(() => usePortfolioHubPerformance())
+    const next = renderHook(() => usePortfolioHubLifetimePerformance())
     await waitFor(() => expect(next.result.current.state.status).toBe('ready'))
-    expect(fetchPortfolioHubPerformance).toHaveBeenNthCalledWith(2, 'session-token', null)
+    expect(fetchPortfolioHubLifetimePerformance).toHaveBeenNthCalledWith(2, 'session-token', null)
     expect(next.result.current.state.data?.revision).toBe(2)
     next.unmount()
   })
@@ -212,17 +212,17 @@ describe('usePortfolioHubPerformance', () => {
   it('prevents a late response from an old identity from overwriting the new identity', async () => {
     const oldRequest = deferred<{ status: 'updated'; data: any; etag: string }>()
     const newRequest = deferred<{ status: 'updated'; data: any; etag: string }>()
-    vi.mocked(fetchPortfolioHubPerformance)
+    vi.mocked(fetchPortfolioHubLifetimePerformance)
       .mockReturnValueOnce(oldRequest.promise)
       .mockReturnValueOnce(newRequest.promise)
 
-    const { result } = renderHook(() => usePortfolioHubPerformance())
-    await waitFor(() => expect(fetchPortfolioHubPerformance).toHaveBeenCalledTimes(1))
+    const { result } = renderHook(() => usePortfolioHubLifetimePerformance())
+    await waitFor(() => expect(fetchPortfolioHubLifetimePerformance).toHaveBeenCalledTimes(1))
 
     getSession.mockResolvedValue(session('10000000-0000-4000-8000-000000000002'))
     let refreshPromise!: Promise<void>
     act(() => { refreshPromise = result.current.refresh() })
-    await waitFor(() => expect(fetchPortfolioHubPerformance).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(fetchPortfolioHubLifetimePerformance).toHaveBeenCalledTimes(2))
     await act(async () => { newRequest.resolve({ status: 'updated', data: performance(accountId, 2), etag: '"new"' }); await refreshPromise })
     await act(async () => { oldRequest.resolve({ status: 'updated', data: performance(accountId, 1), etag: '"old"' }) })
 
@@ -230,41 +230,41 @@ describe('usePortfolioHubPerformance', () => {
   })
 
   it('performs only initial load and manual refresh, without polling or focus refresh', async () => {
-    vi.mocked(fetchPortfolioHubPerformance).mockResolvedValue({
+    vi.mocked(fetchPortfolioHubLifetimePerformance).mockResolvedValue({
       status: 'updated', data: performance(), etag: '"portal-v1"',
     })
-    const { result } = renderHook(() => usePortfolioHubPerformance())
+    const { result } = renderHook(() => usePortfolioHubLifetimePerformance())
     await waitFor(() => expect(result.current.state.status).toBe('ready'))
 
     const intervalSpy = vi.spyOn(globalThis, 'setInterval')
     window.dispatchEvent(new Event('focus'))
     await act(async () => { await Promise.resolve() })
-    expect(fetchPortfolioHubPerformance).toHaveBeenCalledTimes(1)
+    expect(fetchPortfolioHubLifetimePerformance).toHaveBeenCalledTimes(1)
     expect(intervalSpy).not.toHaveBeenCalled()
 
     await act(async () => { await result.current.refresh() })
-    expect(fetchPortfolioHubPerformance).toHaveBeenCalledTimes(2)
+    expect(fetchPortfolioHubLifetimePerformance).toHaveBeenCalledTimes(2)
     intervalSpy.mockRestore()
   })
 
   it('does not retry permanent errors automatically', async () => {
-    vi.mocked(fetchPortfolioHubPerformance).mockRejectedValue(
+    vi.mocked(fetchPortfolioHubLifetimePerformance).mockRejectedValue(
       new PortfolioHubClientError('HUB_ACCOUNT_NOT_FOUND', 'Mapped account not found', 502),
     )
-    const { result } = renderHook(() => usePortfolioHubPerformance())
+    const { result } = renderHook(() => usePortfolioHubLifetimePerformance())
     await waitFor(() => expect(result.current.state.status).toBe('unavailable'))
 
     expect(result.current.state.canRefresh).toBe(false)
     expect(result.current.state.errorCode).toBe('HUB_ACCOUNT_NOT_FOUND')
-    expect(fetchPortfolioHubPerformance).toHaveBeenCalledTimes(1)
+    expect(fetchPortfolioHubLifetimePerformance).toHaveBeenCalledTimes(1)
   })
 
   it('drops previously cached data after a permanent mapping error', async () => {
     const data = performance()
-    vi.mocked(fetchPortfolioHubPerformance)
+    vi.mocked(fetchPortfolioHubLifetimePerformance)
       .mockResolvedValueOnce({ status: 'updated', data, etag: '"portal-v1"' })
       .mockRejectedValueOnce(new PortfolioHubClientError('HUB_ACCOUNT_NOT_FOUND', 'Mapped account not found', 502))
-    const { result } = renderHook(() => usePortfolioHubPerformance())
+    const { result } = renderHook(() => usePortfolioHubLifetimePerformance())
     await waitFor(() => expect(result.current.state.data).toBe(data))
 
     await act(async () => { await result.current.refresh() })
@@ -276,31 +276,31 @@ describe('usePortfolioHubPerformance', () => {
 
   it('validates rate limiting, disables refresh temporarily, and never schedules an API call', async () => {
     const retryAt = Date.now() + 60_000
-    vi.mocked(fetchPortfolioHubPerformance)
+    vi.mocked(fetchPortfolioHubLifetimePerformance)
       .mockRejectedValueOnce(new PortfolioHubClientError('HUB_RATE_LIMITED', 'Try later', 503, retryAt))
       .mockResolvedValueOnce({ status: 'updated', data: performance(), etag: '"portal-v1"' })
-    const { result } = renderHook(() => usePortfolioHubPerformance())
+    const { result } = renderHook(() => usePortfolioHubLifetimePerformance())
     await waitFor(() => expect(result.current.state.errorCode).toBe('HUB_RATE_LIMITED'))
     expect(result.current.state.canRefresh).toBe(false)
 
     await act(async () => { await result.current.refresh() })
-    expect(fetchPortfolioHubPerformance).toHaveBeenCalledTimes(1)
+    expect(fetchPortfolioHubLifetimePerformance).toHaveBeenCalledTimes(1)
 
     vi.useFakeTimers()
     vi.setSystemTime(retryAt)
     await act(async () => { await result.current.refresh() })
-    expect(fetchPortfolioHubPerformance).toHaveBeenCalledTimes(2)
+    expect(fetchPortfolioHubLifetimePerformance).toHaveBeenCalledTimes(2)
     expect(result.current.state.status).toBe('ready')
   })
 
   it('retains the last valid object only when a portal error confirms the same mapped account', async () => {
     const data = performance()
-    vi.mocked(fetchPortfolioHubPerformance)
+    vi.mocked(fetchPortfolioHubLifetimePerformance)
       .mockResolvedValueOnce({ status: 'updated', data, etag: '"portal-v1"' })
       .mockRejectedValueOnce(new PortfolioHubClientError(
         'HUB_UNAVAILABLE', 'Hub unavailable', 502, null, accountId,
       ))
-    const { result } = renderHook(() => usePortfolioHubPerformance())
+    const { result } = renderHook(() => usePortfolioHubLifetimePerformance())
     await waitFor(() => expect(result.current.state.status).toBe('ready'))
 
     await act(async () => { await result.current.refresh() })
@@ -313,10 +313,10 @@ describe('usePortfolioHubPerformance', () => {
 
   it('fails closed instead of retaining cached data when the portal cannot confirm the mapping', async () => {
     const data = performance()
-    vi.mocked(fetchPortfolioHubPerformance)
+    vi.mocked(fetchPortfolioHubLifetimePerformance)
       .mockResolvedValueOnce({ status: 'updated', data, etag: '"portal-v1"' })
       .mockRejectedValueOnce(new PortfolioHubClientError('NETWORK_ERROR', 'Network unavailable'))
-    const { result } = renderHook(() => usePortfolioHubPerformance())
+    const { result } = renderHook(() => usePortfolioHubLifetimePerformance())
     await waitFor(() => expect(result.current.state.data).toBe(data))
 
     await act(async () => { await result.current.refresh() })

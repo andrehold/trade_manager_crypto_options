@@ -225,10 +225,6 @@ export interface HubLifetimePerformance {
   lineage: HubLifetimePerformanceLineage;
 }
 
-/** Compatibility aliases while the portal presentation is migrated in Phase 3. */
-export type HubPerformanceLineage = HubLifetimePerformanceLineage;
-export type HubPerformance = HubLifetimePerformance;
-
 function nullableOptional(value: string | null | undefined): string | null {
   return value ?? null;
 }
@@ -487,6 +483,3 @@ export function parseHubLedgerEventPage(input: unknown): HubPage<HubLedgerEvent>
 export function parseHubLifetimePerformance(input: unknown): HubLifetimePerformance {
   return normalizeHubLifetimePerformance(lifetimePerformanceDatapointSchema.parse(input));
 }
-
-/** Compatibility alias while callers migrate to the explicit lifetime name. */
-export const parseHubPerformance = parseHubLifetimePerformance;

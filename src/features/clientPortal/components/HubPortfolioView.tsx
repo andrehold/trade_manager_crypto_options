@@ -5,7 +5,7 @@ import { Badge, DataTable, type Column } from '@/components/ui'
 import { decimalFrom } from '@/lib/portfolioDataHub/decimal'
 import type { HubLedgerEvent, HubPosition, HubSummary, HubSummaryComponent } from '@/lib/portfolioDataHub'
 import type { PortfolioHubOverview } from '@/lib/portfolioDataHub/client'
-import type { PortfolioHubPerformanceState } from '../usePortfolioDataHub'
+import type { PortfolioHubLifetimePerformanceState } from '../usePortfolioDataHub'
 import { usePortfolioHubLedger, usePortfolioHubPositions } from '../usePortfolioDataHub'
 import { formatPortfolioValue } from './portfolioFormatters'
 import { HubPerformancePanel } from './HubPerformancePanel'
@@ -138,7 +138,7 @@ export function HubDashboard({
   onSaveAccountCurrency: (currency: string | null) => void
   accountCurrencySaving?: boolean
   accountCurrencyError?: string | null
-  performanceState?: PortfolioHubPerformanceState
+  performanceState?: PortfolioHubLifetimePerformanceState
   onRefreshPerformance?: () => void
 }) {
   const resolution = resolveAccountCurrency(

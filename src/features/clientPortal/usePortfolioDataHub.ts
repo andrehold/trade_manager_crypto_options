@@ -2,7 +2,7 @@ import React from 'react'
 import {
   fetchPortfolioHubLedger,
   fetchPortfolioHubOverview,
-  fetchPortfolioHubPerformance,
+  fetchPortfolioHubLifetimePerformance,
   fetchPortfolioHubPositionSnapshot,
   fetchPortfolioHubSummaries,
   PortfolioHubClientError,
@@ -10,7 +10,7 @@ import {
   type HubClientErrorCode,
   type PortfolioHubOverview,
 } from '@/lib/portfolioDataHub/client'
-import type { HubLedgerEvent, HubPerformance, HubPosition, HubSummary } from '@/lib/portfolioDataHub'
+import type { HubLedgerEvent, HubLifetimePerformance, HubPosition, HubSummary } from '@/lib/portfolioDataHub'
 import { getSupabaseClient, hasSupabaseClient } from '@/lib/supabase'
 import { setOwnReportingCurrency } from '@/lib/clientPortal/reportingCurrencyRepo'
 
@@ -51,21 +51,21 @@ async function currentSessionIdentity(): Promise<string> {
   return data.session.user?.id ?? data.session.access_token
 }
 
-type PerformanceIdentity = {
+type LifetimePerformanceIdentity = {
   userId: string
   clientId: string
   accessToken: string
 }
 
-type PerformanceCacheEntry = Pick<PerformanceIdentity, 'userId' | 'clientId'> & {
+type LifetimePerformanceCacheEntry = Pick<LifetimePerformanceIdentity, 'userId' | 'clientId'> & {
   accountId: string
-  data: HubPerformance
+  data: HubLifetimePerformance
   etag: string | null
 }
 
-export type PortfolioHubPerformanceState = {
+export type PortfolioHubLifetimePerformanceState = {
   status: 'not-configured' | 'loading' | 'ready' | 'unavailable'
-  data: HubPerformance | null
+  data: HubLifetimePerformance | null
   refreshing: boolean
   refreshError: string | null
   errorCode: HubClientErrorCode | null
@@ -73,17 +73,17 @@ export type PortfolioHubPerformanceState = {
   canRefresh: boolean
 }
 
-const performanceCache = new Map<string, PerformanceCacheEntry>()
+const performanceCache = new Map<string, LifetimePerformanceCacheEntry>()
 
-function performanceIdentityKey(identity: Pick<PerformanceIdentity, 'userId' | 'clientId'>): string {
+function performanceIdentityKey(identity: Pick<LifetimePerformanceIdentity, 'userId' | 'clientId'>): string {
   return `${identity.userId}\u0000${identity.clientId}`
 }
 
-function performanceCacheKey(entry: Pick<PerformanceCacheEntry, 'userId' | 'clientId' | 'accountId'>): string {
+function performanceCacheKey(entry: Pick<LifetimePerformanceCacheEntry, 'userId' | 'clientId' | 'accountId'>): string {
   return `${performanceIdentityKey(entry)}\u0000${entry.accountId}`
 }
 
-function cachedPerformance(identity: PerformanceIdentity): PerformanceCacheEntry | null {
+function cachedPerformance(identity: LifetimePerformanceIdentity): LifetimePerformanceCacheEntry | null {
   const prefix = `${performanceIdentityKey(identity)}\u0000`
   for (const [key, entry] of performanceCache) {
     if (key.startsWith(prefix)) return entry
@@ -102,7 +102,7 @@ export function clearPortfolioPerformanceCache(): void {
   performanceCache.clear()
 }
 
-async function currentPerformanceIdentity(): Promise<PerformanceIdentity> {
+async function currentPerformanceIdentity(): Promise<LifetimePerformanceIdentity> {
   const { data, error } = await getSupabaseClient().auth.getSession()
   const session = data.session
   if (error || !session?.access_token || !session.user?.id) {
@@ -137,7 +137,7 @@ function validRetryAt(error: PortfolioHubClientError): number | null {
     : null
 }
 
-const initialPerformanceState = (): PortfolioHubPerformanceState => ({
+const initialPerformanceState = (): PortfolioHubLifetimePerformanceState => ({
   status: hasSupabaseClient() ? 'loading' : 'not-configured',
   data: null,
   refreshing: false,
@@ -148,8 +148,8 @@ const initialPerformanceState = (): PortfolioHubPerformanceState => ({
 })
 
 /** Initial load plus explicit refresh only; there is no polling or focus-triggered fetch. */
-export function usePortfolioHubPerformance() {
-  const [state, setState] = React.useState<PortfolioHubPerformanceState>(initialPerformanceState)
+export function usePortfolioHubLifetimePerformance() {
+  const [state, setState] = React.useState<PortfolioHubLifetimePerformanceState>(initialPerformanceState)
   const mounted = React.useRef(true)
   const generation = React.useRef(0)
   const activeIdentity = React.useRef<string | null>(null)
@@ -170,7 +170,7 @@ export function usePortfolioHubPerformance() {
       return
     }
 
-    let identity: PerformanceIdentity
+    let identity: LifetimePerformanceIdentity
     try {
       identity = await currentPerformanceIdentity()
     } catch (error) {
@@ -219,9 +219,9 @@ export function usePortfolioHubPerformance() {
     }
 
     try {
-      let result = await fetchPortfolioHubPerformance(identity.accessToken, cached?.etag ?? null)
+      let result = await fetchPortfolioHubLifetimePerformance(identity.accessToken, cached?.etag ?? null)
       if (result.status === 'not-modified' && cached === null) {
-        result = await fetchPortfolioHubPerformance(identity.accessToken, null)
+        result = await fetchPortfolioHubLifetimePerformance(identity.accessToken, null)
       }
       if (
         !mounted.current
@@ -244,7 +244,7 @@ export function usePortfolioHubPerformance() {
       }
 
       evictPerformanceIdentity(identityKey)
-      const entry: PerformanceCacheEntry = {
+      const entry: LifetimePerformanceCacheEntry = {
         userId: identity.userId,
         clientId: identity.clientId,
         accountId: result.data.accountId,
