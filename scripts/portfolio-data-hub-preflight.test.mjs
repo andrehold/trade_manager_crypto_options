@@ -30,7 +30,7 @@ describe('Portfolio Data Hub preflight', () => {
     expect([...result.errors, ...result.warnings].join('\n')).not.toContain(secret)
   })
 
-  it('treats preflight as configuration-only and cannot claim to verify Hub key scope', () => {
+  it('passes valid configuration without claiming live lifetime or key-scope verification', () => {
     const result = evaluateHubPreflight(validEnv)
     expect(result.errors).toEqual([])
     expect(result.warnings).toEqual([])

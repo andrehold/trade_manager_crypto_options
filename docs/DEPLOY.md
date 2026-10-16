@@ -5,7 +5,7 @@ This app uses **explicit Vercel Edge routes** for live data and a Vite proxy for
 ## Required files
 - `api/deribit/ticker.ts` — proxies `public/ticker` to Deribit and returns upstream JSON.
 - `api/coincall/price.ts` — aggregates Coincall detail + orderbook + last trade and returns `{ price, multiplier, greeks }`.
-- `api/portfolio-data-hub/*` — authenticated client summary, historical summaries, positions, ledger, combined provenance, and account performance routes.
+- `api/portfolio-data-hub/*` — authenticated client summary, historical summaries, positions, ledger, combined provenance, and lifetime-performance routes.
 
 ## Portfolio Data Hub environment
 
@@ -16,8 +16,8 @@ PORTFOLIO_DATA_HUB_BASE_URL=https://hub.germanquantum.tech
 PORTFOLIO_DATA_HUB_API_KEY=<server-only bearer key; exact data:read scope>
 ```
 
-For this integration, the deployed portal key must have **exactly** the `data:read`
-scope. Confirm that scope on the deployed key in Portfolio Data Hub key management.
+For this integration, use a dedicated portal-consumer key with **exactly** the
+`data:read` scope. Confirm that scope on the deployed key in Portfolio Data Hub key management.
 The portal preflight checks configuration placement and shape only; it cannot
 inspect the Hub key or establish its scopes. Do not expose the key when recording
 the verification result.
@@ -91,8 +91,10 @@ in Vercel for the build to see them.
 ### Direct Hub contract/parser smoke
 
 This opt-in test directly calls the configured Hub URL with its consumer key,
-then parses a mapped test account's summary, latest positions, and first ledger
-page. It does not print credentials. Supabase
+then parses a mapped test account's summary, latest positions, first ledger
+page, and lifetime-performance response. It requires schema version `1.0`,
+retains lifetime provenance, and proves an ETag revalidation returns `304`
+without printing credentials or financial values. Supabase
 authentication and portal-client mapping are intentionally stubbed in this
 test, so it is **not** an end-to-end
 portal deployment check. Run it only from a trusted shell or CI secret context:
@@ -118,7 +120,8 @@ the Hub's public API smoke check rather than this direct parser check.
 1. Create a new Hub consumer key with exactly the `data:read` scope.
 2. Replace `PORTFOLIO_DATA_HUB_API_KEY` in Vercel **Production**.
 3. Redeploy Production, run the preflight, and run the direct Hub contract/parser smoke.
-4. Verify the signed-in portal account still loads overview, positions, and ledger.
+4. Verify the signed-in portal account still loads overview, positions, ledger,
+   and lifetime performance.
 5. Revoke the old Hub key only after the new deployment is verified.
 
 ### Remote Hub cutover (hub.germanquantum.tech)
@@ -144,7 +147,8 @@ verified, so rollback is immediate.
    mapping through the audited `admin_set_client_hub_account_mapping` RPC.
 5. Verify: `npm run hub:remap -- verify --input mapping.json --expected expected.json`.
    Every client must report `OK`.
-6. Smoke-test one real client login end-to-end (overview, positions, ledger),
+6. Smoke-test one real client login end-to-end (overview, positions, ledger,
+   lifetime performance, and manual conditional refresh),
    and the direct parser check: `npm run test:portfolio-data-hub:direct` with
    `PORTFOLIO_DATA_HUB_TEST_ACCOUNT_ID` set to a mapped new account UUID.
 7. Monitor. Decommission the old Hub only after a soak period.
@@ -178,6 +182,7 @@ details.
    - `/api/portfolio-data-hub/positions`
    - `/api/portfolio-data-hub/ledger`
    - `/api/portfolio-data-hub/overview`
+   - `/api/portfolio-data-hub/performance`
 3) Test in the browser (replace domain):
    ```
    https://<your-app>.vercel.app/api/deribit/ticker?instrument_name=BTC-27DEC25-50000-C
@@ -204,18 +209,49 @@ DWF test client and verify:
 The portal endpoint is `GET /api/portfolio-data-hub/performance`. The server
 resolves the Hub account exclusively from the authenticated caller's RLS-visible
 `public.clients.hub_account_id`, then requests only
-`GET /api/v1/accounts/{mapped_hub_account_id}/performance/latest`. The browser
+`GET /api/v1/accounts/{mapped_hub_account_id}/performance/lifetime/latest`.
+The existing Hub route `/performance/latest` is a configured baseline-period
+result and must never be used or labelled as lifetime performance. The browser
 does not supply the Hub account ID and ordinary portal traffic never enumerates
-Hub accounts.
+Hub accounts or derives lifetime values from venue summaries.
 
-The first release loads performance when the view is opened and supports a
-manual **Refresh** action. It does not poll in the background or refresh on
+The lifetime response is accepted only when `performance_schema_version` is
+exactly `1.0`, its `account_id` matches the RLS-resolved mapping, and its exact
+decimal strings satisfy the opening-equity, net-capital-flow, and P&L accounting
+identities. Financial strings must not pass through binary floating point.
+`null` means unavailable or unproven and must never be displayed as zero. The
+portal keeps financial fields and provenance from one response revision together;
+it does not merge responses or substitute venue wallet balance, collateral,
+realized P&L, or unrealized P&L.
+
+The authoritative lifetime values are `reporting_currency`, `equity`, and
+`performance.opening_equity`, `contributions`, `distributions`, `transfers_in`,
+`transfers_out`, `net_capital_flow`, and `pnl`. The accounting identities are:
+
+```text
+net_capital_flow = contributions - distributions + transfers_in - transfers_out
+pnl = equity - opening_equity - net_capital_flow
+```
+
+Additional unknown JSON fields are tolerated so compatible Hub additions do not
+break the portal, but required lifetime fields and their types are not inferred.
+
+The portal loads performance when the view is opened and supports a manual
+**Refresh** action. It does not poll in the background or refresh on
 focus. Refresh sends the portal's integrity-protected ETag token as
 `If-None-Match`. The portal translates it to the Hub's upstream ETag. A valid
 portal `304` has no JSON body: the client retains its last valid cached
 performance response and does not parse the response as JSON. A `304` without
 a matching cached response is an error and must not create empty or fabricated
 performance data.
+
+The gateway may make up to three bounded attempts for upstream `408`, `429`, or
+`5xx` responses using exponential backoff and jitter within the request timeout.
+It does not retry `401`, `403`, `404`, invalid payloads, account mismatches, or
+network/local abort failures. The browser client never runs an automatic retry
+loop; after the gateway request completes, another attempt requires the explicit
+Refresh action, except that a validated rate-limit delay controls when Refresh
+becomes available again.
 
 After authentication and RLS mapping resolution, portal error responses include
 `X-Portfolio-Hub-Account-Id` as a non-secret cache-binding value. The browser
@@ -231,14 +267,37 @@ Portal error codes remain explicit even when the Hub's original status differs:
 | --- | --- | --- |
 | `HUB_AUTHORIZATION_FAILED` | Hub rejected the server credential (`401`/`403`) | Show unavailable; do not retry automatically |
 | `HUB_ACCOUNT_NOT_FOUND` | Mapped account is not available (`404`) | Show unavailable; do not retry automatically |
-| `HUB_RATE_LIMITED` | Hub rate limit (`429`) | Show rate-limited state; accept only a validated `Retry-After`; no automatic retry |
-| `HUB_UNAVAILABLE` | Other upstream/network failure, including `5xx` | Show unavailable; no automatic retry |
+| `HUB_RATE_LIMITED` | Hub rate limit (`429`) after bounded gateway retries | Show rate-limited state; accept only a validated `Retry-After`; no browser retry loop |
+| `HUB_UNAVAILABLE` | Other upstream/network failure, including exhausted `5xx` retries | Show unavailable; no browser retry loop |
 | `UPSTREAM_TIMEOUT` | Hub request timed out | Show unavailable; no automatic retry |
 | `HUB_INVALID_RESPONSE` | Invalid contract, account mismatch, or unsupported conditional response | Show unavailable; do not retry automatically |
 
 Only `HUB_RATE_LIMITED` may carry `Retry-After`. The portal forwards it only
 when it is a valid bounded delay/date; the client ignores malformed or
 out-of-range values. The user can manually refresh after the indicated time.
+
+Display readiness comes from the response `quality` object, not HTTP `200`:
+
+- Final display requires `performance_status == "ready"`,
+  `equity_status == "ready"`, `recalculation_pending == false`,
+  `unresolved_movement_count == 0`, and an empty `reason_codes` array.
+- `provisional` is displayable only with a warning derived from `reason_codes`.
+- `unavailable` displays **Performance unavailable**; the portal does not
+  calculate or fill missing figures locally.
+
+Operators should expect the documented reason codes `policy_not_configured`,
+`baseline_missing`, `ledger_history_incomplete`, `movement_unresolved`,
+`valuation_missing`, `snapshot_time_approximate`, `recalculation_pending`,
+`recalculation_failed`, `recalculation_disabled`, and
+`projection_not_published`. Unknown future reason codes must remain visible as a
+safe generic warning rather than being treated as ready.
+
+For accepted lifetime responses, retain operational provenance as a single set:
+`id`, `revision`, `as_of`, `computed_at`, `lineage.lifetime_anchor_id`,
+`lineage.start_event_id`, `lineage.start_at`, `lineage.opening_basis`,
+`lineage.canonical_input_sequence`, and `lineage.classification_sequence`.
+Production evidence may record non-financial identifiers and statuses, but must
+not include payload values, credentials, session tokens, or raw ETags.
 
 For live positive and negative acceptance, use the deployed Production URL and
 two separate authenticated sessions:
@@ -247,23 +306,75 @@ two separate authenticated sessions:
    client mapping resolves exactly one client and the browser receives only
    that mapped account's performance through the portal endpoint.
 2. Inspect gateway request evidence to confirm the only Hub performance request
-   is the exact mapped `/api/v1/accounts/{id}/performance/latest` path. Confirm
+   is the exact mapped `/api/v1/accounts/{id}/performance/lifetime/latest` path. Confirm
    there are no account list or enumeration requests. Do not capture credentials
    or financial payloads.
 3. Sign in as an unauthorized identity with no mapping to that account. Confirm
    it resolves no mapping, the portal returns no performance data, and no Hub
    performance request is triggered.
 4. Verify an authorized manual refresh sends `If-None-Match`; a `304` retains
-   the last valid displayed values. Verify stale, provisional, unavailable, and
-   recalculation-pending states remain explicit and null financial values are
-   not rendered as zero.
+   the last valid response atomically. Verify ready, provisional, unavailable,
+   stale, movement-unresolved, valuation-missing, and recalculation-pending or
+   failed states remain explicit; unknown future reason codes degrade safely.
+   Confirm null financial values are not rendered as zero.
 5. In Hub key management, inspect the exact key configured in Vercel Production
    and confirm its scope set is exactly `data:read`. Record only the result and
    a non-secret key reference.
+6. Confirm the returned lifetime revision and provenance belong to the same
+   response, `performance_schema_version` is `1.0`, and the UI says **Lifetime
+   performance** / **Since inception** rather than describing baseline data as
+   lifetime data.
 
-Record the deployment URL and commit, test outcomes, positive/negative login
-results, and key-scope confirmation without personal information, JWTs, API
-keys, or performance payloads.
+### Lifetime-performance release gate
+
+Before Production promotion, run the local gates on the exact commit selected
+for deployment:
+
+```bash
+npm run typecheck
+npm test
+npm run build
+npm run hub:preflight:production
+```
+
+Supply Production variables to the preflight through a trusted secret context.
+Then run `npm run test:portfolio-data-hub:direct` with a mapped test account in
+that same trusted context. Stop the release if any gate fails, the direct smoke
+does not prove the lifetime `200`→conditional `304` sequence, the deployed key
+has scopes other than `data:read`, or Vercel cannot tie the Ready deployment to
+the reviewed commit SHA.
+
+Record the following non-secret evidence:
+
+| Evidence | Required value |
+| --- | --- |
+| Source | reviewed commit SHA |
+| Deployment | Vercel environment, Ready status, immutable URL, and Production alias |
+| Commit match | deployed Git SHA equals the reviewed SHA |
+| Functions | `/api/portfolio-data-hub/performance` is present |
+| Automated checks | typecheck, full test total, build, preflight, and direct smoke pass/fail |
+| Authorization | anonymous authorized and unauthorized fixture pass/fail |
+| Contract | lifetime route, schema `1.0`, account match, readiness handling, and conditional `304` pass/fail |
+| Credential | non-secret key reference and exact scope confirmation `data:read` |
+| Reviewer | reviewer and UTC timestamp |
+
+Do not record personal information, JWTs, API keys, financial values, response
+bodies, or raw ETags.
+
+### Lifetime-performance rollback
+
+Keep the previous known-good deployment available until acceptance completes.
+If any release gate or Production acceptance step fails:
+
+1. Stop promotion or move the Production alias back to the previous known-good
+   deployment.
+2. If a credential caused the failure, restore the previous dedicated
+   `data:read` key and redeploy; revoke a replacement key only after rollback is
+   verified.
+3. Do not fall back to `/performance/latest` or calculate lifetime figures from
+   summaries. The safe fallback is **Performance unavailable**.
+4. Re-run the authorized and unauthorized checks after rollback and record the
+   resulting deployment SHA and status.
 
 ## Local development
 ### Option A — `vercel dev` (preferred)
