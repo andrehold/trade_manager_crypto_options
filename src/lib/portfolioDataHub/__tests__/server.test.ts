@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 import summaryFixture from '../__fixtures__/deribit/summary-latest.json'
 import positionsFixture from '../__fixtures__/deribit/positions-latest.json'
 import ledgerFixture from '../__fixtures__/deribit/ledger-events.json'
-import performanceReadyFixture from '../__fixtures__/performance/ready.json'
-import performanceProvisionalFixture from '../__fixtures__/performance/provisional.json'
-import performanceUnavailableFixture from '../__fixtures__/performance/unavailable.json'
+import performanceReadyFixture from '../__fixtures__/performance/lifetime-ready.json'
+import performanceProvisionalFixture from '../__fixtures__/performance/lifetime-provisional.json'
+import performanceUnavailableFixture from '../__fixtures__/performance/lifetime-unavailable.json'
 import {
   compareDatasetAlignment,
   handlePortfolioDataHubRequest,
@@ -380,7 +380,7 @@ describe('Portfolio Data Hub server boundary', () => {
 })
 
 describe('mapped performance gateway', () => {
-  it('requests only the RLS-mapped performance/latest endpoint', async () => {
+  it('requests only the RLS-mapped lifetime performance endpoint', async () => {
     const fetchMock = performanceGatewayFetch()
     const result = await handlePortfolioDataHubRequest(
       request('/api/portfolio-data-hub/performance?account_id=11111111-1111-4111-8111-111111111111&client_id=ignored'),
@@ -390,7 +390,7 @@ describe('mapped performance gateway', () => {
 
     expect(result.status).toBe(200)
     const urls = fetchMock.mock.calls.map(([input]) => String(input))
-    expect(urls[2]).toBe(`http://127.0.0.1:8000/api/v1/accounts/${hubAccountId}/performance/latest`)
+    expect(urls[2]).toBe(`http://127.0.0.1:8000/api/v1/accounts/${hubAccountId}/performance/lifetime/latest`)
     expect(urls.every((url) => !url.includes('/api/v1/data/accounts'))).toBe(true)
     expect(urls[2]).not.toContain('11111111-1111-4111-8111-111111111111')
     expect(await result.json()).toMatchObject({ data: { accountId: hubAccountId } })
@@ -614,12 +614,13 @@ describe('mapped performance gateway', () => {
       {
         name: 'wrong-token-version',
         token: await signedPerformanceToken({
-          version: 2,
+          version: 1,
+          performanceBasis: 'lifetime',
           authUserId,
           clientId,
           hubAccountId,
           upstreamEtag: '"hub-performance-v1"',
-          normalizerVersion: '1',
+          normalizerVersion: '2',
         }),
         authUser: authUserId,
         row: profile(),
@@ -628,12 +629,28 @@ describe('mapped performance gateway', () => {
       {
         name: 'wrong-normalizer-version',
         token: await signedPerformanceToken({
-          version: 1,
+          version: 2,
+          performanceBasis: 'lifetime',
           authUserId,
           clientId,
           hubAccountId,
           upstreamEtag: '"hub-performance-v1"',
           normalizerVersion: 'old',
+        }),
+        authUser: authUserId,
+        row: profile(),
+        body: performanceBody(),
+      },
+      {
+        name: 'wrong-performance-basis',
+        token: await signedPerformanceToken({
+          version: 2,
+          performanceBasis: 'baseline',
+          authUserId,
+          clientId,
+          hubAccountId,
+          upstreamEtag: '"hub-performance-v1"',
+          normalizerVersion: '2',
         }),
         authUser: authUserId,
         row: profile(),

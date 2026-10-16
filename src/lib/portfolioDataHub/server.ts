@@ -2,14 +2,14 @@ import { ZodError } from 'zod'
 import {
   parseHubLatestPositionPage,
   parseHubLedgerEventPage,
-  parseHubPerformance,
+  parseHubLifetimePerformance,
   parseHubSummary,
   parseHubSummaryPage,
   type HubLatestPositionPage,
   type HubPage,
   type HubLedgerEvent,
   type HubPosition,
-  type HubPerformance,
+  type HubLifetimePerformance,
   type HubSummary,
 } from './index'
 
@@ -18,7 +18,7 @@ const DEFAULT_TIMEOUT_MS = 10_000
 
 type RuntimeEnv = Record<string, string | undefined>
 
-export const PERFORMANCE_NORMALIZER_VERSION = '1'
+export const PERFORMANCE_NORMALIZER_VERSION = '2'
 
 export type HubDataset = 'summary' | 'summaries' | 'positions' | 'ledger' | 'performance'
 
@@ -82,7 +82,8 @@ export interface DatasetAlignment {
 /** A page token is server-signed so a client can only page the snapshot selected for its own Hub account. */
 type SnapshotPageToken = { version: 1; accountId: string; snapshotId: string }
 type PerformanceConditionalToken = {
-  version: 1
+  version: 2
+  performanceBasis: 'lifetime'
   authUserId: string
   clientId: string
   hubAccountId: string
@@ -91,7 +92,7 @@ type PerformanceConditionalToken = {
 }
 type HubPositionRoutePage = (HubLatestPositionPage | HubPage<HubPosition>) & { pageToken: string }
 type HubPerformanceRouteResult =
-  | { status: 'updated'; data: HubPerformance; etag: string | null }
+  | { status: 'updated'; data: HubLifetimePerformance; etag: string | null }
   | { status: 'not-modified'; etag: string }
 
 type ServerConfig = {
@@ -333,7 +334,8 @@ async function createPerformanceConditionalToken(
   hubApiKey: string,
 ): Promise<string> {
   const token: PerformanceConditionalToken = {
-    version: 1,
+    version: 2,
+    performanceBasis: 'lifetime',
     authUserId: context.authUserId,
     clientId: context.clientId,
     hubAccountId: context.hubAccountId,
@@ -361,7 +363,8 @@ async function parsePerformanceConditionalToken(
       ? safeUpstreamEtag(parsed.upstreamEtag)
       : null
     if (
-      parsed.version !== 1
+      parsed.version !== 2
+      || parsed.performanceBasis !== 'lifetime'
       || parsed.normalizerVersion !== PERFORMANCE_NORMALIZER_VERSION
       || parsed.authUserId !== context.authUserId
       || parsed.clientId !== context.clientId
@@ -680,7 +683,7 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
     try {
       response = await fetchWithTimeout(
         fetchImpl,
-        `${config.hubBaseUrl}${accountPath(context, 'performance/latest')}`,
+        `${config.hubBaseUrl}${accountPath(context, 'performance/lifetime/latest')}`,
         { headers },
         config.timeoutMs,
       )
@@ -758,9 +761,9 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
     }
 
     const body = await readJson(response)
-    let data: HubPerformance
+    let data: HubLifetimePerformance
     try {
-      data = parseHubPerformance(body)
+      data = parseHubLifetimePerformance(body)
       if (data.accountId !== context.hubAccountId) {
         throw new Error('Hub response account does not match the mapped account')
       }

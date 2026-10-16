@@ -6,8 +6,8 @@ import type {
   CanonicalLedgerEventPage,
   CanonicalPosition,
   CanonicalPositionSnapshot,
-  CanonicalPerformanceDatapoint,
-  CanonicalPerformanceLineage,
+  CanonicalLifetimePerformanceDatapoint,
+  CanonicalLifetimePerformanceLineage,
   CanonicalPerformanceQuality,
   CanonicalPerformanceTotals,
   CanonicalSummary,
@@ -19,7 +19,7 @@ import {
   dataAccountSchema,
   latestPositionPageSchema,
   ledgerEventPageSchema,
-  performanceDatapointSchema,
+  lifetimePerformanceDatapointSchema,
   positionPageSchema,
   positionSchema,
   positionSnapshotSchema,
@@ -183,17 +183,18 @@ export interface HubPerformanceQuality {
   reasonCodes: string[];
 }
 
-export interface HubPerformanceLineage {
+export interface HubLifetimePerformanceLineage {
   summarySnapshotId: string | null;
-  baselineSnapshotId: string | null;
-  baselineAt: string | null;
+  lifetimeAnchorId: string | null;
+  startEventId: string | null;
+  startAt: string | null;
+  openingBasis: string | null;
   canonicalInputSequence: number;
   classificationSequence: number;
-  policyRevision: number | null;
   calculationVersion: string | null;
 }
 
-export interface HubPerformance {
+export interface HubLifetimePerformance {
   performanceSchemaVersion: string;
   id: string | null;
   accountId: string;
@@ -206,8 +207,12 @@ export interface HubPerformance {
   openingEquity: ExactDecimal | null;
   performance: HubPerformanceTotals | null;
   quality: HubPerformanceQuality;
-  lineage: HubPerformanceLineage;
+  lineage: HubLifetimePerformanceLineage;
 }
+
+/** Compatibility aliases while the portal presentation is migrated in Phase 3. */
+export type HubPerformanceLineage = HubLifetimePerformanceLineage;
+export type HubPerformance = HubLifetimePerformance;
 
 function nullableOptional(value: string | null | undefined): string | null {
   return value ?? null;
@@ -382,23 +387,24 @@ export function normalizeHubPerformanceQuality(
   };
 }
 
-export function normalizeHubPerformanceLineage(
-  lineage: CanonicalPerformanceLineage,
-): HubPerformanceLineage {
+export function normalizeHubLifetimePerformanceLineage(
+  lineage: CanonicalLifetimePerformanceLineage,
+): HubLifetimePerformanceLineage {
   return {
     summarySnapshotId: lineage.summary_snapshot_id,
-    baselineSnapshotId: lineage.baseline_snapshot_id,
-    baselineAt: lineage.baseline_at,
+    lifetimeAnchorId: lineage.lifetime_anchor_id,
+    startEventId: lineage.start_event_id,
+    startAt: lineage.start_at,
+    openingBasis: lineage.opening_basis,
     canonicalInputSequence: lineage.canonical_input_sequence,
     classificationSequence: lineage.classification_sequence,
-    policyRevision: lineage.policy_revision,
     calculationVersion: lineage.calculation_version,
   };
 }
 
-export function normalizeHubPerformance(
-  datapoint: CanonicalPerformanceDatapoint,
-): HubPerformance {
+export function normalizeHubLifetimePerformance(
+  datapoint: CanonicalLifetimePerformanceDatapoint,
+): HubLifetimePerformance {
   return {
     performanceSchemaVersion: datapoint.performance_schema_version,
     id: datapoint.id,
@@ -414,7 +420,7 @@ export function normalizeHubPerformance(
       ? null
       : normalizeHubPerformanceTotals(datapoint.performance),
     quality: normalizeHubPerformanceQuality(datapoint.quality),
-    lineage: normalizeHubPerformanceLineage(datapoint.lineage),
+    lineage: normalizeHubLifetimePerformanceLineage(datapoint.lineage),
   };
 }
 
@@ -463,6 +469,9 @@ export function parseHubLedgerEventPage(input: unknown): HubPage<HubLedgerEvent>
   return { items: page.items.map(normalizeHubLedgerEvent), nextCursor: page.next_cursor ?? null };
 }
 
-export function parseHubPerformance(input: unknown): HubPerformance {
-  return normalizeHubPerformance(performanceDatapointSchema.parse(input));
+export function parseHubLifetimePerformance(input: unknown): HubLifetimePerformance {
+  return normalizeHubLifetimePerformance(lifetimePerformanceDatapointSchema.parse(input));
 }
+
+/** Compatibility alias while callers migrate to the explicit lifetime name. */
+export const parseHubPerformance = parseHubLifetimePerformance;

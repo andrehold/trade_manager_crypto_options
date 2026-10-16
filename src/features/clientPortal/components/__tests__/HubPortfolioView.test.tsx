@@ -4,9 +4,9 @@ import userEvent from '@testing-library/user-event'
 import summaryFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/summary-latest.json'
 import positionsFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/positions-latest.json'
 import ledgerFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/ledger-events.json'
-import readyPerformanceFixture from '@/lib/portfolioDataHub/__fixtures__/performance/ready.json'
-import provisionalPerformanceFixture from '@/lib/portfolioDataHub/__fixtures__/performance/provisional.json'
-import unavailablePerformanceFixture from '@/lib/portfolioDataHub/__fixtures__/performance/unavailable.json'
+import readyPerformanceFixture from '@/lib/portfolioDataHub/__fixtures__/performance/lifetime-ready.json'
+import provisionalPerformanceFixture from '@/lib/portfolioDataHub/__fixtures__/performance/lifetime-provisional.json'
+import unavailablePerformanceFixture from '@/lib/portfolioDataHub/__fixtures__/performance/lifetime-unavailable.json'
 import { parseHubLatestPositionPage, parseHubLedgerEventPage, parseHubPerformance, parseHubSummary } from '@/lib/portfolioDataHub'
 import type { PortfolioHubOverview } from '@/lib/portfolioDataHub/client'
 import type { PortfolioHubPerformanceState } from '../../usePortfolioDataHub'
@@ -338,6 +338,7 @@ describe('Hub-backed portfolio views', () => {
     const data = parseHubPerformance(unavailablePerformanceFixture)
     data.quality.equityStatus = 'ready'
     data.equity = '125.5' as typeof data.equity
+    data.reportingCurrency = 'USDC'
     render(<HubPerformancePanel state={performanceState(data)} onRefresh={() => {}} />)
 
     expect(screen.getByRole('heading', { name: 'Equity' }).closest('section')).toHaveTextContent('125.50 USDC')
@@ -417,7 +418,6 @@ describe('Hub-backed portfolio views', () => {
     expect(screen.getAllByText('Provisional').length).toBeGreaterThan(0)
     expect(screen.getByText(/snapshot time is approximate/i)).toBeInTheDocument()
     expect(screen.getByText('2 unresolved movements')).toBeInTheDocument()
-    expect(screen.getByText('Policy revision 3')).toBeInTheDocument()
     expect(screen.getByText('Calculation performance-v1')).toBeInTheDocument()
   })
 

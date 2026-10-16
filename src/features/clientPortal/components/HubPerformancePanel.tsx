@@ -78,10 +78,9 @@ function QualityProvenance({ data }: { data: HubPerformance }) {
           {quality.reasonCodes.map((reason, index) => <li key={`${reason}-${index}`}>{REASON_COPY[reason] ?? 'Additional performance data qualification is available.'}</li>)}
         </ul>
       )}
-      {(quality.unresolvedMovementCount > 0 || lineage.policyRevision !== null || lineage.calculationVersion !== null) && (
+      {(quality.unresolvedMovementCount > 0 || lineage.calculationVersion !== null) && (
         <div className="flex flex-wrap gap-x-5 gap-y-1 type-caption text-text-tertiary">
           {quality.unresolvedMovementCount > 0 && <span>{quality.unresolvedMovementCount} unresolved movement{quality.unresolvedMovementCount === 1 ? '' : 's'}</span>}
-          {lineage.policyRevision !== null && <span>Policy revision {lineage.policyRevision}</span>}
           {lineage.calculationVersion !== null && <span>Calculation {lineage.calculationVersion}</span>}
         </div>
       )}

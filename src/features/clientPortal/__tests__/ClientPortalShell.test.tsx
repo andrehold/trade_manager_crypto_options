@@ -8,7 +8,7 @@ import { DEFAULT_RISK_LIMITS } from '../risk/riskLimits'
 import { hasSupabaseClient } from '@/lib/supabase'
 import summaryFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/summary-latest.json'
 import positionsFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/positions-latest.json'
-import readyPerformanceFixture from '@/lib/portfolioDataHub/__fixtures__/performance/ready.json'
+import readyPerformanceFixture from '@/lib/portfolioDataHub/__fixtures__/performance/lifetime-ready.json'
 import { parseHubLatestPositionPage, parseHubPerformance, parseHubSummary } from '@/lib/portfolioDataHub'
 
 // Recharts' ResponsiveContainer measures 0×0 in jsdom; give it a fixed size.
