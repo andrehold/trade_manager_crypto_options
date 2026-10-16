@@ -2,7 +2,7 @@ import type {
   HubLatestPositionPage,
   HubLedgerEvent,
   HubPage,
-  HubPerformance,
+  HubLifetimePerformance,
   HubPosition,
   HubSummary,
 } from './index'
@@ -173,11 +173,11 @@ export function fetchPortfolioHubOverview(accessToken: string, fetchImpl?: typeo
   return requestPortfolioHub<PortfolioHubOverview>('/api/portfolio-data-hub/overview', accessToken, fetchImpl)
 }
 
-export async function fetchPortfolioHubPerformance(
+export async function fetchPortfolioHubLifetimePerformance(
   accessToken: string,
   etag: string | null,
   fetchImpl: typeof fetch = fetch,
-): Promise<ConditionalResult<HubPerformance>> {
+): Promise<ConditionalResult<HubLifetimePerformance>> {
   const headers: Record<string, string> = {
     authorization: `Bearer ${accessToken}`,
     accept: 'application/json',
@@ -196,7 +196,7 @@ export async function fetchPortfolioHubPerformance(
   if (response.status === 304) {
     return { status: 'not-modified', etag: response.headers.get('etag') }
   }
-  const data = await readResponse<HubPerformance>(response)
+  const data = await readResponse<HubLifetimePerformance>(response)
   return { status: 'updated', data, etag: response.headers.get('etag') }
 }
 

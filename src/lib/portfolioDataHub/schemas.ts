@@ -209,13 +209,13 @@ const reasonCodeSchema = z.string().refine((value) => value.trim().length > 0, {
 });
 
 export const performanceTotalsSchema = contractObject({
-  opening_equity: nullableExactDecimalSchema.default(null),
-  contributions: nullableExactDecimalSchema.default(null),
-  distributions: nullableExactDecimalSchema.default(null),
-  transfers_in: nullableExactDecimalSchema.default(null),
-  transfers_out: nullableExactDecimalSchema.default(null),
-  net_capital_flow: nullableExactDecimalSchema.default(null),
-  pnl: nullableExactDecimalSchema.default(null),
+  opening_equity: nullableExactDecimalSchema,
+  contributions: nullableExactDecimalSchema,
+  distributions: nullableExactDecimalSchema,
+  transfers_in: nullableExactDecimalSchema,
+  transfers_out: nullableExactDecimalSchema,
+  net_capital_flow: nullableExactDecimalSchema,
+  pnl: nullableExactDecimalSchema,
 });
 
 export const performanceQualitySchema = contractObject({
@@ -223,37 +223,38 @@ export const performanceQualitySchema = contractObject({
   performance_status: performanceStatusSchema,
   freshness: performanceFreshnessSchema,
   recalculation_pending: z.boolean(),
-  unresolved_movement_count: z.number().int().default(0),
+  unresolved_movement_count: z.number().int().nonnegative(),
   ledger_coverage_from: nullableDateTimeSchema.default(null),
   ledger_coverage_through: nullableDateTimeSchema.default(null),
-  reason_codes: z.array(reasonCodeSchema).default([]),
+  reason_codes: z.array(reasonCodeSchema),
   details: z.record(z.string(), z.unknown()).default({}),
 });
 
-export const performanceLineageSchema = contractObject({
-  summary_snapshot_id: nullableUuidSchema.default(null),
-  baseline_snapshot_id: nullableUuidSchema.default(null),
-  baseline_at: nullableDateTimeSchema.default(null),
-  canonical_input_sequence: z.number().int().default(0),
-  classification_sequence: z.number().int().default(0),
-  policy_revision: z.number().int().nullable().default(null),
-  calculation_version: nullableStringSchema.default(null),
+export const lifetimePerformanceLineageSchema = contractObject({
+  summary_snapshot_id: nullableUuidSchema,
+  lifetime_anchor_id: nullableUuidSchema,
+  start_event_id: nullableUuidSchema,
+  start_at: nullableDateTimeSchema,
+  opening_basis: nullableStringSchema,
+  canonical_input_sequence: z.number().int().nonnegative(),
+  classification_sequence: z.number().int().nonnegative(),
+  calculation_version: nullableStringSchema,
 });
 
-export const performanceDatapointSchema = contractObject({
-  performance_schema_version: z.string().default('1.0'),
-  id: nullableUuidSchema.default(null),
+export const lifetimePerformanceDatapointSchema = contractObject({
+  performance_schema_version: z.literal('1.0'),
+  id: nullableUuidSchema,
   account_id: z.string().uuid(),
-  revision: z.number().int().nullable().default(null),
-  as_of: nullableDateTimeSchema.default(null),
-  time_basis: z.string().default('venue_observed'),
-  computed_at: nullableDateTimeSchema.default(null),
-  reporting_currency: nullableStringSchema.default(null),
-  equity: nullableExactDecimalSchema.default(null),
-  opening_equity: nullableExactDecimalSchema.default(null),
-  performance: performanceTotalsSchema.nullable().default(null),
+  revision: z.number().int().nullable(),
+  as_of: nullableDateTimeSchema,
+  time_basis: z.string(),
+  computed_at: nullableDateTimeSchema,
+  reporting_currency: nullableStringSchema,
+  equity: nullableExactDecimalSchema,
+  opening_equity: nullableExactDecimalSchema,
+  performance: performanceTotalsSchema.nullable(),
   quality: performanceQualitySchema,
-  lineage: performanceLineageSchema,
+  lineage: lifetimePerformanceLineageSchema,
 }).superRefine((value, context) => {
   const nestedOpeningEquity = value.performance?.opening_equity;
   if (
@@ -266,6 +267,47 @@ export const performanceDatapointSchema = contractObject({
       path: ['performance', 'opening_equity'],
       message: 'Top-level and performance opening equity must agree',
     });
+  }
+
+  const totals = value.performance;
+  if (
+    totals !== null
+    && totals.contributions !== null
+    && totals.distributions !== null
+    && totals.transfers_in !== null
+    && totals.transfers_out !== null
+    && totals.net_capital_flow !== null
+  ) {
+    const expectedNetCapitalFlow = new Decimal(totals.contributions)
+      .minus(totals.distributions)
+      .plus(totals.transfers_in)
+      .minus(totals.transfers_out);
+    if (!expectedNetCapitalFlow.equals(totals.net_capital_flow)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['performance', 'net_capital_flow'],
+        message: 'Net capital flow does not match its exact accounting identity',
+      });
+    }
+  }
+
+  if (
+    totals !== null
+    && value.equity !== null
+    && totals.opening_equity !== null
+    && totals.net_capital_flow !== null
+    && totals.pnl !== null
+  ) {
+    const expectedPnl = new Decimal(value.equity)
+      .minus(totals.opening_equity)
+      .minus(totals.net_capital_flow);
+    if (!expectedPnl.equals(totals.pnl)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['performance', 'pnl'],
+        message: 'P&L does not match its exact accounting identity',
+      });
+    }
   }
 });
 
@@ -282,5 +324,5 @@ export type CanonicalLedgerEvent = z.infer<typeof ledgerEventSchema>;
 export type CanonicalLedgerEventPage = z.infer<typeof ledgerEventPageSchema>;
 export type CanonicalPerformanceTotals = z.infer<typeof performanceTotalsSchema>;
 export type CanonicalPerformanceQuality = z.infer<typeof performanceQualitySchema>;
-export type CanonicalPerformanceLineage = z.infer<typeof performanceLineageSchema>;
-export type CanonicalPerformanceDatapoint = z.infer<typeof performanceDatapointSchema>;
+export type CanonicalLifetimePerformanceLineage = z.infer<typeof lifetimePerformanceLineageSchema>;
+export type CanonicalLifetimePerformanceDatapoint = z.infer<typeof lifetimePerformanceDatapointSchema>;

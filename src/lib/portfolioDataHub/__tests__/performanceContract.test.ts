@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import readyFixture from '../__fixtures__/performance/ready.json';
-import provisionalFixture from '../__fixtures__/performance/provisional.json';
-import unavailableFixture from '../__fixtures__/performance/unavailable.json';
-import { parseHubPerformance, performanceDatapointSchema } from '..';
+import baselineFixture from '../__fixtures__/performance/provisional.json';
+import readyFixture from '../__fixtures__/performance/lifetime-ready.json';
+import provisionalFixture from '../__fixtures__/performance/lifetime-provisional.json';
+import unavailableFixture from '../__fixtures__/performance/lifetime-unavailable.json';
+import {
+  isLifetimePerformanceFinal,
+  lifetimePerformanceDatapointSchema,
+  lifetimePerformanceDisplayStatus,
+  parseHubLifetimePerformance,
+} from '..';
 
 function cloneRecord(value: unknown): Record<string, unknown> {
   return structuredClone(value) as Record<string, unknown>;
@@ -12,98 +18,109 @@ function childRecord(parent: Record<string, unknown>, key: string): Record<strin
   return parent[key] as Record<string, unknown>;
 }
 
-describe('Portfolio Data Hub performance contract', () => {
+describe('Portfolio Data Hub lifetime performance contract', () => {
   it.each([
     ['ready', readyFixture, 'ready'],
     ['provisional', provisionalFixture, 'provisional'],
     ['unavailable', unavailableFixture, 'unavailable'],
   ] as const)('parses the sanitized %s fixture', (_name, fixture, performanceStatus) => {
-    const result = parseHubPerformance(fixture);
+    const result = parseHubLifetimePerformance(fixture);
 
     expect(result.quality.performanceStatus).toBe(performanceStatus);
     expect(result.accountId).toBe('00000000-0000-4000-8000-000000000001');
   });
 
   it('normalizes all seven exact performance totals without converting null to zero', () => {
-    const provisional = parseHubPerformance(provisionalFixture);
-    const unavailable = parseHubPerformance(unavailableFixture);
+    const provisional = parseHubLifetimePerformance(provisionalFixture);
+    const unavailable = parseHubLifetimePerformance(unavailableFixture);
 
     expect(provisional.performance).toEqual({
-      openingEquity: '9000.00',
-      contributions: '200.00',
-      distributions: '50.00',
-      transfersIn: '800.00',
-      transfersOut: '100.00',
-      netCapitalFlow: '850.00',
-      pnl: '150.00',
+      openingEquity: '1000.00',
+      contributions: '0.00',
+      distributions: '0.00',
+      transfersIn: '0.00',
+      transfersOut: '200.00',
+      netCapitalFlow: '-200.00',
+      pnl: '25.00',
     });
     expect(unavailable.openingEquity).toBeNull();
     expect(unavailable.performance).toBeNull();
   });
 
   it('keeps equity and performance statuses independent', () => {
-    const result = parseHubPerformance(provisionalFixture);
+    const result = parseHubLifetimePerformance(provisionalFixture);
 
     expect(result.quality).toMatchObject({
       equityStatus: 'ready',
       performanceStatus: 'provisional',
       freshness: 'fresh',
       recalculationPending: false,
-      reasonCodes: ['snapshot_time_approximate'],
+      reasonCodes: ['movement_unresolved', 'snapshot_time_approximate'],
     });
-    expect(result.timeBasis).toBe('collected_at');
+    expect(result.timeBasis).toBe('collection_time_approximation');
+  });
+
+  it('marks performance final only when the complete readiness predicate holds', () => {
+    const ready = parseHubLifetimePerformance(readyFixture);
+    expect(isLifetimePerformanceFinal(ready.quality)).toBe(true);
+    expect(lifetimePerformanceDisplayStatus(ready.quality)).toBe('ready');
+
+    const nonFinalQualities = [
+      { ...ready.quality, equityStatus: 'provisional' as const },
+      { ...ready.quality, recalculationPending: true },
+      { ...ready.quality, unresolvedMovementCount: 1 },
+      { ...ready.quality, reasonCodes: ['recalculation_pending'] },
+    ];
+    for (const quality of nonFinalQualities) {
+      expect(isLifetimePerformanceFinal(quality)).toBe(false);
+      expect(lifetimePerformanceDisplayStatus(quality)).toBe('provisional');
+    }
+
+    const unavailable = parseHubLifetimePerformance(unavailableFixture);
+    expect(lifetimePerformanceDisplayStatus(unavailable.quality)).toBe('unavailable');
   });
 
   it('normalizes complete quality and lineage without exposing opaque details', () => {
-    const result = parseHubPerformance(provisionalFixture);
+    const result = parseHubLifetimePerformance(provisionalFixture);
 
     expect(result.quality).toEqual({
       equityStatus: 'ready',
       performanceStatus: 'provisional',
       freshness: 'fresh',
       recalculationPending: false,
-      unresolvedMovementCount: 0,
+      unresolvedMovementCount: 1,
       ledgerCoverageFrom: '2026-01-01T00:00:00Z',
-      ledgerCoverageThrough: '2026-01-01T00:00:00Z',
-      reasonCodes: ['snapshot_time_approximate'],
+      ledgerCoverageThrough: '2026-10-15T12:00:00Z',
+      reasonCodes: ['movement_unresolved', 'snapshot_time_approximate'],
     });
     expect(result.lineage).toEqual({
-      summarySnapshotId: '00000000-0000-4000-8000-000000000003',
-      baselineSnapshotId: '00000000-0000-4000-8000-000000000004',
-      baselineAt: '2026-01-01T00:00:00Z',
-      canonicalInputSequence: 1200,
-      classificationSequence: 87,
-      policyRevision: 3,
+      summarySnapshotId: '20000000-0000-4000-8000-000000000003',
+      lifetimeAnchorId: '20000000-0000-4000-8000-000000000004',
+      startEventId: '20000000-0000-4000-8000-000000000005',
+      startAt: '2026-01-01T00:00:00Z',
+      openingBasis: 'observed_snapshot',
+      canonicalInputSequence: 2401,
+      classificationSequence: 145,
       calculationVersion: 'performance-v1',
     });
     expect(result.quality).not.toHaveProperty('details');
   });
 
-  it('accepts integer, null, and omitted revisions while rejecting strings and fractions', () => {
+  it('accepts integer and null revisions while rejecting missing, string, and fractional values', () => {
     const nullable = cloneRecord(provisionalFixture);
     nullable.revision = null;
-    childRecord(nullable, 'lineage').policy_revision = null;
-    expect(parseHubPerformance(nullable)).toMatchObject({
+    expect(parseHubLifetimePerformance(nullable)).toMatchObject({
       revision: null,
-      lineage: { policyRevision: null },
     });
 
     const omitted = cloneRecord(provisionalFixture);
     delete omitted.revision;
-    delete childRecord(omitted, 'lineage').policy_revision;
-    expect(parseHubPerformance(omitted)).toMatchObject({
-      revision: null,
-      lineage: { policyRevision: null },
-    });
+    expect(() => parseHubLifetimePerformance(omitted)).toThrow();
 
     for (const invalid of ['7', 7.5]) {
       const invalidRevision = cloneRecord(provisionalFixture);
       invalidRevision.revision = invalid;
-      expect(() => parseHubPerformance(invalidRevision)).toThrow();
-
-      const invalidPolicyRevision = cloneRecord(provisionalFixture);
-      childRecord(invalidPolicyRevision, 'lineage').policy_revision = invalid;
-      expect(() => parseHubPerformance(invalidPolicyRevision)).toThrow();
+      expect(() => parseHubLifetimePerformance(invalidRevision)).toThrow();
     }
   });
 
@@ -114,9 +131,10 @@ describe('Portfolio Data Hub performance contract', () => {
     const totals = childRecord(input, 'performance');
     totals.opening_equity = '0';
     totals.contributions = null;
+    totals.net_capital_flow = null;
     totals.pnl = '0e-8';
 
-    const result = parseHubPerformance(input);
+    const result = parseHubLifetimePerformance(input);
     expect(result.equity).toBe('-0');
     expect(result.openingEquity).toBe('0.00');
     expect(result.performance?.openingEquity).toBe('0');
@@ -125,7 +143,7 @@ describe('Portfolio Data Hub performance contract', () => {
 
     const malformed = cloneRecord(input);
     childRecord(malformed, 'performance').pnl = 'not-a-decimal';
-    expect(() => parseHubPerformance(malformed)).toThrow(/exact decimal string/i);
+    expect(() => parseHubLifetimePerformance(malformed)).toThrow(/exact decimal string/i);
   });
 
   it('rejects unknown status and freshness values', () => {
@@ -136,7 +154,7 @@ describe('Portfolio Data Hub performance contract', () => {
     ] as const) {
       const input = cloneRecord(provisionalFixture);
       childRecord(input, 'quality')[field] = value;
-      expect(() => parseHubPerformance(input)).toThrow();
+      expect(() => parseHubLifetimePerformance(input)).toThrow();
     }
   });
 
@@ -144,7 +162,7 @@ describe('Portfolio Data Hub performance contract', () => {
     const input = cloneRecord(provisionalFixture);
     childRecord(input, 'quality').freshness = 'stale';
 
-    const result = parseHubPerformance(input);
+    const result = parseHubLifetimePerformance(input);
     expect(result.quality.freshness).toBe('stale');
     expect(result.quality.performanceStatus).toBe('provisional');
   });
@@ -152,70 +170,61 @@ describe('Portfolio Data Hub performance contract', () => {
   it('accepts unknown non-empty reason codes and rejects empty ones', () => {
     const futureReason = cloneRecord(provisionalFixture);
     childRecord(futureReason, 'quality').reason_codes = ['future_hub_reason'];
-    expect(parseHubPerformance(futureReason).quality.reasonCodes).toEqual(['future_hub_reason']);
+    expect(parseHubLifetimePerformance(futureReason).quality.reasonCodes).toEqual(['future_hub_reason']);
 
     for (const reason of ['', '   ']) {
       const invalid = cloneRecord(provisionalFixture);
       childRecord(invalid, 'quality').reason_codes = [reason];
-      expect(() => parseHubPerformance(invalid)).toThrow(/reason code/i);
+      expect(() => parseHubLifetimePerformance(invalid)).toThrow(/reason code/i);
     }
   });
 
-  it('normalizes documented defaults for omitted nullable and defaulted fields', () => {
-    const result = parseHubPerformance({
-      account_id: '00000000-0000-4000-8000-000000000001',
-      quality: {
-        equity_status: 'unavailable',
-        performance_status: 'unavailable',
-        freshness: 'unknown',
-        recalculation_pending: false,
-      },
-      lineage: {},
-    });
+  it('requires schema version 1.0 and does not invent omitted contract fields', () => {
+    const missingVersion = cloneRecord(unavailableFixture);
+    delete missingVersion.performance_schema_version;
+    expect(() => parseHubLifetimePerformance(missingVersion)).toThrow();
 
-    expect(result).toMatchObject({
-      performanceSchemaVersion: '1.0',
-      id: null,
-      revision: null,
-      asOf: null,
-      timeBasis: 'venue_observed',
-      computedAt: null,
-      reportingCurrency: null,
-      equity: null,
-      openingEquity: null,
-      performance: null,
-      quality: {
-        unresolvedMovementCount: 0,
-        ledgerCoverageFrom: null,
-        ledgerCoverageThrough: null,
-        reasonCodes: [],
-      },
-      lineage: {
-        summarySnapshotId: null,
-        baselineSnapshotId: null,
-        baselineAt: null,
-        canonicalInputSequence: 0,
-        classificationSequence: 0,
-        policyRevision: null,
-        calculationVersion: null,
-      },
-    });
+    const wrongVersion = cloneRecord(unavailableFixture);
+    wrongVersion.performance_schema_version = '1.1';
+    expect(() => parseHubLifetimePerformance(wrongVersion)).toThrow();
+
+    const missingReasonCodes = cloneRecord(unavailableFixture);
+    delete childRecord(missingReasonCodes, 'quality').reason_codes;
+    expect(() => parseHubLifetimePerformance(missingReasonCodes)).toThrow();
+
+    const missingAnchor = cloneRecord(unavailableFixture);
+    delete childRecord(missingAnchor, 'lineage').lifetime_anchor_id;
+    expect(() => parseHubLifetimePerformance(missingAnchor)).toThrow();
+  });
+
+  it('rejects a baseline-period response as lifetime performance', () => {
+    expect(() => parseHubLifetimePerformance(baselineFixture)).toThrow();
   });
 
   it('requires matching top-level and nested opening equity when both are known', () => {
     const equivalent = cloneRecord(provisionalFixture);
     equivalent.opening_equity = '1000.0';
     childRecord(equivalent, 'performance').opening_equity = '1000.00';
-    expect(() => parseHubPerformance(equivalent)).not.toThrow();
+    expect(() => parseHubLifetimePerformance(equivalent)).not.toThrow();
 
     const mismatch = cloneRecord(provisionalFixture);
     childRecord(mismatch, 'performance').opening_equity = '1000.01';
-    expect(() => parseHubPerformance(mismatch)).toThrow(/opening equity/i);
+    expect(() => parseHubLifetimePerformance(mismatch)).toThrow(/opening equity/i);
+  });
+
+  it('requires both exact accounting identities when all operands are available', () => {
+    const badFlow = cloneRecord(readyFixture);
+    childRecord(badFlow, 'performance').net_capital_flow = '851.00';
+    expect(() => parseHubLifetimePerformance(badFlow)).toThrow(/net capital flow/i);
+
+    const badPnl = cloneRecord(readyFixture);
+    childRecord(badPnl, 'performance').pnl = '151.00';
+    expect(() => parseHubLifetimePerformance(badPnl)).toThrow(/P&L/i);
   });
 
   it('retains quality details only in the validated internal shape', () => {
-    const raw = performanceDatapointSchema.parse(provisionalFixture);
-    const normalized = parseHubPerformance(provisionalFixture);
+    const raw = lifetimePerformanceDatapointSchema.parse(provisionalFixture);
+    const normalized = parseHubLifetimePerformance(provisionalFixture);
 
     expect(raw.quality.details).toEqual(provisionalFixture.quality.details);
     expect(normalized.quality).not.toHaveProperty('details');

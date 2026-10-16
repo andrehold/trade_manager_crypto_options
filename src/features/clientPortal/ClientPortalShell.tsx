@@ -8,7 +8,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { PositionsPage } from './pages/PositionsPage'
 import { HubDashboard, HubLedgerPage, HubPositionsPage } from './components/HubPortfolioView'
 import { useClientPositions } from './useClientPositions'
-import { usePortfolioDataHub, usePortfolioHubPerformance, useReportingCurrencySelection } from './usePortfolioDataHub'
+import { usePortfolioDataHub, usePortfolioHubLifetimePerformance, useReportingCurrencySelection } from './usePortfolioDataHub'
 import { usePositionInterventions } from './usePositionInterventions'
 import { useSetupPersistence } from './useSetupPersistence'
 import { type AppropriatenessInput } from '@/lib/clientPortal/appropriatenessRepo'
@@ -40,7 +40,7 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const [active, setActive] = React.useState(false)
   const { positions, loading, error, reload } = useClientPositions(clientName)
   const { state: hubState, reload: reloadHub } = usePortfolioDataHub()
-  const { state: performanceState, refresh: refreshPerformance } = usePortfolioHubPerformance()
+  const { state: performanceState, refresh: refreshPerformance } = usePortfolioHubLifetimePerformance()
   const refreshDashboard = React.useCallback(() => {
     reloadHub()
     void refreshPerformance()

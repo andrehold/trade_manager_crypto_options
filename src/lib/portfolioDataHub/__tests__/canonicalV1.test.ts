@@ -207,17 +207,25 @@ describe('Portfolio Data Hub Canonical Contract v1', () => {
     expect(contractSnapshot.components.schemas.LedgerEventView.properties.deduplication_key).toBeDefined();
   });
 
-  it('pins the performance endpoint and its integer-or-null revision contract', () => {
-    const performancePath = performanceContract.paths[
+  it('pins distinct baseline and lifetime performance endpoints', () => {
+    const baselinePath = performanceContract.paths[
       '/api/v1/accounts/{account_id}/performance/latest'
     ];
-    const datapointRef = performancePath?.get.responses['200']
+    const lifetimePath = performanceContract.paths[
+      '/api/v1/accounts/{account_id}/performance/lifetime/latest'
+    ];
+    const baselineRef = baselinePath?.get.responses['200']
+      ?.content['application/json'].schema.$ref;
+    const lifetimeRef = lifetimePath?.get.responses['200']
       ?.content['application/json'].schema.$ref;
 
-    expect(datapointRef).toBe('#/components/schemas/PerformanceDatapointView');
+    expect(baselineRef).toBe('#/components/schemas/PerformanceDatapointView');
+    expect(lifetimeRef).toBe('#/components/schemas/LifetimePerformanceDatapointView');
 
     const datapoint = performanceContract.components.schemas.PerformanceDatapointView;
     const lineage = performanceContract.components.schemas.PerformanceLineageView;
+    const lifetimeDatapoint = performanceContract.components.schemas.LifetimePerformanceDatapointView;
+    const lifetimeLineage = performanceContract.components.schemas.LifetimePerformanceLineageView;
     expect(datapoint.properties.revision.anyOf).toEqual([
       { type: 'integer' },
       { type: 'null' },
@@ -226,5 +234,21 @@ describe('Portfolio Data Hub Canonical Contract v1', () => {
       { type: 'integer' },
       { type: 'null' },
     ]);
+    expect(lifetimeDatapoint.properties.revision.anyOf).toEqual([
+      { type: 'integer' },
+      { type: 'null' },
+    ]);
+    expect(lifetimeDatapoint.properties.lineage.$ref)
+      .toBe('#/components/schemas/LifetimePerformanceLineageView');
+    expect(Object.keys(lifetimeLineage.properties)).toEqual(expect.arrayContaining([
+      'lifetime_anchor_id',
+      'start_event_id',
+      'start_at',
+      'opening_basis',
+      'canonical_input_sequence',
+      'classification_sequence',
+    ]));
+    expect(lifetimeLineage.properties).not.toHaveProperty('baseline_snapshot_id');
+    expect(lifetimeLineage.properties).not.toHaveProperty('baseline_at');
   });
 });

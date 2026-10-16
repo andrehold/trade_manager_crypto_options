@@ -3,13 +3,13 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useClientPositions } from '../useClientPositions'
 import { useSetupPersistence } from '../useSetupPersistence'
-import { usePortfolioDataHub, usePortfolioHubPerformance, useReportingCurrencySelection } from '../usePortfolioDataHub'
+import { usePortfolioDataHub, usePortfolioHubLifetimePerformance, useReportingCurrencySelection } from '../usePortfolioDataHub'
 import { DEFAULT_RISK_LIMITS } from '../risk/riskLimits'
 import { hasSupabaseClient } from '@/lib/supabase'
 import summaryFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/summary-latest.json'
 import positionsFixture from '@/lib/portfolioDataHub/__fixtures__/paradex/positions-latest.json'
-import readyPerformanceFixture from '@/lib/portfolioDataHub/__fixtures__/performance/ready.json'
-import { parseHubLatestPositionPage, parseHubPerformance, parseHubSummary } from '@/lib/portfolioDataHub'
+import readyPerformanceFixture from '@/lib/portfolioDataHub/__fixtures__/performance/lifetime-ready.json'
+import { parseHubLatestPositionPage, parseHubLifetimePerformance, parseHubSummary } from '@/lib/portfolioDataHub'
 
 // Recharts' ResponsiveContainer measures 0×0 in jsdom; give it a fixed size.
 vi.mock('recharts', async (importOriginal) => {
@@ -27,7 +27,7 @@ const mockedHook = vi.mocked(useClientPositions)
 
 vi.mock('../usePortfolioDataHub', () => ({
   usePortfolioDataHub: vi.fn(),
-  usePortfolioHubPerformance: vi.fn(),
+  usePortfolioHubLifetimePerformance: vi.fn(),
   useReportingCurrencySelection: vi.fn(),
 }))
 
@@ -73,7 +73,7 @@ const baseSetupPersistence = {
 beforeEach(() => {
   mockedHook.mockReturnValue({ positions: [], loading: false, error: null, reload: vi.fn() })
   vi.mocked(usePortfolioDataHub).mockReturnValue({ state: { status: 'not-configured' }, reload: vi.fn() })
-  vi.mocked(usePortfolioHubPerformance).mockReturnValue({
+  vi.mocked(usePortfolioHubLifetimePerformance).mockReturnValue({
     state: { status: 'not-configured', data: null, refreshing: false, refreshError: null, errorCode: null, retryAt: null, canRefresh: false },
     refresh: vi.fn(),
   })
@@ -449,15 +449,15 @@ describe('ClientPortalShell', () => {
         }, history: [], historyError: null,
       }, reload,
     })
-    vi.mocked(usePortfolioHubPerformance).mockReturnValue({
-      state: { status: 'ready', data: parseHubPerformance(readyPerformanceFixture), refreshing: false, refreshError: null, errorCode: null, retryAt: null, canRefresh: true },
+    vi.mocked(usePortfolioHubLifetimePerformance).mockReturnValue({
+      state: { status: 'ready', data: parseHubLifetimePerformance(readyPerformanceFixture), refreshing: false, refreshError: null, errorCode: null, retryAt: null, canRefresh: true },
       refresh,
     })
     render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/dashboard" onSignOut={() => {}} />)
     await userEvent.click(await screen.findByRole('button', { name: /^refresh$/i }))
     expect(reload).toHaveBeenCalledOnce()
     expect(refresh).toHaveBeenCalledOnce()
-    await userEvent.click(await screen.findByRole('button', { name: /refresh performance/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /refresh lifetime performance/i }))
     expect(refresh).toHaveBeenCalledTimes(2)
   })
 })

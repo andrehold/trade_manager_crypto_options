@@ -724,6 +724,17 @@
             ],
             "title": "Native Event Type"
           },
+          "principal_amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Principal Amount"
+          },
           "principal_amount_mode": {
             "anyOf": [
               {
@@ -820,6 +831,17 @@
             "format": "uuid",
             "title": "Ledger Event Id",
             "type": "string"
+          },
+          "principal_amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Principal Amount"
           },
           "principal_amount_mode": {
             "anyOf": [
@@ -1585,6 +1607,214 @@
         "title": "LedgerEventView",
         "type": "object"
       },
+      "LifetimePerformanceDatapointView": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "computed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Computed At"
+          },
+          "equity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equity"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "lineage": {
+            "$ref": "#/components/schemas/LifetimePerformanceLineageView"
+          },
+          "opening_equity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Equity"
+          },
+          "performance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PerformanceTotalsView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "performance_schema_version": {
+            "default": "1.0",
+            "title": "Performance Schema Version",
+            "type": "string"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/PerformanceQualityView"
+          },
+          "reporting_currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reporting Currency"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          },
+          "time_basis": {
+            "default": "venue_observed",
+            "title": "Time Basis",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "quality",
+          "lineage"
+        ],
+        "title": "LifetimePerformanceDatapointView",
+        "type": "object"
+      },
+      "LifetimePerformanceLineageView": {
+        "properties": {
+          "calculation_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculation Version"
+          },
+          "canonical_input_sequence": {
+            "default": 0,
+            "title": "Canonical Input Sequence",
+            "type": "integer"
+          },
+          "classification_sequence": {
+            "default": 0,
+            "title": "Classification Sequence",
+            "type": "integer"
+          },
+          "lifetime_anchor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lifetime Anchor Id"
+          },
+          "opening_basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Basis"
+          },
+          "start_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start At"
+          },
+          "start_event_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Event Id"
+          },
+          "summary_snapshot_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Snapshot Id"
+          }
+        },
+        "title": "LifetimePerformanceLineageView",
+        "type": "object"
+      },
       "ManualRunResponse": {
         "properties": {
           "account_id": {
@@ -1635,6 +1865,68 @@
         "type": "string"
       },
       "PerformanceDatapointView": {
+        "examples": [
+          {
+            "account_id": "11111111-1111-4111-8111-111111111111",
+            "as_of": "2026-09-02T12:00:00Z",
+            "computed_at": "2026-09-02T12:00:03Z",
+            "equity": "825.00",
+            "id": "22222222-2222-4222-8222-222222222222",
+            "lineage": {
+              "baseline_at": "2026-09-01T12:00:00Z",
+              "baseline_snapshot_id": "44444444-4444-4444-8444-444444444444",
+              "calculation_version": "performance-v1",
+              "canonical_input_sequence": 1200,
+              "classification_sequence": 87,
+              "policy_revision": 3,
+              "summary_snapshot_id": "33333333-3333-4333-8333-333333333333"
+            },
+            "opening_equity": "1000.00",
+            "performance": {
+              "contributions": "0.00",
+              "distributions": "0.00",
+              "net_capital_flow": "-200.00",
+              "opening_equity": "1000.00",
+              "pnl": "25.00",
+              "transfers_in": "0.00",
+              "transfers_out": "200.00"
+            },
+            "performance_schema_version": "1.0",
+            "quality": {
+              "details": {
+                "contributions": "0.00",
+                "coverage_evidence_ids": [
+                  "77777777-7777-4777-8777-777777777777"
+                ],
+                "distributions": "0.00",
+                "equity_status": "ready",
+                "ledger_coverage_from": "2026-09-01T12:00:00+00:00",
+                "ledger_coverage_through": "2026-09-02T12:00:00+00:00",
+                "performance_status": "provisional",
+                "reason_codes": [
+                  "snapshot_time_approximate"
+                ],
+                "time_basis": "collected_at",
+                "transfers_in": "0.00",
+                "transfers_out": "200.00",
+                "unresolved_movement_count": 0
+              },
+              "equity_status": "ready",
+              "freshness": "fresh",
+              "ledger_coverage_from": "2026-09-01T12:00:00Z",
+              "ledger_coverage_through": "2026-09-02T12:00:00Z",
+              "performance_status": "provisional",
+              "reason_codes": [
+                "snapshot_time_approximate"
+              ],
+              "recalculation_pending": false,
+              "unresolved_movement_count": 0
+            },
+            "reporting_currency": "USDC",
+            "revision": 7,
+            "time_basis": "collected_at"
+          }
+        ],
         "properties": {
           "account_id": {
             "format": "uuid",
@@ -3995,6 +4287,16 @@
               ],
               "title": "Cursor"
             }
+          },
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": "baseline",
+              "title": "Window",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -4073,6 +4375,54 @@
           }
         ],
         "summary": "Latest Performance",
+        "tags": [
+          "account performance"
+        ]
+      }
+    },
+    "/api/v1/accounts/{account_id}/performance/lifetime/latest": {
+      "get": {
+        "operationId": "latest_lifetime_performance_api_v1_accounts__account_id__performance_lifetime_latest_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Account Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifetimePerformanceDatapointView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Latest Lifetime Performance",
         "tags": [
           "account performance"
         ]

@@ -2,23 +2,25 @@ import { ZodError } from 'zod'
 import {
   parseHubLatestPositionPage,
   parseHubLedgerEventPage,
-  parseHubPerformance,
+  parseHubLifetimePerformance,
   parseHubSummary,
   parseHubSummaryPage,
   type HubLatestPositionPage,
   type HubPage,
   type HubLedgerEvent,
   type HubPosition,
-  type HubPerformance,
+  type HubLifetimePerformance,
   type HubSummary,
 } from './index'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const DEFAULT_TIMEOUT_MS = 10_000
+const PERFORMANCE_MAX_ATTEMPTS = 3
+const PERFORMANCE_RETRY_BASE_MS = 100
 
 type RuntimeEnv = Record<string, string | undefined>
 
-export const PERFORMANCE_NORMALIZER_VERSION = '1'
+export const PERFORMANCE_NORMALIZER_VERSION = '2'
 
 export type HubDataset = 'summary' | 'summaries' | 'positions' | 'ledger' | 'performance'
 
@@ -82,7 +84,8 @@ export interface DatasetAlignment {
 /** A page token is server-signed so a client can only page the snapshot selected for its own Hub account. */
 type SnapshotPageToken = { version: 1; accountId: string; snapshotId: string }
 type PerformanceConditionalToken = {
-  version: 1
+  version: 2
+  performanceBasis: 'lifetime'
   authUserId: string
   clientId: string
   hubAccountId: string
@@ -90,8 +93,8 @@ type PerformanceConditionalToken = {
   normalizerVersion: string
 }
 type HubPositionRoutePage = (HubLatestPositionPage | HubPage<HubPosition>) & { pageToken: string }
-type HubPerformanceRouteResult =
-  | { status: 'updated'; data: HubPerformance; etag: string | null }
+type HubLifetimePerformanceRouteResult =
+  | { status: 'updated'; data: HubLifetimePerformance; etag: string | null }
   | { status: 'not-modified'; etag: string }
 
 type ServerConfig = {
@@ -122,6 +125,9 @@ export type GatewayDependencies = {
   logger?: (event: HubSafeLogEvent) => void
   correlationId?: () => string
   now?: () => number
+  retryNow?: () => number
+  random?: () => number
+  sleep?: (delayMs: number) => Promise<void>
 }
 
 export type HubSafeLogEvent = {
@@ -333,7 +339,8 @@ async function createPerformanceConditionalToken(
   hubApiKey: string,
 ): Promise<string> {
   const token: PerformanceConditionalToken = {
-    version: 1,
+    version: 2,
+    performanceBasis: 'lifetime',
     authUserId: context.authUserId,
     clientId: context.clientId,
     hubAccountId: context.hubAccountId,
@@ -361,7 +368,8 @@ async function parsePerformanceConditionalToken(
       ? safeUpstreamEtag(parsed.upstreamEtag)
       : null
     if (
-      parsed.version !== 1
+      parsed.version !== 2
+      || parsed.performanceBasis !== 'lifetime'
       || parsed.normalizerVersion !== PERFORMANCE_NORMALIZER_VERSION
       || parsed.authUserId !== context.authUserId
       || parsed.clientId !== context.clientId
@@ -387,6 +395,13 @@ function validatedRetryAfter(value: string | null, nowMs: number): string | null
     : null
 }
 
+function retryAfterDelayMs(value: string | null, nowMs: number): number | null {
+  const validated = validatedRetryAfter(value, nowMs)
+  if (validated === null) return null
+  if (/^\d+$/.test(validated)) return Number(validated) * 1_000
+  return Math.max(0, Date.parse(validated) - nowMs)
+}
+
 export function compareDatasetAlignment(
   summary: HubSummary,
   positions: HubLatestPositionPage,
@@ -406,6 +421,11 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
   const env = dependencies.env ?? process.env
   const fetchImpl = dependencies.fetch ?? globalThis.fetch
   const now = dependencies.now ?? Date.now
+  const retryNow = dependencies.retryNow ?? Date.now
+  const random = dependencies.random ?? Math.random
+  const sleep = dependencies.sleep ?? ((delayMs: number) => new Promise<void>((resolve) => {
+    setTimeout(resolve, delayMs)
+  }))
   const config = readConfig(env)
 
   async function authenticate(req: Request): Promise<{ token: string; user: SupabaseAuthUser; headers: HeadersInit }> {
@@ -664,7 +684,7 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
   async function performance(
     context: HubRequestContext,
     ifNoneMatch: string | null,
-  ): Promise<HubPerformanceRouteResult> {
+  ): Promise<HubLifetimePerformanceRouteResult> {
     const conditional = await parsePerformanceConditionalToken(
       ifNoneMatch,
       context,
@@ -676,14 +696,32 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
     })
     if (conditional) headers.set('if-none-match', conditional.upstreamEtag)
 
+    const performanceUrl = `${config.hubBaseUrl}${accountPath(context, 'performance/lifetime/latest')}`
+    const retryStartedAt = retryNow()
     let response: Response
     try {
-      response = await fetchWithTimeout(
-        fetchImpl,
-        `${config.hubBaseUrl}${accountPath(context, 'performance/latest')}`,
-        { headers },
-        config.timeoutMs,
-      )
+      let attempt = 0
+      while (true) {
+        attempt += 1
+        const elapsed = Math.max(0, retryNow() - retryStartedAt)
+        const remainingMs = Math.max(1, config.timeoutMs - elapsed)
+        response = await fetchWithTimeout(fetchImpl, performanceUrl, { headers }, remainingMs)
+        const retryableStatus = response.status === 408
+          || response.status === 429
+          || response.status >= 500
+        if (!retryableStatus || attempt >= PERFORMANCE_MAX_ATTEMPTS) break
+
+        const exponentialDelay = PERFORMANCE_RETRY_BASE_MS * 2 ** (attempt - 1)
+        const jitteredDelay = Math.round(exponentialDelay * (0.75 + random() * 0.5))
+        const retryAfterDelay = response.status === 429
+          ? retryAfterDelayMs(response.headers.get('retry-after'), retryNow())
+          : null
+        const delayMs = retryAfterDelay ?? jitteredDelay
+        const remainingAfterResponse = config.timeoutMs - Math.max(0, retryNow() - retryStartedAt)
+        if (delayMs >= remainingAfterResponse) break
+        await response.body?.cancel()
+        await sleep(delayMs)
+      }
     } catch (error) {
       if (error instanceof HubRouteError) throw error
       throw new HubRouteError(
@@ -758,9 +796,9 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
     }
 
     const body = await readJson(response)
-    let data: HubPerformance
+    let data: HubLifetimePerformance
     try {
-      data = parseHubPerformance(body)
+      data = parseHubLifetimePerformance(body)
       if (data.accountId !== context.hubAccountId) {
         throw new Error('Hub response account does not match the mapped account')
       }
