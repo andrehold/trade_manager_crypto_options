@@ -358,7 +358,7 @@ describe('Hub-backed portfolio views', () => {
     const { rerender } = render(<HubPerformancePanel state={performanceState(undefined, {
       status: 'loading', data: null, refreshing: true, canRefresh: false,
     })} onRefresh={() => {}} />)
-    expect(screen.getByText('Loading performance data…')).toBeInTheDocument()
+    expect(screen.getByText('Loading lifetime performance…')).toBeInTheDocument()
 
     rerender(<HubPerformancePanel state={performanceState(undefined, {
       status: 'unavailable', data: null, refreshing: false, refreshError: 'offline', canRefresh: true,
@@ -419,6 +419,7 @@ describe('Hub-backed portfolio views', () => {
     expect(screen.getByText(/snapshot time is approximate/i)).toBeInTheDocument()
     expect(screen.getByText('2 unresolved movements')).toBeInTheDocument()
     expect(screen.getByText('Calculation performance-v1')).toBeInTheDocument()
+    expect(screen.getByText('Opening basis: Observed snapshot')).toBeInTheDocument()
   })
 
   it('renders every availability state independently with stale/unknown freshness and recalculation pending', () => {
@@ -439,13 +440,16 @@ describe('Hub-backed portfolio views', () => {
         expect(screen.getByText('Recalculation pending')).toBeInTheDocument()
         expect(screen.getByText(equityStatus === 'ready' ? 'Data may be stale' : 'Freshness unavailable')).toBeInTheDocument()
         expect(screen.getAllByText(equityStatus === 'ready' ? 'Ready' : equityStatus === 'provisional' ? 'Provisional' : 'Unavailable').length).toBeGreaterThan(0)
-        expect(screen.getAllByText(performanceStatus === 'ready' ? 'Ready' : performanceStatus === 'provisional' ? 'Provisional' : 'Unavailable').length).toBeGreaterThan(0)
+        const performanceSection = screen.getByRole('heading', { name: 'Since inception' }).closest('section')!
+        expect(within(performanceSection).getByText(
+          performanceStatus === 'unavailable' ? 'Unavailable' : 'Provisional',
+        )).toBeInTheDocument()
         unmount()
       }
     }
   })
 
-  it('preserves null, exact zero, and the top-level opening equity display source', () => {
+  it('preserves null and exact zero while using nested lifetime opening equity', () => {
     const data = parseHubPerformance(readyPerformanceFixture)
     data.equity = null
     data.openingEquity = '0' as typeof data.openingEquity
@@ -456,8 +460,8 @@ describe('Hub-backed portfolio views', () => {
     render(<HubPerformancePanel state={performanceState(data)} onRefresh={() => {}} />)
 
     expect(screen.getByRole('heading', { name: 'Equity' }).closest('section')).toHaveTextContent('—')
-    expect(screen.getAllByText('0.00 USD')).toHaveLength(2)
-    expect(screen.queryByText('999.00 USD')).toBeNull()
+    expect(screen.getAllByText('0.00 USD')).toHaveLength(1)
+    expect(screen.getByText('999.00 USD')).toBeInTheDocument()
   })
 
   it('uses generic safe copy for unknown reasons and never exposes opaque details', () => {
@@ -470,6 +474,27 @@ describe('Hub-backed portfolio views', () => {
     expect(screen.queryByText(/future_internal_reason|do-not-render/i)).toBeNull()
   })
 
+  it.each([
+    ['policy_not_configured', 'Performance calculation is not configured for this account.'],
+    ['baseline_missing', 'The required opening reference is missing.'],
+    ['ledger_history_incomplete', 'The account history is incomplete, so lifetime performance is not final.'],
+    ['movement_unresolved', 'One or more account movements still require reconciliation.'],
+    ['valuation_missing', 'A required valuation is missing.'],
+    ['snapshot_time_approximate', 'The snapshot time is approximate, so these values may change.'],
+    ['recalculation_pending', 'A performance recalculation is pending.'],
+    ['recalculation_failed', 'The latest performance recalculation failed.'],
+    ['recalculation_disabled', 'Performance recalculation is disabled for this account.'],
+    ['projection_not_published', 'A lifetime performance result has not been published yet.'],
+  ] as const)('renders safe copy for the %s reason', (reasonCode, expectedCopy) => {
+    const data = parseHubPerformance(readyPerformanceFixture)
+    data.quality.reasonCodes = [reasonCode]
+    render(<HubPerformancePanel state={performanceState(data)} onRefresh={() => {}} />)
+
+    expect(screen.getByText(expectedCopy)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Since inception' }).closest('section'))
+      .toHaveTextContent('Provisional')
+  })
+
   it('retains valid data after a refresh failure and disables rate-limited refresh until retry time', () => {
     const onRefresh = vi.fn()
     const data = parseHubPerformance(readyPerformanceFixture)
@@ -480,7 +505,7 @@ describe('Hub-backed portfolio views', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent(/last valid performance result is shown/i)
     expect(screen.getByText('10,000.00 USD')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /refresh performance/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /refresh lifetime performance/i })).toBeDisabled()
     expect(screen.getByText(/refresh available/i)).toBeInTheDocument()
   })
 })

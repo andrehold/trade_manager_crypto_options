@@ -183,6 +183,21 @@ export interface HubPerformanceQuality {
   reasonCodes: string[];
 }
 
+export function isLifetimePerformanceFinal(quality: HubPerformanceQuality): boolean {
+  return quality.performanceStatus === 'ready'
+    && quality.equityStatus === 'ready'
+    && quality.recalculationPending === false
+    && quality.unresolvedMovementCount === 0
+    && quality.reasonCodes.length === 0;
+}
+
+export function lifetimePerformanceDisplayStatus(
+  quality: HubPerformanceQuality,
+): HubPerformanceStatus {
+  if (quality.performanceStatus === 'unavailable') return 'unavailable';
+  return isLifetimePerformanceFinal(quality) ? 'ready' : 'provisional';
+}
+
 export interface HubLifetimePerformanceLineage {
   summarySnapshotId: string | null;
   lifetimeAnchorId: string | null;

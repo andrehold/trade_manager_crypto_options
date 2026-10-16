@@ -3,7 +3,12 @@ import baselineFixture from '../__fixtures__/performance/provisional.json';
 import readyFixture from '../__fixtures__/performance/lifetime-ready.json';
 import provisionalFixture from '../__fixtures__/performance/lifetime-provisional.json';
 import unavailableFixture from '../__fixtures__/performance/lifetime-unavailable.json';
-import { lifetimePerformanceDatapointSchema, parseHubLifetimePerformance } from '..';
+import {
+  isLifetimePerformanceFinal,
+  lifetimePerformanceDatapointSchema,
+  lifetimePerformanceDisplayStatus,
+  parseHubLifetimePerformance,
+} from '..';
 
 function cloneRecord(value: unknown): Record<string, unknown> {
   return structuredClone(value) as Record<string, unknown>;
@@ -53,6 +58,26 @@ describe('Portfolio Data Hub lifetime performance contract', () => {
       reasonCodes: ['movement_unresolved', 'snapshot_time_approximate'],
     });
     expect(result.timeBasis).toBe('collection_time_approximation');
+  });
+
+  it('marks performance final only when the complete readiness predicate holds', () => {
+    const ready = parseHubLifetimePerformance(readyFixture);
+    expect(isLifetimePerformanceFinal(ready.quality)).toBe(true);
+    expect(lifetimePerformanceDisplayStatus(ready.quality)).toBe('ready');
+
+    const nonFinalQualities = [
+      { ...ready.quality, equityStatus: 'provisional' as const },
+      { ...ready.quality, recalculationPending: true },
+      { ...ready.quality, unresolvedMovementCount: 1 },
+      { ...ready.quality, reasonCodes: ['recalculation_pending'] },
+    ];
+    for (const quality of nonFinalQualities) {
+      expect(isLifetimePerformanceFinal(quality)).toBe(false);
+      expect(lifetimePerformanceDisplayStatus(quality)).toBe('provisional');
+    }
+
+    const unavailable = parseHubLifetimePerformance(unavailableFixture);
+    expect(lifetimePerformanceDisplayStatus(unavailable.quality)).toBe('unavailable');
   });
 
   it('normalizes complete quality and lineage without exposing opaque details', () => {

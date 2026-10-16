@@ -457,7 +457,7 @@ describe('ClientPortalShell', () => {
     await userEvent.click(await screen.findByRole('button', { name: /^refresh$/i }))
     expect(reload).toHaveBeenCalledOnce()
     expect(refresh).toHaveBeenCalledOnce()
-    await userEvent.click(await screen.findByRole('button', { name: /refresh performance/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /refresh lifetime performance/i }))
     expect(refresh).toHaveBeenCalledTimes(2)
   })
 })
