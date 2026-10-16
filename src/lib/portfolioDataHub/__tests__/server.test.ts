@@ -5,6 +5,7 @@ import ledgerFixture from '../__fixtures__/deribit/ledger-events.json'
 import performanceReadyFixture from '../__fixtures__/performance/lifetime-ready.json'
 import performanceProvisionalFixture from '../__fixtures__/performance/lifetime-provisional.json'
 import performanceUnavailableFixture from '../__fixtures__/performance/lifetime-unavailable.json'
+import baselinePerformanceFixture from '../__fixtures__/performance/provisional.json'
 import {
   compareDatasetAlignment,
   handlePortfolioDataHubRequest,
@@ -411,6 +412,24 @@ describe('mapped performance gateway', () => {
     expect(await result.json()).toMatchObject({
       data: { accountId: hubAccountId, quality: { performanceStatus: status } },
     })
+  })
+
+  it.each([
+    ['baseline-period response', performanceBody(baselinePerformanceFixture)],
+    ['missing schema version', (() => {
+      const body = performanceBody(performanceReadyFixture)
+      delete (body as Record<string, unknown>).performance_schema_version
+      return body
+    })()],
+  ])('rejects a %s at the gateway boundary', async (_name, body) => {
+    const result = await handlePortfolioDataHubRequest(
+      request('/api/portfolio-data-hub/performance'),
+      'performance',
+      { env, fetch: performanceGatewayFetch({ body }) },
+    )
+
+    expect(result.status).toBe(502)
+    expect(await result.json()).toMatchObject({ error: { code: 'HUB_INVALID_RESPONSE' } })
   })
 
   it('rejects a performance response for a different account', async () => {

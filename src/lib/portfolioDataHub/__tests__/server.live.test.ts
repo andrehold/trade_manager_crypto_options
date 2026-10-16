@@ -6,7 +6,7 @@ import { createPortfolioDataHubGateway } from '../server'
 const runLive = process.env.RUN_PORTFOLIO_DATA_HUB_LIVE_TEST === '1'
 
 describe.skipIf(!runLive)('Portfolio Data Hub direct contract/parser smoke (not portal end-to-end)', () => {
-  it('parses real summary, positions, and first 50 ledger events', async () => {
+  it('parses real summary, positions, ledger events, and conditional lifetime performance', async () => {
     const hubAccountId = process.env.PORTFOLIO_DATA_HUB_TEST_ACCOUNT_ID
     if (!hubAccountId) throw new Error('PORTFOLIO_DATA_HUB_TEST_ACCOUNT_ID is required')
 
@@ -32,10 +32,11 @@ describe.skipIf(!runLive)('Portfolio Data Hub direct contract/parser smoke (not 
       headers: { authorization: 'Bearer live-test-placeholder' },
     })
     const context = await gateway.resolveContext(request)
-    const [summary, positions, ledger] = await Promise.all([
+    const [summary, positions, ledger, lifetimePerformance] = await Promise.all([
       gateway.summary(context),
       gateway.latestPositions(context, new URL('https://portal.example/?limit=200')),
       gateway.ledger(context, new URL('https://portal.example/?limit=50')),
+      gateway.performance(context, null),
     ])
 
     expect(summary.accountId).toBe(hubAccountId)
@@ -44,5 +45,23 @@ describe.skipIf(!runLive)('Portfolio Data Hub direct contract/parser smoke (not 
     expect(positions.items.length).toBeLessThanOrEqual(200)
     expect(ledger.items.length).toBeLessThanOrEqual(50)
     expect(ledger.items.every((event) => event.accountId === hubAccountId)).toBe(true)
+
+    expect(lifetimePerformance.status).toBe('updated')
+    if (lifetimePerformance.status !== 'updated') {
+      throw new Error('Initial lifetime performance request unexpectedly returned 304')
+    }
+    expect(lifetimePerformance.data.accountId).toBe(hubAccountId)
+    expect(lifetimePerformance.data.performanceSchemaVersion).toBe('1.0')
+    expect(lifetimePerformance.data.lineage).toHaveProperty('lifetimeAnchorId')
+    expect(lifetimePerformance.data.lineage).toHaveProperty('startEventId')
+    expect(lifetimePerformance.data.lineage).toHaveProperty('startAt')
+    expect(lifetimePerformance.data.lineage).toHaveProperty('openingBasis')
+    expect(lifetimePerformance.data.lineage.canonicalInputSequence).toEqual(expect.any(Number))
+    expect(lifetimePerformance.data.lineage.classificationSequence).toEqual(expect.any(Number))
+    expect(lifetimePerformance.etag).not.toBeNull()
+    if (!lifetimePerformance.etag) throw new Error('Lifetime performance response did not include an ETag')
+
+    const cachedPerformance = await gateway.performance(context, lifetimePerformance.etag)
+    expect(cachedPerformance.status).toBe('not-modified')
   })
 })
