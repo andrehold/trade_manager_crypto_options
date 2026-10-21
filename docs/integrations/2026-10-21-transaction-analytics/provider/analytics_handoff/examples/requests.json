@@ -1,0 +1,44 @@
+[
+  {
+    "account": "Annamite",
+    "account_id": "70c43c6a-b7d5-5d33-a312-4e4195403895",
+    "group_by": "day,month,instrument,category",
+    "kind": "reconstructed reference",
+    "metric": "calculated_realized_gross_profit"
+  },
+  {
+    "account": "Coincall",
+    "account_id": "6bdb26f7-1c67-58b8-a5d4-5f9d295b9df9",
+    "group_by": "day,month,instrument,category",
+    "kind": "reconstructed reference",
+    "metric": "calculated_realized_gross_profit"
+  },
+  {
+    "account": "DWF",
+    "account_id": "307c2580-7524-5206-bf1d-d48be5f219ed",
+    "group_by": "day,month,instrument,category",
+    "kind": "reconstructed reference",
+    "metric": "calculated_realized_gross_profit"
+  },
+  {
+    "account": "Nickel",
+    "account_id": "9503765e-b24a-552a-b801-07099506aa22",
+    "group_by": "day,month,instrument,category",
+    "kind": "reconstructed reference",
+    "metric": "calculated_realized_gross_profit"
+  },
+  {
+    "account": "Paradex",
+    "account_id": "faa8e51f-3f79-5fbd-b1cd-13fcc23f16bf",
+    "group_by": "day,month,instrument,category",
+    "kind": "reconstructed reference",
+    "metric": "calculated_realized_gross_profit"
+  },
+  {
+    "account": "Paradex-HYPE",
+    "account_id": "9de6234c-687e-525d-85cb-e7d1ce334fc9",
+    "group_by": "day,month,instrument,category",
+    "kind": "reconstructed reference",
+    "metric": "calculated_realized_gross_profit"
+  }
+]

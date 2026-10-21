@@ -1,0 +1,104 @@
+{
+  "account_id": "9de6234c-687e-525d-85cb-e7d1ce334fc9",
+  "coverage": {
+    "ambiguous_rfq_count": 0,
+    "available_end": "2026-10-01T00:00:00Z",
+    "available_start": "2026-10-01T00:00:00Z",
+    "derived_at": "2026-10-20T10:17:45.535556Z",
+    "derived_status": "ready",
+    "excluded_rfq_count": 0,
+    "history_complete": false,
+    "inventory_as_of": null,
+    "inventory_mismatch_count": 0,
+    "inventory_status": "not_checked",
+    "inventory_unavailable_count": 0,
+    "latest_collection_at": null,
+    "normalization_version": "trade-results-v2-wac",
+    "notes": [
+      "Ready describes this reconstructed fixture, not deployment or complete economics."
+    ],
+    "requested_end": null,
+    "requested_start": null,
+    "unmatched_rfq_count": 0
+  },
+  "items": [
+    {
+      "account_id": "9de6234c-687e-525d-85cb-e7d1ce334fc9",
+      "accounting": {
+        "average_price_after": null,
+        "average_price_before": null,
+        "closed_quantity": null,
+        "comparison_difference": null,
+        "contract_family": "linear_option",
+        "cost_basis_after": null,
+        "cost_basis_before": null,
+        "currency": "USD",
+        "execution_price": null,
+        "gross_profit": null,
+        "method": "moving_weighted_average",
+        "notes": [
+          "Approved source excerpt lacks prior inventory; no basis/profit inferred."
+        ],
+        "opened_quantity": null,
+        "order_key": [],
+        "quantity_after": null,
+        "quantity_before": null,
+        "quantity_unit": "HYPE",
+        "reason_codes": [
+          "unwind_transfer_basis_unresolved"
+        ],
+        "reconciliation": {},
+        "settlement_cash_value": null,
+        "settlement_reference_price": null,
+        "source_reported_profit": null,
+        "status": "unavailable"
+      },
+      "canonical_amount": null,
+      "canonical_currency": null,
+      "canonical_price_currency": null,
+      "canonical_quantity": null,
+      "canonical_quantity_unit": null,
+      "category": "other",
+      "currency": "USD",
+      "denomination": "USD",
+      "economic_type": null,
+      "event_time": "2026-10-01T00:00:00Z",
+      "execution_price": null,
+      "id": "541a8670-d495-5889-b49d-a29e13f6598b",
+      "instrument": "HYPE-USD-28AUG26-40-P",
+      "mark_improvement_bps": null,
+      "mark_improvement_per_unit": null,
+      "mark_improvement_percent": null,
+      "mark_price": null,
+      "metrics": {
+        "calculated_realized_gross_profit": null
+      },
+      "missing_data": {
+        "calculated_realized_gross_profit": "unwind_transfer_basis_unresolved"
+      },
+      "notes": [
+        "Approved local evidence; reconstructed response, synthetic IDs; not live HTTP."
+      ],
+      "order_identifier": null,
+      "price_currency": "USD",
+      "quantity": "1",
+      "quantity_unit": "HYPE",
+      "regular_candidate_ids": [],
+      "related_rfq_event_ids": [],
+      "side": "sell",
+      "source_endpoint": "reference:approved-replay-trace",
+      "source_event_ids": [
+        "1debf668-45ea-507c-bc21-598267895e04"
+      ],
+      "source_raw_batch_id": "fb2e9734-f417-5a9b-b1a3-90f3f7d7efb9",
+      "source_raw_batch_ids": [
+        "fb2e9734-f417-5a9b-b1a3-90f3f7d7efb9"
+      ],
+      "trade_identifier": null,
+      "venue": "paradex",
+      "venue_event_identifier": null
+    }
+  ],
+  "next_cursor": null,
+  "venue": "paradex"
+}

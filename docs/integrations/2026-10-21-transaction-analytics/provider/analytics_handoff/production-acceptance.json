@@ -1,0 +1,73 @@
+{
+  "assistant_independently_reran_authenticated_smoke": false,
+  "assistant_performed_production_changes": false,
+  "interpretation": "All six saved builds ready; nonempty calculated profit available per account. Source completeness remains uncertified and known per-result financial gaps remain.",
+  "provenance": "User-provided successful server-console output of consumer_kit.analytics_smoke against the public API. Not independently rerun by the assistant.",
+  "public_base_url": "https://hub.germanquantum.tech",
+  "report": {
+    "accounts": [
+      {
+        "account": "Annamite",
+        "calculated_profit_rows": 125,
+        "derived_status": "ready",
+        "history_complete": false,
+        "metric_checks": 2407,
+        "rows": 237,
+        "venue": "deribit"
+      },
+      {
+        "account": "Coincall",
+        "calculated_profit_rows": 6078,
+        "derived_status": "ready",
+        "history_complete": false,
+        "metric_checks": 90709,
+        "rows": 6085,
+        "venue": "coincall"
+      },
+      {
+        "account": "DWF",
+        "calculated_profit_rows": 1838,
+        "derived_status": "ready",
+        "history_complete": false,
+        "metric_checks": 25727,
+        "rows": 2180,
+        "venue": "deribit"
+      },
+      {
+        "account": "Nickel",
+        "calculated_profit_rows": 220,
+        "derived_status": "ready",
+        "history_complete": false,
+        "metric_checks": 4043,
+        "rows": 498,
+        "venue": "deribit"
+      },
+      {
+        "account": "Paradex",
+        "calculated_profit_rows": 226,
+        "derived_status": "ready",
+        "history_complete": false,
+        "metric_checks": 15210,
+        "rows": 4417,
+        "venue": "paradex"
+      },
+      {
+        "account": "Paradex-HYPE",
+        "calculated_profit_rows": 19,
+        "derived_status": "ready",
+        "history_complete": false,
+        "metric_checks": 1266,
+        "rows": 299,
+        "venue": "paradex"
+      }
+    ],
+    "read_only": true
+  },
+  "reported_date": "2026-10-21",
+  "timezone": "Europe/Berlin",
+  "totals": {
+    "calculated_profit_rows": 8506,
+    "metric_checks": 139362,
+    "rows": 13716
+  }
+}

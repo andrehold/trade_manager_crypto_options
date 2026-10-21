@@ -1,0 +1,36 @@
+{
+  "provenance": "Every file in this directory is a synthetic UI illustration, never observed financial evidence. IDs reuse the provider synthetic account; row IDs are synthetic UUIDs.",
+  "summary_scenarios": [
+    "costs-funding-activity",
+    "net-rebate-funding-received",
+    "multiple-partitions",
+    "partial",
+    "unavailable",
+    "explicit-zero",
+    "ineligible",
+    "empty",
+    "pending",
+    "stale",
+    "live",
+    "daily-profit"
+  ],
+  "detail_sequence": [
+    "partial-transactions-page-1.json",
+    "partial-transactions-page-2.json"
+  ],
+  "detail_filters": {
+    "start": "2026-10-01T00:00:00Z",
+    "end": "2026-10-21T12:00:00Z",
+    "currency": "USDT",
+    "denomination": "USDT",
+    "quantity_unit": "BTC_face_value",
+    "metric": "calculated_realized_gross_profit",
+    "limit": 50
+  },
+  "notes": [
+    "Detail pages illustrate pagination with one row per page despite a limit of 50; the cursor cannot be sent to a live API.",
+    "Partial detail values reconcile only to synthetic/partial.json. Other summaries are independent display cases, not reconciled account builds.",
+    "daily-profit.json has an explicit zero and partial negative bar; October 6 is absent, never a fabricated zero.",
+    "Multiple-partitions includes same-currency/different-denomination and unit cases plus unknown currency/unit."
+  ]
+}

@@ -1,0 +1,115 @@
+[
+  {
+    "account_id": "faa8e51f-3f79-5fbd-b1cd-13fcc23f16bf",
+    "accounting": null,
+    "canonical_amount": null,
+    "canonical_currency": null,
+    "canonical_price_currency": "USD",
+    "canonical_quantity": "5",
+    "canonical_quantity_unit": "contracts",
+    "category": "trading",
+    "currency": "USDC",
+    "denomination": "USDC",
+    "economic_type": "BLOCK_TRADE",
+    "event_time": "2026-10-01T00:00:00Z",
+    "execution_price": "312.58",
+    "id": "5c3b3520-bc8a-5912-9431-4936aab77249",
+    "instrument": "BTC-USD-31JUL26-46000-P",
+    "mark_improvement_bps": null,
+    "mark_improvement_per_unit": null,
+    "mark_improvement_percent": null,
+    "mark_price": null,
+    "metrics": {
+      "fee_expense": "0",
+      "net_funding": null,
+      "net_trading_cost": "0",
+      "rebates": "0",
+      "source_reported_funding": null,
+      "source_reported_profit": "0"
+    },
+    "missing_data": {
+      "net_funding": "Nonzero funding receipt/payment convention is unverified for this source.",
+      "source_reported_funding": "Missing native value."
+    },
+    "notes": [
+      "Native P&L for comparison; historical settlement/fee inclusions unreconciled.",
+      "Approved source excerpt; synthetic clock and IDs; no full prior inventory."
+    ],
+    "order_identifier": null,
+    "price_currency": "USD",
+    "quantity": "5",
+    "quantity_unit": null,
+    "regular_candidate_ids": [],
+    "related_rfq_event_ids": [],
+    "side": "BUY",
+    "source_endpoint": "/fills",
+    "source_event_ids": [
+      "531f86f9-f95d-5fd2-a316-fcd2283179fe"
+    ],
+    "source_raw_batch_id": "0001ec72-a9e6-5802-ae8c-4bc107b4be72",
+    "source_raw_batch_ids": [
+      "0001ec72-a9e6-5802-ae8c-4bc107b4be72"
+    ],
+    "trade_identifier": null,
+    "venue": "paradex",
+    "venue_event_identifier": null
+  },
+  {
+    "account_id": "faa8e51f-3f79-5fbd-b1cd-13fcc23f16bf",
+    "accounting": null,
+    "canonical_amount": null,
+    "canonical_currency": null,
+    "canonical_price_currency": "USD",
+    "canonical_quantity": "5",
+    "canonical_quantity_unit": "contracts",
+    "category": "trading",
+    "currency": "USD",
+    "denomination": "USD",
+    "economic_type": "BLOCK_TRADE",
+    "event_time": "2026-10-01T00:00:00Z",
+    "execution_price": "312.58",
+    "id": "531f86f9-f95d-5fd2-a316-fcd2283179fe",
+    "instrument": "BTC-USD-31JUL26-46000-P",
+    "mark_improvement_bps": null,
+    "mark_improvement_per_unit": null,
+    "mark_improvement_percent": null,
+    "mark_price": null,
+    "metrics": {
+      "executed_quantity": "5",
+      "execution_count": "1",
+      "mark_covered_turnover": null,
+      "mark_eligible_turnover": "1562.90",
+      "mark_improvement": null,
+      "mark_value_turnover": null,
+      "notional_turnover": "293270.56131580",
+      "premium_turnover": "1562.90"
+    },
+    "missing_data": {
+      "mark_covered_turnover": "Missing/invalid execution mark, side, price or quantity.",
+      "mark_improvement": "Missing/invalid execution mark, side, price or quantity.",
+      "mark_improvement_percent": "Missing/invalid execution-time option/spot mark.",
+      "mark_value_turnover": "Missing/invalid execution mark, side, price or quantity."
+    },
+    "notes": [
+      "Approved source excerpt; synthetic clock and IDs; no full prior inventory."
+    ],
+    "order_identifier": null,
+    "price_currency": "USD",
+    "quantity": "5",
+    "quantity_unit": "BTC",
+    "regular_candidate_ids": [],
+    "related_rfq_event_ids": [],
+    "side": "buy",
+    "source_endpoint": "/fills",
+    "source_event_ids": [
+      "531f86f9-f95d-5fd2-a316-fcd2283179fe"
+    ],
+    "source_raw_batch_id": "0001ec72-a9e6-5802-ae8c-4bc107b4be72",
+    "source_raw_batch_ids": [
+      "0001ec72-a9e6-5802-ae8c-4bc107b4be72"
+    ],
+    "trade_identifier": null,
+    "venue": "paradex",
+    "venue_event_identifier": null
+  }
+]

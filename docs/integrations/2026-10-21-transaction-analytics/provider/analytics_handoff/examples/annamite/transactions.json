@@ -1,0 +1,104 @@
+{
+  "account_id": "70c43c6a-b7d5-5d33-a312-4e4195403895",
+  "coverage": {
+    "ambiguous_rfq_count": 0,
+    "available_end": "2026-10-16T08:00:00.081000Z",
+    "available_start": "2026-10-16T08:00:00.081000Z",
+    "derived_at": "2026-10-20T10:17:45.535556Z",
+    "derived_status": "ready",
+    "excluded_rfq_count": 0,
+    "history_complete": false,
+    "inventory_as_of": null,
+    "inventory_mismatch_count": 0,
+    "inventory_status": "not_checked",
+    "inventory_unavailable_count": 0,
+    "latest_collection_at": null,
+    "normalization_version": "trade-results-v2-wac",
+    "notes": [
+      "Ready describes this reconstructed fixture, not deployment or complete economics."
+    ],
+    "requested_end": null,
+    "requested_start": null,
+    "unmatched_rfq_count": 0
+  },
+  "items": [
+    {
+      "account_id": "70c43c6a-b7d5-5d33-a312-4e4195403895",
+      "accounting": {
+        "average_price_after": null,
+        "average_price_before": "0.0043",
+        "closed_quantity": "0.2",
+        "comparison_difference": null,
+        "contract_family": "btc_settled_option",
+        "cost_basis_after": "0",
+        "cost_basis_before": "0.00086",
+        "currency": "BTC",
+        "execution_price": "0E+2",
+        "gross_profit": "0.00086",
+        "method": "moving_weighted_average",
+        "notes": [],
+        "opened_quantity": "0.0",
+        "order_key": [],
+        "quantity_after": "0.0",
+        "quantity_before": "-0.2",
+        "quantity_unit": "BTC",
+        "reason_codes": [],
+        "reconciliation": {
+          "as_of": "2026-10-20T08:02:23.893201+00:00",
+          "calculated_quantity": "0.0",
+          "reason": null,
+          "snapshot_quantity": "0",
+          "status": "matched"
+        },
+        "settlement_cash_value": "0.0",
+        "settlement_reference_price": "82111.38",
+        "source_reported_profit": null,
+        "status": "calculated"
+      },
+      "canonical_amount": null,
+      "canonical_currency": null,
+      "canonical_price_currency": null,
+      "canonical_quantity": null,
+      "canonical_quantity_unit": null,
+      "category": "other",
+      "currency": "BTC",
+      "denomination": "BTC",
+      "economic_type": null,
+      "event_time": "2026-10-16T08:00:00.081000Z",
+      "execution_price": "0E+2",
+      "id": "bfa5fca5-9880-5b2e-b0ae-28ba716c61ff",
+      "instrument": "BTC-16OCT26-80000-P",
+      "mark_improvement_bps": null,
+      "mark_improvement_per_unit": null,
+      "mark_improvement_percent": null,
+      "mark_price": null,
+      "metrics": {
+        "calculated_realized_gross_profit": "0.00086"
+      },
+      "missing_data": {},
+      "notes": [
+        "Approved local evidence; reconstructed response, synthetic IDs; not live HTTP."
+      ],
+      "order_identifier": null,
+      "price_currency": "BTC",
+      "quantity": "0.2",
+      "quantity_unit": "BTC",
+      "regular_candidate_ids": [],
+      "related_rfq_event_ids": [],
+      "side": "buy",
+      "source_endpoint": "reference:approved-replay-trace",
+      "source_event_ids": [
+        "c2fc03e7-3f7f-52f8-9f8b-70d44557756c"
+      ],
+      "source_raw_batch_id": "eb8d6ce5-1434-59c3-81a3-d9dee43087e9",
+      "source_raw_batch_ids": [
+        "eb8d6ce5-1434-59c3-81a3-d9dee43087e9"
+      ],
+      "trade_identifier": null,
+      "venue": "deribit",
+      "venue_event_identifier": null
+    }
+  ],
+  "next_cursor": null,
+  "venue": "deribit"
+}

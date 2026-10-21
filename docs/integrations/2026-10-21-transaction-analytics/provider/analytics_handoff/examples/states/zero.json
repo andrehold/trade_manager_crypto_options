@@ -1,0 +1,54 @@
+{
+  "account_id": "6bdb26f7-1c67-58b8-a5d4-5f9d295b9df9",
+  "coverage": {
+    "ambiguous_rfq_count": 0,
+    "available_end": "2026-10-05T16:13:41.523000Z",
+    "available_start": "2026-10-05T16:13:41.523000Z",
+    "derived_at": "2026-10-20T10:17:45.535556Z",
+    "derived_status": "ready",
+    "excluded_rfq_count": 0,
+    "history_complete": false,
+    "inventory_as_of": null,
+    "inventory_mismatch_count": 0,
+    "inventory_status": "not_checked",
+    "inventory_unavailable_count": 0,
+    "latest_collection_at": null,
+    "normalization_version": "trade-results-v2-wac",
+    "notes": [
+      "Synthetic UI-state illustration; not an observed account response."
+    ],
+    "requested_end": null,
+    "requested_start": null,
+    "unmatched_rfq_count": 0
+  },
+  "group_by": [
+    "day",
+    "month",
+    "instrument",
+    "category"
+  ],
+  "groups": [
+    {
+      "dimensions": {
+        "category": "other",
+        "currency": "USDT",
+        "day": "2026-10-05",
+        "denomination": "USDT",
+        "instrument": "BTCUSD-8OCT26-89000-C",
+        "month": "2026-10",
+        "quantity_unit": "BTC_face_value"
+      },
+      "metrics": {
+        "calculated_realized_gross_profit": {
+          "available_end": "2026-10-05T16:13:41.523000Z",
+          "available_start": "2026-10-05T16:13:41.523000Z",
+          "eligible_count": 1,
+          "missing_count": 0,
+          "notes": [],
+          "value": "0"
+        }
+      }
+    }
+  ],
+  "venue": "coincall"
+}

@@ -1,0 +1,56 @@
+{
+  "account_id": "9de6234c-687e-525d-85cb-e7d1ce334fc9",
+  "coverage": {
+    "ambiguous_rfq_count": 0,
+    "available_end": "2026-10-01T00:00:00Z",
+    "available_start": "2026-10-01T00:00:00Z",
+    "derived_at": "2026-10-20T10:17:45.535556Z",
+    "derived_status": "ready",
+    "excluded_rfq_count": 0,
+    "history_complete": false,
+    "inventory_as_of": null,
+    "inventory_mismatch_count": 0,
+    "inventory_status": "not_checked",
+    "inventory_unavailable_count": 0,
+    "latest_collection_at": null,
+    "normalization_version": "trade-results-v2-wac",
+    "notes": [
+      "Ready describes this reconstructed fixture, not deployment or complete economics."
+    ],
+    "requested_end": null,
+    "requested_start": null,
+    "unmatched_rfq_count": 0
+  },
+  "group_by": [
+    "day",
+    "month",
+    "instrument",
+    "category"
+  ],
+  "groups": [
+    {
+      "dimensions": {
+        "category": "other",
+        "currency": "USD",
+        "day": "2026-10-01",
+        "denomination": "USD",
+        "instrument": "HYPE-USD-28AUG26-40-P",
+        "month": "2026-10",
+        "quantity_unit": "HYPE"
+      },
+      "metrics": {
+        "calculated_realized_gross_profit": {
+          "available_end": null,
+          "available_start": null,
+          "eligible_count": 1,
+          "missing_count": 1,
+          "notes": [
+            "unwind_transfer_basis_unresolved"
+          ],
+          "value": null
+        }
+      }
+    }
+  ],
+  "venue": "paradex"
+}

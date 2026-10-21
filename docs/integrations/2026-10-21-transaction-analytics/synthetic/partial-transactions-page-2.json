@@ -1,0 +1,85 @@
+{
+  "account_id": "6bdb26f7-1c67-58b8-a5d4-5f9d295b9df9",
+  "venue": "coincall",
+  "coverage": {
+    "ambiguous_rfq_count": 0,
+    "available_end": "2026-10-05T12:00:00Z",
+    "available_start": "2026-10-05T12:00:00Z",
+    "derived_at": "2026-10-21T12:01:00Z",
+    "derived_status": "ready",
+    "excluded_rfq_count": 0,
+    "history_complete": false,
+    "inventory_as_of": null,
+    "inventory_mismatch_count": 0,
+    "inventory_status": "not_checked",
+    "inventory_unavailable_count": 0,
+    "latest_collection_at": null,
+    "normalization_version": "synthetic-ui-v1",
+    "notes": [
+      "Synthetic UI illustration only; not an observed account response."
+    ],
+    "requested_end": "2026-10-21T12:00:00Z",
+    "requested_start": "2026-10-01T00:00:00Z",
+    "unmatched_rfq_count": 0
+  },
+  "items": [
+    {
+      "account_id": "6bdb26f7-1c67-58b8-a5d4-5f9d295b9df9",
+      "accounting": {
+        "status": "unavailable",
+        "currency": "USDT",
+        "quantity_unit": "BTC_face_value",
+        "contract_family": "synthetic_option",
+        "gross_profit": null,
+        "reason_codes": [
+          "unwind_transfer_basis_unresolved"
+        ]
+      },
+      "canonical_amount": null,
+      "canonical_currency": null,
+      "canonical_price_currency": null,
+      "canonical_quantity": null,
+      "canonical_quantity_unit": null,
+      "category": "trading",
+      "currency": "USDT",
+      "denomination": "USDT",
+      "economic_type": null,
+      "event_time": "2026-10-05T12:00:00Z",
+      "execution_price": "78.00000000",
+      "id": "8387cc01-f453-59ab-9259-fe7f4333f8fb",
+      "instrument": "SYNTHETIC-BTC-OPTION",
+      "mark_improvement_bps": null,
+      "mark_improvement_per_unit": null,
+      "mark_improvement_percent": null,
+      "mark_price": null,
+      "metrics": {
+        "calculated_realized_gross_profit": null
+      },
+      "missing_data": {
+        "calculated_realized_gross_profit": "unwind_transfer_basis_unresolved"
+      },
+      "notes": [
+        "Synthetic UI illustration only; not an observed account response."
+      ],
+      "order_identifier": null,
+      "price_currency": "USDT",
+      "quantity": "0.50000000",
+      "quantity_unit": "BTC_face_value",
+      "regular_candidate_ids": [],
+      "related_rfq_event_ids": [],
+      "side": "sell",
+      "source_endpoint": "synthetic:ui-fixture",
+      "source_event_ids": [
+        "00d0dd4c-adcb-5fa1-a0cc-e416defc8054"
+      ],
+      "source_raw_batch_id": "763f67d5-1e21-5d7e-b6a8-f9b2df2b8800",
+      "source_raw_batch_ids": [
+        "763f67d5-1e21-5d7e-b6a8-f9b2df2b8800"
+      ],
+      "trade_identifier": null,
+      "venue": "coincall",
+      "venue_event_identifier": null
+    }
+  ],
+  "next_cursor": null
+}

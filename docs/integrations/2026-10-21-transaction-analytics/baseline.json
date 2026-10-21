@@ -1,0 +1,22 @@
+{
+  "captured_at": "2026-10-21T14:23:54.903617+00:00",
+  "branch": "feat/lifetime-performance-contract",
+  "head": "2ebc0423b88a5033bdbd9f130e14dcf83056038d",
+  "status_before_package_1": " M src/features/clientPortal/components/HubPortfolioView.tsx\n M src/features/clientPortal/components/__tests__/HubPortfolioView.test.tsx\n?? docs/superpowers/plans/2026-10-21-dashboard-transaction-analytics-release-1.md\n?? src/features/clientPortal/dashboard/__tests__/realizedPnl.test.ts\n?? src/features/clientPortal/dashboard/realizedPnl.ts\n",
+  "protected_files_sha256": {
+    "src/features/clientPortal/components/HubPortfolioView.tsx": "c89276841f181387894fd99c6e73541fe760d53929e39e33ecd5df9ff9b943ec",
+    "src/features/clientPortal/components/__tests__/HubPortfolioView.test.tsx": "7ad4d3081718e75640371625a58cca77baeba9cec474d140b2da27f52b64371c",
+    "src/features/clientPortal/dashboard/realizedPnl.ts": "700584cd0c638a66f9135e0eb2f917377c0b42fc223d14cd30ff504f5f5b8c30",
+    "src/features/clientPortal/dashboard/__tests__/realizedPnl.test.ts": "dbc43e354e36bfaaa81de4e02db6929c8553df7ce5f1c08aada693f8aea80db8",
+    "docs/superpowers/plans/2026-10-21-dashboard-transaction-analytics-release-1.md": "00ee354b9197c2f972ce93771430db4f3f97b147e24fbfa5484a569d7239d02d"
+  },
+  "focused_baseline": {
+    "command": "npm test -- src/features/clientPortal/components/__tests__/HubPortfolioView.test.tsx src/features/clientPortal/dashboard/__tests__/realizedPnl.test.ts",
+    "result": "passed: 2 files, 52 tests"
+  },
+  "reconciliation": "Preserve all four source/test files byte-for-byte in Package 1. The residual implementation remains existing work; Package 4 will reconcile its replacement. Plan status will be updated only after this package passes.",
+  "typecheck_baseline": {
+    "command": "npm run typecheck",
+    "result": "passed before Package 1 changes"
+  }
+}

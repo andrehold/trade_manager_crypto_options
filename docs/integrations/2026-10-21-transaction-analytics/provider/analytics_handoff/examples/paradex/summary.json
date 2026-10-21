@@ -1,0 +1,54 @@
+{
+  "account_id": "faa8e51f-3f79-5fbd-b1cd-13fcc23f16bf",
+  "coverage": {
+    "ambiguous_rfq_count": 0,
+    "available_end": "2026-09-25T08:00:10.624000Z",
+    "available_start": "2026-09-25T08:00:10.624000Z",
+    "derived_at": "2026-10-20T10:17:45.535556Z",
+    "derived_status": "ready",
+    "excluded_rfq_count": 0,
+    "history_complete": false,
+    "inventory_as_of": null,
+    "inventory_mismatch_count": 0,
+    "inventory_status": "not_checked",
+    "inventory_unavailable_count": 0,
+    "latest_collection_at": null,
+    "normalization_version": "trade-results-v2-wac",
+    "notes": [
+      "Ready describes this reconstructed fixture, not deployment or complete economics."
+    ],
+    "requested_end": null,
+    "requested_start": null,
+    "unmatched_rfq_count": 0
+  },
+  "group_by": [
+    "day",
+    "month",
+    "instrument",
+    "category"
+  ],
+  "groups": [
+    {
+      "dimensions": {
+        "category": "other",
+        "currency": "USD",
+        "day": "2026-09-25",
+        "denomination": "USD",
+        "instrument": "BTC-USD-25SEP26-58000-P",
+        "month": "2026-09",
+        "quantity_unit": "BTC"
+      },
+      "metrics": {
+        "calculated_realized_gross_profit": {
+          "available_end": "2026-09-25T08:00:10.624000Z",
+          "available_start": "2026-09-25T08:00:10.624000Z",
+          "eligible_count": 1,
+          "missing_count": 0,
+          "notes": [],
+          "value": "-0.740"
+        }
+      }
+    }
+  ],
+  "venue": "paradex"
+}
