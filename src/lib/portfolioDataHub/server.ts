@@ -1,4 +1,11 @@
 import { ZodError } from 'zod'
+import { compareAnalyticsInstants, parseAnalyticsQuery, type AnalyticsEndpoint } from './analyticsSchemas'
+import {
+  parseHubAnalyticsSummary,
+  parseHubAnalyticsTransactionPage,
+  type HubAnalyticsSummary,
+  type HubAnalyticsTransactionPage,
+} from './analyticsNormalizers'
 import {
   parseHubLatestPositionPage,
   parseHubLedgerEventPage,
@@ -23,6 +30,7 @@ type RuntimeEnv = Record<string, string | undefined>
 export const PERFORMANCE_NORMALIZER_VERSION = '2'
 
 export type HubDataset = 'summary' | 'summaries' | 'positions' | 'ledger' | 'performance'
+  | 'analytics-summary' | 'analytics-transactions'
 
 export type HubRouteErrorCode =
   | 'METHOD_NOT_ALLOWED'
@@ -30,6 +38,9 @@ export type HubRouteErrorCode =
   | 'CLIENT_NOT_LINKED'
   | 'HUB_ACCOUNT_NOT_CONFIGURED'
   | 'INVALID_QUERY'
+  | 'ANALYTICS_INVALID_QUERY'
+  | 'ANALYTICS_INVALID_CURSOR'
+  | 'ANALYTICS_PUBLICATION_CONFLICT'
   | 'UPSTREAM_TIMEOUT'
   | 'SUPABASE_UNAVAILABLE'
   | 'HUB_UNAVAILABLE'
@@ -613,6 +624,107 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
   const accountPath = (context: HubRequestContext, suffix: string) =>
     `/api/v1/accounts/${encodeURIComponent(context.hubAccountId)}/${suffix}`
 
+  async function analytics<T extends HubAnalyticsSummary | HubAnalyticsTransactionPage>(
+    context: HubRequestContext,
+    requestUrl: URL,
+    endpoint: AnalyticsEndpoint,
+    parse: (value: unknown) => T,
+  ): Promise<T> {
+    let search: URLSearchParams
+    try {
+      search = parseAnalyticsQuery(requestUrl.searchParams, endpoint)
+    } catch {
+      throw new HubRouteError(400, 'ANALYTICS_INVALID_QUERY', 'The analytics filters are invalid or unsupported')
+    }
+    let response: Response
+    try {
+      response = await fetchWithTimeout(fetchImpl,
+        `${config.hubBaseUrl}${accountPath(context, `analytics/${endpoint}`)}?${search}`,
+        {
+          headers: { authorization: `Bearer ${config.hubApiKey}`, accept: 'application/json' },
+          cache: 'no-store',
+          redirect: 'error',
+        }, config.timeoutMs)
+    } catch (error) {
+      if (error instanceof HubRouteError) throw error
+      // Abort exceptions can originate in a different runtime realm.
+      if (error !== null && typeof error === 'object' && 'name' in error && error.name === 'AbortError') {
+        throw new HubRouteError(504, 'UPSTREAM_TIMEOUT', 'Portfolio Data Hub analytics timed out', error, 'timeout')
+      }
+      throw new HubRouteError(502, 'HUB_UNAVAILABLE', 'Portfolio Data Hub analytics is unavailable', error, 'network')
+    }
+    if (!response.ok) {
+      // Only these recognized provider diagnostics permit a cursor restart. An
+      // arbitrary 400 (even when a cursor was supplied) is not retry evidence.
+      if (response.status === 400) {
+        const body = await readJson(response) as { detail?: unknown } | null
+        const cursorError = endpoint === 'transactions' && search.has('cursor')
+          && (body?.detail === 'Invalid pagination cursor.'
+            || body?.detail === 'Invalid pagination cursor or changed filters.')
+        throw new HubRouteError(400,
+          cursorError ? 'ANALYTICS_INVALID_CURSOR' : 'ANALYTICS_INVALID_QUERY',
+          cursorError ? 'The analytics cursor is invalid or belongs to a different result build or filters'
+            : 'Portfolio Data Hub rejected the analytics query')
+      }
+      if (response.status === 409) {
+        throw new HubRouteError(409, 'ANALYTICS_PUBLICATION_CONFLICT', 'Analytics results changed during this read; restart the request')
+      }
+      if (response.status === 401 || response.status === 403) {
+        throw new HubRouteError(response.status, 'HUB_AUTHORIZATION_FAILED', 'Portfolio Data Hub rejected the portal credential or scope')
+      }
+      if (response.status === 404) {
+        throw new HubRouteError(404, 'HUB_ACCOUNT_NOT_FOUND', 'The mapped Portfolio Data Hub account was not found')
+      }
+      if (response.status === 422) {
+        throw new HubRouteError(422, 'ANALYTICS_INVALID_QUERY', 'Portfolio Data Hub does not support the analytics filters or venue')
+      }
+      if (response.status === 429) {
+        const retryAfter = validatedRetryAfter(response.headers.get('retry-after'), now())
+        throw new HubRouteError(429, 'HUB_RATE_LIMITED', 'Portfolio Data Hub analytics is rate limited',
+          undefined, '4xx', retryAfter ? { 'retry-after': retryAfter } : {})
+      }
+      if (response.status === 408 || response.status === 504) {
+        throw new HubRouteError(504, 'UPSTREAM_TIMEOUT', 'Portfolio Data Hub analytics timed out')
+      }
+      throw new HubRouteError(response.status === 503 ? 503 : 502, 'HUB_UNAVAILABLE', 'Portfolio Data Hub could not provide analytics')
+    }
+    try {
+      const parsed = parse(await readJson(response))
+      if (parsed.accountId !== context.hubAccountId) throw new Error('Analytics account mismatch')
+      const rows = endpoint === 'transactions' ? (parsed as HubAnalyticsTransactionPage).items : []
+      const venues = new Set([parsed.venue, ...rows.map((row) => row.venue)].filter((venue) => venue != null))
+      if (venues.size > 1 || rows.some((row) => row.accountId !== null && row.accountId !== context.hubAccountId)) {
+        throw new Error('Analytics row identity mismatch')
+      }
+      for (const [name, returned] of [
+        ['start', parsed.coverage.requestedStart], ['end', parsed.coverage.requestedEnd],
+      ] as const) {
+        const requested = search.get(name)
+        if ((requested === null) !== (returned === null)
+          || (requested !== null && returned !== null && compareAnalyticsInstants(requested, returned) !== 0)) {
+          throw new Error('Analytics requested window mismatch')
+        }
+      }
+      if (endpoint === 'summary') {
+        const expected = search.get('group_by')?.split(',').filter(Boolean) ?? []
+        if (JSON.stringify((parsed as HubAnalyticsSummary).groupBy) !== JSON.stringify(expected)) {
+          throw new Error('Analytics grouping mismatch')
+        }
+      }
+      return parsed
+    } catch (error) {
+      throw new HubRouteError(502, 'HUB_INVALID_RESPONSE', 'Portfolio Data Hub returned an unsupported analytics response', error)
+    }
+  }
+
+  function analyticsSummary(context: HubRequestContext, requestUrl: URL): Promise<HubAnalyticsSummary> {
+    return analytics(context, requestUrl, 'summary', parseHubAnalyticsSummary)
+  }
+
+  function analyticsTransactions(context: HubRequestContext, requestUrl: URL): Promise<HubAnalyticsTransactionPage> {
+    return analytics(context, requestUrl, 'transactions', parseHubAnalyticsTransactionPage)
+  }
+
   async function summary(context: HubRequestContext): Promise<HubSummary> {
     return fetchHub(context, accountPath(context, 'summaries/latest'), null, parseHubSummary)
   }
@@ -826,6 +938,8 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
     latestPositions,
     ledger,
     performance,
+    analyticsSummary,
+    analyticsTransactions,
     adminReportingCurrencies,
   }
 }
@@ -868,6 +982,8 @@ export async function handlePortfolioDataHubRequest(
     const context = await gateway.resolveContext(req)
     if (dataset === 'performance') performanceContext = context
     const requestUrl = new URL(req.url)
+    if (dataset === 'analytics-summary') return json({ data: await gateway.analyticsSummary(context, requestUrl) })
+    if (dataset === 'analytics-transactions') return json({ data: await gateway.analyticsTransactions(context, requestUrl) })
     if (dataset === 'summary') return json({ data: await gateway.summary(context) })
     if (dataset === 'summaries') return json({ data: await gateway.summaries(context, requestUrl) })
     if (dataset === 'positions') return json({ data: await gateway.positions(context, requestUrl) })
