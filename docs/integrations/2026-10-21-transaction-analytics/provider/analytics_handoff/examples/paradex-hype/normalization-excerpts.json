@@ -1,0 +1,115 @@
+[
+  {
+    "account_id": "9de6234c-687e-525d-85cb-e7d1ce334fc9",
+    "accounting": null,
+    "canonical_amount": null,
+    "canonical_currency": null,
+    "canonical_price_currency": "USD",
+    "canonical_quantity": "200",
+    "canonical_quantity_unit": "contracts",
+    "category": "trading",
+    "currency": "USDC",
+    "denomination": "USDC",
+    "economic_type": "BLOCK_TRADE",
+    "event_time": "2026-10-01T00:00:00Z",
+    "execution_price": "0.1",
+    "id": "16b5f1cf-e55a-5065-aa8d-41f5e5e3b6b9",
+    "instrument": "HYPE-USD-28AUG26-100-C",
+    "mark_improvement_bps": null,
+    "mark_improvement_per_unit": null,
+    "mark_improvement_percent": null,
+    "mark_price": null,
+    "metrics": {
+      "fee_expense": "0",
+      "net_funding": null,
+      "net_trading_cost": "0",
+      "rebates": "0",
+      "source_reported_funding": null,
+      "source_reported_profit": "0"
+    },
+    "missing_data": {
+      "net_funding": "Nonzero funding receipt/payment convention is unverified for this source.",
+      "source_reported_funding": "Missing native value."
+    },
+    "notes": [
+      "Native P&L for comparison; historical settlement/fee inclusions unreconciled.",
+      "Approved source excerpt; synthetic clock and IDs; no full prior inventory."
+    ],
+    "order_identifier": null,
+    "price_currency": "USD",
+    "quantity": "200",
+    "quantity_unit": null,
+    "regular_candidate_ids": [],
+    "related_rfq_event_ids": [],
+    "side": "BUY",
+    "source_endpoint": "/fills",
+    "source_event_ids": [
+      "52e25461-3adb-5765-8960-f27c22dae952"
+    ],
+    "source_raw_batch_id": "52107bbd-49bf-53be-9ca2-b866aa8d64f7",
+    "source_raw_batch_ids": [
+      "52107bbd-49bf-53be-9ca2-b866aa8d64f7"
+    ],
+    "trade_identifier": null,
+    "venue": "paradex",
+    "venue_event_identifier": null
+  },
+  {
+    "account_id": "9de6234c-687e-525d-85cb-e7d1ce334fc9",
+    "accounting": null,
+    "canonical_amount": null,
+    "canonical_currency": null,
+    "canonical_price_currency": "USD",
+    "canonical_quantity": "200",
+    "canonical_quantity_unit": "contracts",
+    "category": "trading",
+    "currency": "USD",
+    "denomination": "USD",
+    "economic_type": "BLOCK_TRADE",
+    "event_time": "2026-10-01T00:00:00Z",
+    "execution_price": "0.1",
+    "id": "52e25461-3adb-5765-8960-f27c22dae952",
+    "instrument": "HYPE-USD-28AUG26-100-C",
+    "mark_improvement_bps": null,
+    "mark_improvement_per_unit": null,
+    "mark_improvement_percent": null,
+    "mark_price": null,
+    "metrics": {
+      "executed_quantity": "200",
+      "execution_count": "1",
+      "mark_covered_turnover": null,
+      "mark_eligible_turnover": "20.0",
+      "mark_improvement": null,
+      "mark_value_turnover": null,
+      "notional_turnover": "13001.02600200",
+      "premium_turnover": "20.0"
+    },
+    "missing_data": {
+      "mark_covered_turnover": "Missing/invalid execution mark, side, price or quantity.",
+      "mark_improvement": "Missing/invalid execution mark, side, price or quantity.",
+      "mark_improvement_percent": "Missing/invalid execution-time option/spot mark.",
+      "mark_value_turnover": "Missing/invalid execution mark, side, price or quantity."
+    },
+    "notes": [
+      "Approved source excerpt; synthetic clock and IDs; no full prior inventory."
+    ],
+    "order_identifier": null,
+    "price_currency": "USD",
+    "quantity": "200",
+    "quantity_unit": "HYPE",
+    "regular_candidate_ids": [],
+    "related_rfq_event_ids": [],
+    "side": "buy",
+    "source_endpoint": "/fills",
+    "source_event_ids": [
+      "52e25461-3adb-5765-8960-f27c22dae952"
+    ],
+    "source_raw_batch_id": "52107bbd-49bf-53be-9ca2-b866aa8d64f7",
+    "source_raw_batch_ids": [
+      "52107bbd-49bf-53be-9ca2-b866aa8d64f7"
+    ],
+    "trade_identifier": null,
+    "venue": "paradex",
+    "venue_event_identifier": null
+  }
+]

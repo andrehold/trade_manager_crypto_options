@@ -1,0 +1,30 @@
+diff --git a/src/features/clientPortal/components/HubPortfolioView.tsx b/src/features/clientPortal/components/HubPortfolioView.tsx
+index c21b60c..5792833 100644
+--- a/src/features/clientPortal/components/HubPortfolioView.tsx
++++ b/src/features/clientPortal/components/HubPortfolioView.tsx
+@@ -13,0 +14 @@ import { ReportingCurrencySelector } from './ReportingCurrencySelector'
++import { calculatedRealizedPnl } from '../dashboard/realizedPnl'
+@@ -150,0 +152 @@ export function HubDashboard({
++  const realized = calculatedRealizedPnl(performanceState?.data, overview.summary, currency)
+@@ -192 +194 @@ export function HubDashboard({
+-              <Metric label="Realized P&L" value={formatPortfolioValue(value('realizedPnl'), resolution.currency)} tone={metricTone(value('realizedPnl'))} detail="Reported by the venue" />
++              <Metric label={performanceState ? 'Calculated net realized P&L' : 'Realized P&L'} value={formatPortfolioValue(performanceState ? realized.value : value('realizedPnl'), resolution.currency)} tone={metricTone(performanceState ? realized.value : value('realizedPnl'))} detail={performanceState ? realized.detail : 'Reported by the venue'} />
+diff --git a/src/features/clientPortal/components/__tests__/HubPortfolioView.test.tsx b/src/features/clientPortal/components/__tests__/HubPortfolioView.test.tsx
+index 7693872..6cba267 100644
+--- a/src/features/clientPortal/components/__tests__/HubPortfolioView.test.tsx
++++ b/src/features/clientPortal/components/__tests__/HubPortfolioView.test.tsx
+@@ -87,0 +88,14 @@ describe('Hub-backed portfolio views', () => {
++  it('displays the calculated net realized P&L and its provisional qualification in the account card', () => {
++    const data = parseHubLifetimePerformance(provisionalPerformanceFixture)
++    data.accountId = overview.summary.accountId
++    data.lineage.summarySnapshotId = overview.summary.id
++    const account = structuredClone(overview)
++    account.summary.components = [{ ...account.summary.components[0], unrealizedPnl: '10' as any }]
++    render(<HubDashboard overview={account} {...dashboardActions} performanceState={performanceState(data)} />)
++    const row = within(screen.getByTestId('hub-kpi-row'))
++    expect(row.getByText('Calculated net realized P&L')).toBeInTheDocument()
++    expect(row.getByText('15.00 USDC')).toHaveClass('text-status-success')
++    expect(row.getByText('Provisional · Since inception · includes fees and funding')).toBeInTheDocument()
++    expect(row.queryByText('Reported by the venue', { selector: 'div' })).not.toBeNull()
++  })
++

@@ -1,0 +1,27 @@
+{
+  "account_id": "6bdb26f7-1c67-58b8-a5d4-5f9d295b9df9",
+  "coverage": {
+    "ambiguous_rfq_count": 0,
+    "available_end": null,
+    "available_start": null,
+    "derived_at": null,
+    "derived_status": "pending",
+    "excluded_rfq_count": 0,
+    "history_complete": false,
+    "inventory_as_of": null,
+    "inventory_mismatch_count": 0,
+    "inventory_status": "not_checked",
+    "inventory_unavailable_count": 0,
+    "latest_collection_at": null,
+    "normalization_version": null,
+    "notes": [
+      "Synthetic UI illustration only; not an observed account response."
+    ],
+    "requested_end": "2026-10-21T12:00:00Z",
+    "requested_start": "2026-10-01T00:00:00Z",
+    "unmatched_rfq_count": 0
+  },
+  "group_by": [],
+  "groups": [],
+  "venue": "coincall"
+}

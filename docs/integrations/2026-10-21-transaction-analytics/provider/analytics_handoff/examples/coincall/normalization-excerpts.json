@@ -1,0 +1,59 @@
+[
+  {
+    "account_id": "6bdb26f7-1c67-58b8-a5d4-5f9d295b9df9",
+    "accounting": null,
+    "canonical_amount": null,
+    "canonical_currency": null,
+    "canonical_price_currency": "USDT",
+    "canonical_quantity": "1.00000000",
+    "canonical_quantity_unit": "contracts",
+    "category": "trading",
+    "currency": "USDT",
+    "denomination": "USDT",
+    "economic_type": "trading",
+    "event_time": "2026-10-01T00:00:00Z",
+    "execution_price": "673.00000000",
+    "id": "65d71f21-546d-5a39-b783-1e239998af56",
+    "instrument": "BTCUSD-10OCT25-122000-C",
+    "mark_improvement_bps": "-334.50887033212276736572839808305323953621803658610438077863157046242709624849502",
+    "mark_improvement_per_unit": "-21.78376085",
+    "mark_improvement_percent": "-3.3450887033212276736572839808305323953621803658610438077863157046242709624849502",
+    "mark_price": "651.21623915",
+    "metrics": {
+      "executed_quantity": "1.00000000",
+      "execution_count": "1",
+      "fee_expense": "22.62968783",
+      "mark_covered_turnover": "673.0000000000000000",
+      "mark_eligible_turnover": "673.0000000000000000",
+      "mark_improvement": "-21.7837608500000000",
+      "mark_value_turnover": "651.2162391500000000",
+      "net_trading_cost": "22.62968783",
+      "notional_turnover": "113148.43913044",
+      "premium_turnover": "673.0000000000000000",
+      "rebates": "0",
+      "source_reported_profit": "0"
+    },
+    "missing_data": {},
+    "notes": [
+      "Approved source excerpt; synthetic clock and IDs; no full prior inventory."
+    ],
+    "order_identifier": null,
+    "price_currency": "USDT",
+    "quantity": "1.00000000",
+    "quantity_unit": "BTC_face_value",
+    "regular_candidate_ids": [],
+    "related_rfq_event_ids": [],
+    "side": "buy",
+    "source_endpoint": "/open/option/trade/history/v1",
+    "source_event_ids": [
+      "65d71f21-546d-5a39-b783-1e239998af56"
+    ],
+    "source_raw_batch_id": "823a54c7-ba18-5a7f-be1c-8ad8725d5105",
+    "source_raw_batch_ids": [
+      "823a54c7-ba18-5a7f-be1c-8ad8725d5105"
+    ],
+    "trade_identifier": null,
+    "venue": "coincall",
+    "venue_event_identifier": null
+  }
+]

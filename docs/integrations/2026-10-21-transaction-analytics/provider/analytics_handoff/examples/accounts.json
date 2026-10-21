@@ -1,0 +1,65 @@
+{
+  "canonical_schema_version": "1.0",
+  "items": [
+    {
+      "activated_at": null,
+      "canonical_schema_version": "1.0",
+      "enabled": true,
+      "environment": "reference",
+      "external_account_identifier": null,
+      "id": "70c43c6a-b7d5-5d33-a312-4e4195403895",
+      "label": "Annamite",
+      "venue": "deribit"
+    },
+    {
+      "activated_at": null,
+      "canonical_schema_version": "1.0",
+      "enabled": true,
+      "environment": "reference",
+      "external_account_identifier": null,
+      "id": "6bdb26f7-1c67-58b8-a5d4-5f9d295b9df9",
+      "label": "Coincall",
+      "venue": "coincall"
+    },
+    {
+      "activated_at": null,
+      "canonical_schema_version": "1.0",
+      "enabled": true,
+      "environment": "reference",
+      "external_account_identifier": null,
+      "id": "307c2580-7524-5206-bf1d-d48be5f219ed",
+      "label": "DWF",
+      "venue": "deribit"
+    },
+    {
+      "activated_at": null,
+      "canonical_schema_version": "1.0",
+      "enabled": true,
+      "environment": "reference",
+      "external_account_identifier": null,
+      "id": "9503765e-b24a-552a-b801-07099506aa22",
+      "label": "Nickel",
+      "venue": "deribit"
+    },
+    {
+      "activated_at": null,
+      "canonical_schema_version": "1.0",
+      "enabled": true,
+      "environment": "reference",
+      "external_account_identifier": null,
+      "id": "faa8e51f-3f79-5fbd-b1cd-13fcc23f16bf",
+      "label": "Paradex",
+      "venue": "paradex"
+    },
+    {
+      "activated_at": null,
+      "canonical_schema_version": "1.0",
+      "enabled": true,
+      "environment": "reference",
+      "external_account_identifier": null,
+      "id": "9de6234c-687e-525d-85cb-e7d1ce334fc9",
+      "label": "Paradex-HYPE",
+      "venue": "paradex"
+    }
+  ]
+}

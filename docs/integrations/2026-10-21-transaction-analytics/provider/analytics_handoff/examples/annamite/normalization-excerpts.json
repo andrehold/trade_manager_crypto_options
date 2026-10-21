@@ -1,0 +1,62 @@
+[
+  {
+    "account_id": "70c43c6a-b7d5-5d33-a312-4e4195403895",
+    "accounting": null,
+    "canonical_amount": null,
+    "canonical_currency": "BTC",
+    "canonical_price_currency": "BTC",
+    "canonical_quantity": "0.2",
+    "canonical_quantity_unit": "contracts",
+    "category": "trading",
+    "currency": "BTC",
+    "denomination": "BTC",
+    "economic_type": "option_execution",
+    "event_time": "2026-10-01T00:00:00Z",
+    "execution_price": "0.0026",
+    "id": "695e73c5-7620-5556-9065-889ce2bbd0ee",
+    "instrument": "BTC-31JUL26-73000-C",
+    "mark_improvement_bps": "-511.87281787828205611077175938981801022029825512525683903704002628938061578962917",
+    "mark_improvement_per_unit": "-0.000126606300279816",
+    "mark_improvement_percent": "-5.1187281787828205611077175938981801022029825512525683903704002628938061578962917",
+    "mark_price": "0.002473393699720184",
+    "metrics": {
+      "executed_quantity": "0.2",
+      "execution_count": "1",
+      "fee_expense": "0.000020",
+      "mark_covered_turnover": "0.00052",
+      "mark_eligible_turnover": "0.00052",
+      "mark_improvement": "-0.0000253212600559632",
+      "mark_value_turnover": "0.0004946787399440368",
+      "net_trading_cost": "0.000020",
+      "notional_turnover": "0.2",
+      "premium_turnover": "0.00052",
+      "rebates": "0",
+      "source_reported_profit": null
+    },
+    "missing_data": {
+      "source_reported_profit": "Transaction option premium/spot cashflow is not realized profit."
+    },
+    "notes": [
+      "BTC underlying notional and premium remain separate. No USD index conversion.",
+      "Approved source excerpt; synthetic clock and IDs; no full prior inventory."
+    ],
+    "order_identifier": null,
+    "price_currency": "BTC",
+    "quantity": "0.2",
+    "quantity_unit": "BTC",
+    "regular_candidate_ids": [],
+    "related_rfq_event_ids": [],
+    "side": "buy",
+    "source_endpoint": "private/get_transaction_log",
+    "source_event_ids": [
+      "695e73c5-7620-5556-9065-889ce2bbd0ee"
+    ],
+    "source_raw_batch_id": "b75b9efd-c769-5a5a-a26d-c999a41e0554",
+    "source_raw_batch_ids": [
+      "b75b9efd-c769-5a5a-a26d-c999a41e0554"
+    ],
+    "trade_identifier": null,
+    "venue": "deribit",
+    "venue_event_identifier": null
+  }
+]
