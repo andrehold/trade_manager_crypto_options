@@ -40,7 +40,7 @@ function Metric({ label, value, detail, tone, className = '' }: {
   )
 }
 
-function metricTone(value: HubSummaryComponent['realizedPnl']) {
+function metricTone(value: HubSummaryComponent['unrealizedPnl']) {
   if (value == null || decimalFrom(value).isZero()) return undefined
   return decimalFrom(value).isNegative() ? 'neg' as const : 'pos' as const
 }
@@ -127,6 +127,7 @@ export function HubDashboard({
   accountCurrencyError,
   performanceState,
   onRefreshPerformance = () => {},
+  tradingSection,
 }: {
   overview: PortfolioHubOverview
   history?: HubSummary[]
@@ -140,6 +141,7 @@ export function HubDashboard({
   accountCurrencyError?: string | null
   performanceState?: PortfolioHubLifetimePerformanceState
   onRefreshPerformance?: () => void
+  tradingSection?: React.ReactNode
 }) {
   const resolution = resolveAccountCurrency(
     overview.summary.components,
@@ -147,6 +149,7 @@ export function HubDashboard({
     overview.reportingCurrencySource,
   )
   const partial = overview.positions.snapshot.quality === 'partial'
+  const currentMetricWidth = performanceState?.data == null ? 'md:col-span-2' : 'md:col-span-3'
   const currency = resolution.status === 'resolved' ? resolution.currency : null
   const value = (key: AccountCurrencyMetricKey) => currency === null
     ? null
@@ -186,16 +189,22 @@ export function HubDashboard({
       {resolution.status === 'selection-required' ? selector('configuration') : (
         <>
           <section className="flex flex-col gap-3">
-            <SectionHead title="Account overview" meta={`values in ${resolution.currency}`} />
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="hub-kpi-row">
-              {performanceState?.data == null && <Metric label="Equity" value={formatPortfolioValue(value('equity'), resolution.currency)} detail="Balance including reported P&L" />}
-              <Metric label="Realized P&L" value={formatPortfolioValue(value('realizedPnl'), resolution.currency)} tone={metricTone(value('realizedPnl'))} detail="Reported by the venue" />
-              <Metric label="Unrealized P&L" value={formatPortfolioValue(value('unrealizedPnl'), resolution.currency)} tone={metricTone(value('unrealizedPnl'))} detail="Reported by the venue" />
-              <Metric label="Open positions" value={partial ? 'Partial collection' : String(overview.positions.snapshot.positionCount)} detail="Current venue snapshot" />
-              <Metric label="Balance" value={formatPortfolioValue(value('balance'), resolution.currency)} detail="Includes received premium" className="md:col-span-2" />
-              <Metric label="Available funds" value={formatPortfolioValue(value('availableFunds'), resolution.currency)} detail="Available under venue margin rules" className="md:col-span-2" />
+            <SectionHead title="Account overview" meta={`Current · values in ${resolution.currency}`} />
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-6" data-testid="hub-kpi-row">
+              {performanceState?.data == null && <Metric label="Equity" value={formatPortfolioValue(value('equity'), resolution.currency)} detail="Current · balance including reported P&L" className={currentMetricWidth} />}
+              <Metric label="Unrealized P&L" value={formatPortfolioValue(value('unrealizedPnl'), resolution.currency)} tone={metricTone(value('unrealizedPnl'))} detail="Current · reported by the venue" className={currentMetricWidth} />
+              <Metric label="Open positions" value={partial ? 'Partial collection' : String(overview.positions.snapshot.positionCount)} detail="Current venue snapshot" className={`${performanceState?.data == null ? 'col-span-2 md:col-span-2' : 'md:col-span-3'}`} />
+              <Metric label="Balance" value={formatPortfolioValue(value('balance'), resolution.currency)} detail="Current · includes received premium" className="md:col-span-3" />
+              <Metric label="Available funds" value={formatPortfolioValue(value('availableFunds'), resolution.currency)} detail="Current · available under venue margin rules" className="md:col-span-3" />
             </div>
           </section>
+        </>
+      )}
+
+      {tradingSection}
+
+      {resolution.status === 'resolved' && (
+        <>
 
           <section className="flex flex-col gap-3">
             <SectionHead title="Performance trend" meta={`last 30 days · ${resolution.currency}`} />

@@ -26,6 +26,8 @@ import { newEvent, SEED_AUDIT_EVENTS, type AuditEvent, type AuditType, type Audi
 import { SAMPLE_POSITIONS, SAMPLE_MARKS } from './sampleData'
 import { hasSupabaseClient } from '@/lib/supabase'
 import { PortfolioHubAnalyticsProvider } from './PortfolioHubAnalyticsProvider'
+import { TradingAnalyticsSection } from './components/analytics/TradingAnalyticsSection'
+import { resolveAccountCurrency } from './dashboard/accountCurrency'
 
 const PAGE_TITLES: Record<PortalPage, string> = {
   dashboard: 'Dashboard', positions: 'Positions', appropriateness: 'Appropriateness',
@@ -42,6 +44,8 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const { positions, loading, error, reload } = useClientPositions(clientName)
   const { state: hubState, reload: reloadHub } = usePortfolioDataHub()
   const { state: performanceState, refresh: refreshPerformance } = usePortfolioHubLifetimePerformance()
+  const analyticsCurrencyResolution = hubState.status === 'ready' ? resolveAccountCurrency(hubState.overview.summary.components, hubState.overview.reportingCurrency, hubState.overview.reportingCurrencySource) : null
+  const analyticsAccountCurrency = analyticsCurrencyResolution?.status === 'resolved' ? analyticsCurrencyResolution.currency : null
   const refreshDashboard = React.useCallback(() => {
     reloadHub()
     void refreshPerformance()
@@ -211,6 +215,7 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
                   accountCurrencyError={accountCurrencySelection.error}
                   performanceState={performanceState}
                   onRefreshPerformance={() => { void refreshPerformance() }}
+                  tradingSection={<TradingAnalyticsSection accountCurrency={analyticsAccountCurrency} />}
                 />
               ) : page === 'positions' ? <HubPositionsPage overview={hubState.overview} onRefresh={reloadHub} /> : <HubLedgerPage onRefresh={reloadHub} />
             ) : hubState.status === 'session-expired' ? (
@@ -269,6 +274,7 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
               {PAGE_TITLES[page]} — coming in a later phase.
             </div>
           )}
+          {page === 'dashboard' && hubState.status !== 'ready' && <div className="mt-5"><TradingAnalyticsSection /></div>}
         </main>
       </div>
     </div>

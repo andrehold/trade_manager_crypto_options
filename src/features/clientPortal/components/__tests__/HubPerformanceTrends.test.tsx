@@ -80,7 +80,8 @@ describe('HubPerformanceTrends', () => {
     render(<HubPerformanceTrends history={history} current={current} currency="BTC" />)
 
     expect(screen.getByText('3.0000 BTC')).toBeInTheDocument()
-    expect(screen.getByText('0.4000 BTC')).toBeInTheDocument()
+    expect(screen.queryByText('0.4000 BTC')).toBeNull()
+    expect(screen.queryByTestId('hub-realizedPnl-trend')).toBeNull()
     expect(screen.getByText('0.6000 BTC')).toBeInTheDocument()
     expect(chartProps('hub-equity-trend').data).toEqual([
       { t: '2026-09-01T00:00:00Z', v: 1 },
@@ -98,7 +99,7 @@ describe('HubPerformanceTrends', () => {
 
     render(<HubPerformanceTrends history={history} current={current} currency="BTC" />)
 
-    expect(screen.getAllByText(/second historical snapshot/i)).toHaveLength(3)
+    expect(screen.getAllByText(/second historical snapshot/i)).toHaveLength(2)
     expect(screen.queryByTestId('hub-equity-trend')).toBeNull()
     expect(areaChartSpy).not.toHaveBeenCalled()
   })
@@ -121,11 +122,11 @@ describe('HubPerformanceTrends', () => {
     rerender(<HubPerformanceTrends history={history} current={current} currency="USDC" />)
 
     expect(screen.getByText('30.00 USDC')).toBeInTheDocument()
-    expect(screen.getByText('3.00 USDC')).toBeInTheDocument()
+    expect(screen.queryByText('3.00 USDC')).toBeNull()
     expect(screen.getByText('4.00 USDC')).toBeInTheDocument()
     expect(screen.queryByText(/BTC$/)).toBeNull()
     expect(chartProps('hub-equity-trend').data.map((point) => point.v)).toEqual([10, 30])
-    expect(chartProps('hub-realizedPnl-trend').data.map((point) => point.v)).toEqual([1, 3])
+    expect(areaChartSpy.mock.calls.some(([props]) => props.testId === 'hub-realizedPnl-trend')).toBe(false)
     expect(chartProps('hub-unrealizedPnl-trend').data.map((point) => point.v)).toEqual([2, 4])
   })
 })

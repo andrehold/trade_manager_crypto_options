@@ -85,6 +85,27 @@ beforeEach(() => {
 })
 
 describe('Hub-backed portfolio views', () => {
+  it('places trading results after current account values and before independent snapshot trends', () => {
+    render(<HubDashboard overview={overview} {...dashboardActions} tradingSection={<section data-testid="trading-results">Trading results</section>} />)
+    const current = screen.getByTestId('hub-kpi-row')
+    const trading = screen.getByTestId('trading-results')
+    const trends = screen.getByTestId('hub-performance-trends')
+    expect(current.compareDocumentPosition(trading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(trading.compareDocumentPosition(trends) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByText('Current · values in USDC')).toBeInTheDocument()
+    expect(within(current).queryByText('Realized P&L')).toBeNull()
+  })
+
+  it('keeps trading results when current account currency requires selection', () => {
+    const account = structuredClone(overview)
+    account.reportingCurrency = null
+    account.summary.components = [summaryComponent('USD', { equity: '1' }), summaryComponent('USDC', { equity: '2' })] as any
+    render(<HubDashboard overview={account} {...dashboardActions} tradingSection={<section data-testid="trading-results">Trading results</section>} />)
+    expect(screen.getByTestId('trading-results')).toBeInTheDocument()
+    expect(screen.queryByTestId('hub-kpi-row')).toBeNull()
+    expect(screen.getByTestId('hub-provenance')).toBeInTheDocument()
+  })
+
   it('shows independent provenance and a mixed-age warning without inferring structures', () => {
     const onRefresh = vi.fn()
     render(<HubDashboard overview={overview} {...dashboardActions} onRefresh={onRefresh} />)
@@ -111,7 +132,7 @@ describe('Hub-backed portfolio views', () => {
 
     const performance = screen.getByTestId('hub-kpi-row')
     expect(within(performance).getByText('Equity')).toBeInTheDocument()
-    expect(within(performance).getByText('Realized P&L')).toBeInTheDocument()
+    expect(within(performance).queryByText('Realized P&L')).toBeNull()
     expect(within(performance).getByText('Unrealized P&L')).toBeInTheDocument()
     expect(within(performance).getByText('Balance')).toBeInTheDocument()
     expect(within(performance).getByText('Available funds')).toBeInTheDocument()
