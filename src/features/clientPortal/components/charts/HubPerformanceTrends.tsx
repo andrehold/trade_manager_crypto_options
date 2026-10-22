@@ -10,11 +10,10 @@ import { formatPortfolioValue } from '../portfolioFormatters'
 import { AreaChart } from './AreaChart'
 import { CHART_COLORS } from '../../dashboard/chartTheme'
 
-type MetricKey = Extract<AccountCurrencyMetricKey, 'equity' | 'realizedPnl' | 'unrealizedPnl'>
+type MetricKey = Extract<AccountCurrencyMetricKey, 'equity' | 'unrealizedPnl'>
 
 const METRICS: Array<{ key: MetricKey; label: string; color: string }> = [
   { key: 'equity', label: 'Equity', color: CHART_COLORS.accent },
-  { key: 'realizedPnl', label: 'Realized P&L', color: CHART_COLORS.sky },
   { key: 'unrealizedPnl', label: 'Unrealized P&L', color: CHART_COLORS.good },
 ]
 
@@ -58,7 +57,7 @@ export function HubPerformanceTrends({ history, current, currency }: {
   currency: string
 }) {
   return (
-    <div className="grid gap-3 lg:grid-cols-3" data-testid="hub-performance-trends">
+    <div className="grid gap-3 lg:grid-cols-2" data-testid="hub-performance-trends">
       {METRICS.map((metric) => (
         <TrendCard
           key={metric.key}

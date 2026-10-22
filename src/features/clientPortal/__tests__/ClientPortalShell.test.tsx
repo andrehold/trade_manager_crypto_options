@@ -22,6 +22,10 @@ vi.mock('recharts', async (importOriginal) => {
   }
 })
 
+vi.mock('../components/analytics/TradingAnalyticsSection', () => ({
+  TradingAnalyticsSection: ({ accountCurrency }: { accountCurrency?: string | null }) => <section data-testid="trading-results-ui" data-account-currency={accountCurrency ?? ''}>Trading results</section>,
+}))
+
 vi.mock('../useClientPositions')
 vi.mock('../PortfolioHubAnalyticsProvider', () => ({
   PortfolioHubAnalyticsProvider: ({ children, enabled }: { children: React.ReactNode; enabled: boolean }) => (
@@ -101,11 +105,13 @@ describe('ClientPortalShell', () => {
     })
     render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/dashboard" onSignOut={() => {}} />)
     expect(screen.getByTestId('analytics-boundary')).toHaveAttribute('data-enabled', 'true')
+    expect(screen.getByTestId('trading-results-ui')).toBeInTheDocument()
   })
 
   it('does not enable dashboard analytics on other pages', () => {
     render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/positions" onSignOut={() => {}} />)
     expect(screen.getByTestId('analytics-boundary')).toHaveAttribute('data-enabled', 'false')
+    expect(screen.queryByTestId('trading-results-ui')).toBeNull()
   })
 
   it('renders the sidebar, activation control, and the routed page', () => {
