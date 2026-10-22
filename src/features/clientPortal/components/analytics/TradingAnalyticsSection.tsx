@@ -5,13 +5,15 @@ import type { usePortfolioHubAnalytics } from '../../usePortfolioHubAnalytics'
 import { useDashboardAnalytics } from '../../PortfolioHubAnalyticsProvider'
 import { Button } from '@/components/ui/Button'
 import { AnalyticsPeriodControl } from './AnalyticsPeriodControl'
-import { AnalyticsCoverage, reasonCopy } from './AnalyticsCoverage'
+import { AnalyticsCoverage } from './AnalyticsCoverage'
 import { AnalyticsMetricValue } from './AnalyticsMetricValue'
 import { FundingCard } from './FundingCard'
 import { TradingCostsCard } from './TradingCostsCard'
 import { TradingActivityCard } from './TradingActivityCard'
 import { RealizedProfitChart } from './RealizedProfitChart'
-import { cardClass, completenessText, currencyKey, dimensionLabel, metricText, metricUnit, METRIC_LABELS, partitionKey, partitionLabel, profitTone, utcLabel, type AnalyticsResultSelection, type InspectMetric } from './analyticsPresentation'
+import { AnalyticsTransactionDrawer } from './AnalyticsTransactionDrawer'
+import { analyticsQueryKey } from '@/lib/portfolioDataHub/analyticsClient'
+import { cardClass, currencyKey, dimensionLabel, partitionKey, partitionLabel, profitTone, utcLabel, type AnalyticsResultSelection, type InspectMetric } from './analyticsPresentation'
 
 export function TradingAnalyticsSection({ accountCurrency }: { accountCurrency?: string | null }) {
   const analytics = useDashboardAnalytics()
@@ -43,7 +45,10 @@ export function TradingAnalyticsView({ analytics, accountCurrency }: { analytics
     selectionTrigger.current = trigger instanceof HTMLElement || trigger instanceof SVGElement ? trigger : null
     if (data) setSelected({ pair: data, result: { metric, group, window: { ...data.window }, filters: { ...data.filters } } })
   }
-  const active = selected?.pair === data && currencyKey(selected.result.group.dimensions.currency) === selectedCurrency ? selected.result : null
+  const active = selected && data && selected.pair.accountId === data.accountId
+    && analyticsQueryKey(selected.pair.window, selected.pair.filters) === analyticsQueryKey(data.window, data.filters)
+    && currencyKey(selected.result.group.dimensions.currency) === selectedCurrency ? selected : null
+  React.useEffect(() => { if (selected && !active) setSelected(null) }, [selected, active])
   const id = React.useId()
   return <section className="flex min-w-0 flex-col gap-4" aria-labelledby={`${id}-heading`} data-testid="trading-analytics-section">
     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -80,25 +85,7 @@ export function TradingAnalyticsView({ analytics, accountCurrency }: { analytics
         </div>)}
         <RealizedProfitChart groups={partition.days} window={data.window} onInspect={inspect} />
       </section>)}
-      {active && <ResultDetails selection={active} onClose={() => { setSelected(null); if (selectionTrigger.current?.isConnected) selectionTrigger.current.focus() }} />}
+      {active && <AnalyticsTransactionDrawer selection={active.result} originPair={active.pair} pair={data} trigger={selectionTrigger.current} onClose={() => setSelected(null)} refreshSummary={retry} summaryRefreshing={state.refreshing} summaryError={state.refreshError ?? state.error} summaryCanRetry={state.canRetry} summaryRetryAt={state.retryAt} />}
     </>}
-  </section>
-}
-
-function ResultDetails({ selection, onClose }: { selection: AnalyticsResultSelection; onClose: () => void }) {
-  const { group, metric, window } = selection
-  const cell = group.metrics[metric]
-  const ref = React.useRef<HTMLElement>(null)
-  React.useEffect(() => { ref.current?.focus() }, [selection])
-  return <section ref={ref} tabIndex={-1} role="region" aria-label="Trading result details" onKeyDown={(event) => { if (event.key === 'Escape') { event.stopPropagation(); onClose() } }} className={`${cardClass} outline-none focus-visible:ring-2 focus-visible:ring-accent-500`}>
-    <div className="flex items-start justify-between gap-2"><h3 className="type-subhead font-semibold text-text-primary">{METRIC_LABELS[metric] ?? metric}{group.dimensions.day ? ` · ${group.dimensions.day} UTC` : ''}</h3><Button size="sm" variant="ghost" onClick={onClose}>Close result details</Button></div>
-    <p className="mt-3 break-all type-title-m tabular-nums text-text-primary">{metricText(cell)}{cell?.value != null ? ` ${metricUnit(metric, group.dimensions)}` : ''}</p>
-    {metric === 'calculated_realized_gross_profit' && <p className="mt-1 type-caption text-text-secondary">Before fees and funding</p>}
-    {completenessText(cell) && <p className="mt-1 type-caption text-status-warning">{completenessText(cell)}</p>}
-    <p className="mt-3 break-words type-caption text-text-secondary">{partitionLabel(group.dimensions)}</p>
-    <p className="mt-1 type-caption text-text-tertiary">Original trading period: {utcLabel(window.start)} to {utcLabel(window.end)} (end exclusive).</p>
-    <p className="mt-1 type-caption text-text-secondary">{cell?.eligibleCount ?? 0} eligible components · {cell?.missingCount ?? 0} missing. Component counts are not execution counts.</p>
-    {cell?.notes.map((note, index) => <p className="mt-2 type-caption text-text-secondary" key={index}>{reasonCopy(note)}<span className="ml-1 break-all text-text-tertiary">({note})</span></p>)}
-    {metric === 'net_funding' && group.metrics.source_reported_funding && <details className="mt-3 type-caption text-text-secondary"><summary className="cursor-pointer">Source-reported funding comparison</summary><p className="mt-1 break-all tabular-nums">{metricText(group.metrics.source_reported_funding)} {group.dimensions.currency ?? 'Unknown currency'}. Comparison context; not substituted for verified funding.</p></details>}
   </section>
 }
