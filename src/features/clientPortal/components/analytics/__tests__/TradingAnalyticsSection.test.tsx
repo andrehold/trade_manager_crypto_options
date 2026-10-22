@@ -161,12 +161,16 @@ describe('transaction-based trading results', () => {
     expect(within(funding).getByRole('button')).toHaveFocus()
   })
 
-  it('drops selected result details when the completed pair changes', async () => {
+  it('keeps the selected snapshot during same-context summary refresh and closes on period change', async () => {
     const data = pair()
     const { rerender } = renderView(data)
     await userEvent.click(within(screen.getByRole('region', { name: 'Funding' })).getByRole('button'))
     expect(screen.getByRole('region', { name: 'Trading result details' })).toBeInTheDocument()
     rerender(<TradingAnalyticsView analytics={hook(structuredClone(data))} />)
+    expect(screen.getByRole('region', { name: 'Trading result details' })).toBeInTheDocument()
+    const next = structuredClone(data)
+    next.window.start = '2026-10-02T00:00:00Z'
+    rerender(<TradingAnalyticsView analytics={hook(next)} />)
     expect(screen.queryByRole('region', { name: 'Trading result details' })).toBeNull()
   })
 })

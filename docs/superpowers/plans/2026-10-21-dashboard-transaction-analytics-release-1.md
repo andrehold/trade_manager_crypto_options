@@ -1,6 +1,6 @@
 # Dashboard transaction analytics first release implementation plan
 
-Status: Packages 1–3 completed on 2026-10-21; Package 4 completed on 2026-10-22. Packages 5–6 have not started.
+Status: Packages 1–3 completed on 2026-10-21; Packages 4–5 completed on 2026-10-22. Package 6 has not started.
 
 Package 1 capture: [contract mapping, provenance and fixture coverage](../../integrations/2026-10-21-transaction-analytics/README.md), with [validation results](../../integrations/2026-10-21-transaction-analytics/VALIDATION.md). Existing dashboard work is preserved. The documented schema value `live` uses the neutral Live processing label pending provider clarification; production publication semantics remain an integration check.
 
@@ -8,7 +8,9 @@ Package 2: [schemas, protected routes, error contract and validation](../../inte
 
 Package 3: [authenticated client, mounted state, consistency/recovery and validation](../../integrations/2026-10-21-transaction-analytics/PACKAGE-3.md). The hook race/identity/isolation/retention gate passed.
 
-Package 4: [trading presentation, dashboard integration and validation](../../integrations/2026-10-21-transaction-analytics/PACKAGE-4.md). The component/dashboard metric/partition/isolation gate passed. Paginated transaction details remain Package 5; production acceptance remains Package 6.
+Package 4: [trading presentation, dashboard integration and validation](../../integrations/2026-10-21-transaction-analytics/PACKAGE-4.md). The component/dashboard metric/partition/isolation gate passed.
+
+Package 5: [contributing transactions, exact drill scope, pagination recovery and validation](../../integrations/2026-10-21-transaction-analytics/PACKAGE-5.md). The fixture-backed detail/context/pagination gate passed. Unsupported null-denomination scoping and missing build evidence remain explicit service limitations; authenticated production acceptance remains Package 6.
 
 Add transaction-based realized gross profit, trading costs, verified funding and trading activity to the live client dashboard. Clients should be able to select a period, see the limitations of each result and inspect the contributing transactions without losing the current account overview.
 
