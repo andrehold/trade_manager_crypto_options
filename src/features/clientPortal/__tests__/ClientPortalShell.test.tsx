@@ -23,6 +23,11 @@ vi.mock('recharts', async (importOriginal) => {
 })
 
 vi.mock('../useClientPositions')
+vi.mock('../PortfolioHubAnalyticsProvider', () => ({
+  PortfolioHubAnalyticsProvider: ({ children, enabled }: { children: React.ReactNode; enabled: boolean }) => (
+    <div data-testid="analytics-boundary" data-enabled={String(enabled)}>{children}</div>
+  ),
+}))
 const mockedHook = vi.mocked(useClientPositions)
 
 vi.mock('../usePortfolioDataHub', () => ({
@@ -87,6 +92,22 @@ beforeEach(() => {
 import { ClientPortalShell } from '../ClientPortalShell'
 
 describe('ClientPortalShell', () => {
+  it.each(['loading', 'unavailable', 'not-configured'] as const)('keeps analytics mounted when overview is %s and lifetime is unavailable', (status) => {
+    vi.mocked(usePortfolioDataHub).mockReturnValue({
+      state: status === 'unavailable' ? { status, message: 'Snapshot failed' } : { status }, reload: vi.fn(),
+    })
+    vi.mocked(usePortfolioHubLifetimePerformance).mockReturnValue({
+      state: { status: 'unavailable', data: null, refreshing: false, refreshError: 'Lifetime failed', errorCode: 'HUB_UNAVAILABLE', retryAt: null, canRefresh: true }, refresh: vi.fn(),
+    })
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/dashboard" onSignOut={() => {}} />)
+    expect(screen.getByTestId('analytics-boundary')).toHaveAttribute('data-enabled', 'true')
+  })
+
+  it('does not enable dashboard analytics on other pages', () => {
+    render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/positions" onSignOut={() => {}} />)
+    expect(screen.getByTestId('analytics-boundary')).toHaveAttribute('data-enabled', 'false')
+  })
+
   it('renders the sidebar, activation control, and the routed page', () => {
     render(<ClientPortalShell clientName="TwoPrime" program="Obsidian Core" hash="#/portal/dashboard" onSignOut={() => {}} />)
     expect(screen.getByText('TwoPrime')).toBeInTheDocument()

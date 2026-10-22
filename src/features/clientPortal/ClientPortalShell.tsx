@@ -25,6 +25,7 @@ import { AuditLogPage } from './pages/AuditLogPage'
 import { newEvent, SEED_AUDIT_EVENTS, type AuditEvent, type AuditType, type AuditActor } from './audit'
 import { SAMPLE_POSITIONS, SAMPLE_MARKS } from './sampleData'
 import { hasSupabaseClient } from '@/lib/supabase'
+import { PortfolioHubAnalyticsProvider } from './PortfolioHubAnalyticsProvider'
 
 const PAGE_TITLES: Record<PortalPage, string> = {
   dashboard: 'Dashboard', positions: 'Positions', appropriateness: 'Appropriateness',
@@ -162,6 +163,7 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
   const navigate = React.useCallback((p: PortalPage) => { window.location.hash = portalHash(p) }, [])
 
   return (
+    <PortfolioHubAnalyticsProvider enabled={page === 'dashboard'} accountIdHint={hubState.status === 'ready' ? hubState.overview.summary.accountId : undefined}>
     <div className="flex min-h-screen bg-bg-canvas">
       <ClientSidebar
         clientName={clientName} program={program} active={page}
@@ -270,6 +272,7 @@ export function ClientPortalShell({ clientName, program, hash, onSignOut }: {
         </main>
       </div>
     </div>
+    </PortfolioHubAnalyticsProvider>
   )
 }
 

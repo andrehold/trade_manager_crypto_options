@@ -63,6 +63,7 @@ describe('protected analytics routes', () => {
       expect(response.status).toBe(405)
       expect(response.headers.get('allow')).toBe('GET')
       expect(response.headers.get('cache-control')).toBe('private, no-store')
+      expect(response.headers.get('x-portfolio-hub-account-id')).toBeNull()
     }
   })
 
@@ -221,6 +222,7 @@ describe('protected analytics routes', () => {
       const response = await handlePortfolioDataHubRequest(request(endpoint), dataset(endpoint), { env, fetch })
       expect(response.status).toBe(expectedStatus)
       expect(response.headers.get('cache-control')).toBe('private, no-store')
+      expect(response.headers.get('x-portfolio-hub-account-id')).toBe(accountId)
       const text = await response.text()
       expect(JSON.parse(text).error.code).toBe(code)
       expect(text).not.toContain('private upstream')
@@ -252,6 +254,7 @@ describe('protected analytics routes', () => {
   it.each(['network', 'timeout'] as const)('maps %s failures without leaking diagnostics', async (kind) => {
     const response = await handlePortfolioDataHubRequest(request(), 'analytics-summary', { env, fetch: mockGateway({}, { [kind]: true }) })
     expect(response.status).toBe(kind === 'timeout' ? 504 : 502)
+    expect(response.headers.get('x-portfolio-hub-account-id')).toBe(accountId)
     const text = await response.text()
     expect(text).not.toContain('private failure detail')
     expect(JSON.parse(text).error.code).toBe(kind === 'timeout' ? 'UPSTREAM_TIMEOUT' : 'HUB_UNAVAILABLE')

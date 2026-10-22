@@ -55,6 +55,9 @@ export type HubClientErrorCode =
   | 'HUB_ACCOUNT_NOT_CONFIGURED'
   | 'CLIENT_NOT_LINKED'
   | 'INVALID_QUERY'
+  | 'ANALYTICS_INVALID_QUERY'
+  | 'ANALYTICS_INVALID_CURSOR'
+  | 'ANALYTICS_PUBLICATION_CONFLICT'
   | 'UPSTREAM_TIMEOUT'
   | 'SUPABASE_UNAVAILABLE'
   | 'HUB_UNAVAILABLE'
@@ -93,6 +96,7 @@ function apiErrorCode(value: unknown): HubClientErrorCode {
     'UPSTREAM_TIMEOUT', 'SUPABASE_UNAVAILABLE', 'HUB_UNAVAILABLE', 'HUB_INVALID_RESPONSE',
     'HUB_AUTHORIZATION_FAILED', 'HUB_ACCOUNT_NOT_FOUND', 'HUB_RATE_LIMITED',
     'SERVER_MISCONFIGURED', 'FORBIDDEN', 'CLIENT_NOT_FOUND',
+    'ANALYTICS_INVALID_QUERY', 'ANALYTICS_INVALID_CURSOR', 'ANALYTICS_PUBLICATION_CONFLICT',
   ]
   return typeof value === 'string' && codes.includes(value as HubClientErrorCode)
     ? value as HubClientErrorCode
@@ -154,11 +158,13 @@ export async function requestPortfolioHub<T>(
   path: string,
   accessToken: string,
   fetchImpl: typeof fetch = fetch,
+  signal?: AbortSignal,
 ): Promise<T> {
   let response: Response
   try {
     response = await fetchImpl(path, {
       headers: { authorization: `Bearer ${accessToken}`, accept: 'application/json' },
+      ...(signal ? { signal } : {}),
     })
   } catch (error) {
     throw new PortfolioHubClientError(
