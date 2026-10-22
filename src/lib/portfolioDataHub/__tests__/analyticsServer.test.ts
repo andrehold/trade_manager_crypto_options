@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { handlePortfolioDataHubRequest, type HubDataset } from '../server'
+import { createPortfolioDataHubGateway, handlePortfolioDataHubRequest, type HubDataset } from '../server'
 import summaryHandler, { config as summaryConfig } from '../../../../api/portfolio-data-hub/analytics/summary'
 import transactionsHandler, { config as transactionsConfig } from '../../../../api/portfolio-data-hub/analytics/transactions'
 
@@ -258,5 +258,39 @@ describe('protected analytics routes', () => {
     const text = await response.text()
     expect(text).not.toContain('private failure detail')
     expect(JSON.parse(text).error.code).toBe(kind === 'timeout' ? 'UPSTREAM_TIMEOUT' : 'HUB_UNAVAILABLE')
+  })
+})
+
+
+describe('measured analytics request budget', () => {
+  const context = { authUserId: authId, clientId: row.client_id, clientName: row.client_name, hubAccountId: accountId, hubAccountLabel: null, reportingCurrency: null, reportingCurrencySource: null }
+  it.each([
+    ['summary', undefined, 30000], ['transactions', undefined, 30000],
+    ['summary', '15000', 15000], ['snapshot', undefined, 10000],
+  ] as const)('bounds %s independently with analytics override %s', async (resource, override, deadline) => {
+    vi.useFakeTimers()
+    try {
+      let settled = false
+      const fetch = vi.fn<typeof globalThis.fetch>(async (_input, init) => new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new DOMException('abort', 'AbortError')), { once: true })
+      }))
+      const gateway = createPortfolioDataHubGateway({ env: { ...env, PORTFOLIO_DATA_HUB_ANALYTICS_TIMEOUT_MS: override }, fetch })
+      const pending = (resource === 'snapshot' ? gateway.summary(context)
+        : resource === 'summary' ? gateway.analyticsSummary(context, new URL(`https://portal.example/?${new URLSearchParams(window)}`))
+          : gateway.analyticsTransactions(context, new URL(`https://portal.example/?${new URLSearchParams(window)}`)))
+        .catch((error: unknown) => { settled = true; return error })
+      await vi.advanceTimersByTimeAsync(deadline - 1)
+      expect(settled).toBe(false)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(await pending).toMatchObject(resource === 'snapshot'
+        ? { code: 'HUB_UNAVAILABLE', status: 502 } // Existing snapshot error contract.
+        : { code: 'UPSTREAM_TIMEOUT', status: 504 })
+      expect(fetch).toHaveBeenCalledOnce()
+    } finally { vi.useRealTimers() }
+  })
+  it.each(['499', '30001', '1.5', '1e3', 'invalid'])('rejects an invalid analytics budget %s before network access', (value) => {
+    const fetch = vi.fn<typeof globalThis.fetch>()
+    expect(() => createPortfolioDataHubGateway({ env: { ...env, PORTFOLIO_DATA_HUB_ANALYTICS_TIMEOUT_MS: value }, fetch })).toThrow('PORTFOLIO_DATA_HUB_ANALYTICS_TIMEOUT_MS must be 500-30000')
+    expect(fetch).not.toHaveBeenCalled()
   })
 })

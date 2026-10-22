@@ -41,4 +41,12 @@ describe('Portfolio Data Hub preflight', () => {
     expect(result.errors).toContain('VITE_PORTFOLIO_DATA_HUB_API_KEY must not be VITE_-prefixed; Hub settings are server-only')
     expect(JSON.stringify(result)).not.toContain('secret')
   })
+  it.each(['499', '30001', '1.5', '1e3', 'not-a-timeout'])('rejects invalid analytics timeout %s', (value) => {
+    const result = evaluateHubPreflight({ ...validEnv, PORTFOLIO_DATA_HUB_ANALYTICS_TIMEOUT_MS: value })
+    expect(result.errors).toContain('PORTFOLIO_DATA_HUB_ANALYTICS_TIMEOUT_MS must be an integer from 500 to 30000')
+  })
+  it('allows independent valid analytics and snapshot timeouts', () => {
+    const result = evaluateHubPreflight({ ...validEnv, PORTFOLIO_DATA_HUB_TIMEOUT_MS: '10000', PORTFOLIO_DATA_HUB_ANALYTICS_TIMEOUT_MS: '30000' })
+    expect(result.errors).toEqual([])
+  })
 })
