@@ -22,6 +22,8 @@ import {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const DEFAULT_TIMEOUT_MS = 10_000
+// Full-history analytics measurements exceed the snapshot timeout (up to 25.3s).
+const DEFAULT_ANALYTICS_TIMEOUT_MS = 30_000
 const PERFORMANCE_MAX_ATTEMPTS = 3
 const PERFORMANCE_RETRY_BASE_MS = 100
 
@@ -114,6 +116,7 @@ type ServerConfig = {
   hubBaseUrl: string
   hubApiKey: string
   timeoutMs: number
+  analyticsTimeoutMs: number
 }
 
 type PortalClientRow = {
@@ -180,6 +183,11 @@ function readConfig(env: RuntimeEnv): ServerConfig {
   if (!Number.isInteger(timeoutMs) || timeoutMs < 500 || timeoutMs > 30_000) {
     throw new HubRouteError(500, 'SERVER_MISCONFIGURED', 'PORTFOLIO_DATA_HUB_TIMEOUT_MS must be 500-30000')
   }
+  const rawAnalyticsTimeout = env.PORTFOLIO_DATA_HUB_ANALYTICS_TIMEOUT_MS?.trim()
+  const analyticsTimeoutMs = rawAnalyticsTimeout ? Number(rawAnalyticsTimeout) : DEFAULT_ANALYTICS_TIMEOUT_MS
+  if ((rawAnalyticsTimeout && !/^\d+$/.test(rawAnalyticsTimeout)) || !Number.isInteger(analyticsTimeoutMs) || analyticsTimeoutMs < 500 || analyticsTimeoutMs > 30_000) {
+    throw new HubRouteError(500, 'SERVER_MISCONFIGURED', 'PORTFOLIO_DATA_HUB_ANALYTICS_TIMEOUT_MS must be 500-30000')
+  }
   return {
     supabaseUrl: normalizedBaseUrl(
       requiredEnv(env, ['SUPABASE_URL', 'VITE_SUPABASE_URL']),
@@ -195,6 +203,7 @@ function readConfig(env: RuntimeEnv): ServerConfig {
     ),
     hubApiKey: requiredEnv(env, ['PORTFOLIO_DATA_HUB_API_KEY']),
     timeoutMs,
+    analyticsTimeoutMs,
   }
 }
 
@@ -644,7 +653,7 @@ export function createPortfolioDataHubGateway(dependencies: GatewayDependencies 
           headers: { authorization: `Bearer ${config.hubApiKey}`, accept: 'application/json' },
           cache: 'no-store',
           redirect: 'error',
-        }, config.timeoutMs)
+        }, config.analyticsTimeoutMs)
     } catch (error) {
       if (error instanceof HubRouteError) throw error
       // Abort exceptions can originate in a different runtime realm.

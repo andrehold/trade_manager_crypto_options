@@ -16,7 +16,8 @@
     "test:auth-identity-audit:postgres": "bash scripts/verify-auth-identity-audit-postgres.sh",
     "test:portfolio-data-hub:direct": "RUN_PORTFOLIO_DATA_HUB_LIVE_TEST=1 vitest run src/lib/portfolioDataHub/__tests__/server.live.test.ts",
     "test:portfolio-data-hub:live": "npm run test:portfolio-data-hub:direct",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:portfolio-data-hub:analytics": "RUN_PORTFOLIO_ANALYTICS_LIVE_TEST=1 vitest run src/lib/portfolioDataHub/__tests__/analyticsRelease.live.test.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { parseHubAnalyticsSummary } from '@/lib/portfolioDataHub'
-import { analyticsDrillFilters } from '../analyticsDrillFilters'
+import { analyticsDrillFilters, rowMatchesDrill } from '../analyticsDrillFilters'
+import { parseHubAnalyticsTransactionPage } from '@/lib/portfolioDataHub'
 import type { AnalyticsResultSelection } from '../../components/analytics/analyticsPresentation'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -44,6 +45,15 @@ describe('exact contributing-transaction scope', () => {
     s.group.dimensions.denomination = null
     expect(() => analyticsDrillFilters(s)).toThrow(/unknown denomination/)
   })
+  it('treats explicit false null flags as unrestricted and scopes a returned null partition to true', () => {
+    const s = selection()
+    s.filters = { currencyIsNull: false, quantityUnitIsNull: false, instrumentIsNull: false }
+    s.group.dimensions = { currency: null, denomination: 'unknown', quantityUnit: null, instrument: null }
+    expect(analyticsDrillFilters(s)).toMatchObject({ currencyIsNull: true, quantityUnitIsNull: true, instrumentIsNull: true })
+    const page = parseHubAnalyticsTransactionPage(JSON.parse(readFileSync(resolve(process.cwd(), 'docs/integrations/2026-10-21-transaction-analytics/synthetic/partial-transactions-page-1.json'), 'utf8')))
+    const row = { ...page.items[0], currency: null, quantityUnit: null, instrument: null }
+    expect(rowMatchesDrill(row, { ...s.window, start: '2026-10-01T00:00:00Z', ...s.filters })).toBe(true)
+  })
   it('rejects nonoverlapping buckets and contradictory original filters', () => {
     const s = selection()
     s.group.dimensions.day = '2026-09-30'
@@ -51,8 +61,8 @@ describe('exact contributing-transaction scope', () => {
     delete s.group.dimensions.day
     s.filters.currency = 'USD'
     expect(() => analyticsDrillFilters(s)).toThrow(/conflicts/)
-    s.filters = { quantityUnitIsNull: false }
-    s.group.dimensions.quantityUnit = null
+    s.filters = { quantityUnitIsNull: true }
+    s.group.dimensions.quantityUnit = 'contracts'
     expect(() => analyticsDrillFilters(s)).toThrow(/conflicts/)
     s.filters = { category: 'funding' }
     s.group.dimensions.category = 'delivery'
