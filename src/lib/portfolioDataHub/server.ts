@@ -957,6 +957,7 @@ export async function handlePortfolioDataHubRequest(
     ? (dependencies.correlationId?.() ?? globalThis.crypto.randomUUID())
     : null
   let performanceContext: HubRequestContext | null = null
+  let analyticsContext: HubRequestContext | null = null
 
   const logPerformanceError = (
     code: HubRouteErrorCode,
@@ -981,6 +982,7 @@ export async function handlePortfolioDataHubRequest(
     }
     const context = await gateway.resolveContext(req)
     if (dataset === 'performance') performanceContext = context
+    if (dataset === 'analytics-summary' || dataset === 'analytics-transactions') analyticsContext = context
     const requestUrl = new URL(req.url)
     if (dataset === 'analytics-summary') return json({ data: await gateway.analyticsSummary(context, requestUrl) })
     if (dataset === 'analytics-transactions') return json({ data: await gateway.analyticsTransactions(context, requestUrl) })
@@ -1026,6 +1028,9 @@ export async function handlePortfolioDataHubRequest(
       if (performanceContext) {
         responseHeaders.set('x-portfolio-hub-account-id', performanceContext.hubAccountId)
       }
+      if (analyticsContext) {
+        responseHeaders.set('x-portfolio-hub-account-id', analyticsContext.hubAccountId)
+      }
       return json(
         { error: { code: error.code, message: error.message } },
         error.status,
@@ -1037,6 +1042,9 @@ export async function handlePortfolioDataHubRequest(
     const responseHeaders: Record<string, string> = {}
     if (performanceContext) {
       responseHeaders['x-portfolio-hub-account-id'] = performanceContext.hubAccountId
+    }
+    if (analyticsContext) {
+      responseHeaders['x-portfolio-hub-account-id'] = analyticsContext.hubAccountId
     }
     return json({ error: { code, message: 'The portfolio dataset could not be loaded' } }, 502, responseHeaders)
   }

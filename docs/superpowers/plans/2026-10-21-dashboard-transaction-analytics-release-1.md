@@ -1,10 +1,12 @@
 # Dashboard transaction analytics first release implementation plan
 
-Status: Packages 1 and 2 completed on 2026-10-21. Packages 3–6 have not started.
+Status: Packages 1–3 completed on 2026-10-21. Packages 4–6 have not started.
 
 Package 1 capture: [contract mapping, provenance and fixture coverage](../../integrations/2026-10-21-transaction-analytics/README.md), with [validation results](../../integrations/2026-10-21-transaction-analytics/VALIDATION.md). Existing dashboard work is preserved. The documented schema value `live` uses the neutral Live processing label pending provider clarification; production publication semantics remain an integration check.
 
 Package 2: [schemas, protected routes, error contract and validation](../../integrations/2026-10-21-transaction-analytics/PACKAGE-2.md). The account-isolation/filter/error/parsing gate passed; live production validation remains outstanding.
+
+Package 3: [authenticated client, mounted state, consistency/recovery and validation](../../integrations/2026-10-21-transaction-analytics/PACKAGE-3.md). The hook race/identity/isolation/retention gate passed. Dashboard presentation remains Package 4.
 
 Add transaction-based realized gross profit, trading costs, verified funding and trading activity to the live client dashboard. Clients should be able to select a period, see the limitations of each result and inspect the contributing transactions without losing the current account overview.
 
