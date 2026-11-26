@@ -56,8 +56,20 @@ export default async function handler(req: Request): Promise<Response> {
     headers,
   };
 
-  const upstreamResponse = await fetch(targetUrl, forwardInit);
+  let upstreamResponse: Response;
+  try {
+    upstreamResponse = await fetch(targetUrl, forwardInit);
+  } catch (err) {
+    console.error("Supabase upstream fetch failed", err);
+    return new Response("Upstream request failed", { status: 502, headers: withCors() });
+  }
+
   const responseHeaders = withCors(upstreamResponse.headers);
+  // Body is auto-decompressed, so upstream content-length/-encoding no longer match it;
+  // leaving them makes the edge runtime reject the response (FUNCTION_INVOCATION_FAILED).
+  ["content-length", "content-encoding", "transfer-encoding", "connection"].forEach((h) =>
+    responseHeaders.delete(h),
+  );
   const body = await upstreamResponse.arrayBuffer();
 
   return new Response(body, {
