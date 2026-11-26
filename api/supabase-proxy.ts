@@ -1,10 +1,7 @@
-export const config = { runtime: "nodejs" };
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
+// Classic Vercel Node serverless handler (NOT edge, NOT a web Request/Response
+// handler): on the Node runtime Vercel ignores a returned Response, so we must
+// write to `res`. The edge runtime, in turn, rejected the POST-with-body fetch
+// to Supabase with an opaque "internal error". Node's global fetch proxies it fine.
 
 type ProxyInit = {
   method?: string;
@@ -17,79 +14,97 @@ type ProxyRequest = {
   init?: ProxyInit;
 };
 
-function withCors(headers: HeadersInit = {}) {
-  const h = new Headers(headers);
-  Object.entries(corsHeaders).forEach(([key, value]) => h.set(key, value));
-  return h;
+type Req = { method?: string; body?: unknown };
+type Res = {
+  setHeader(name: string, value: string): void;
+  status(code: number): Res;
+  send(body: string | Buffer): void;
+  end(): void;
+};
+
+const SKIP_RESPONSE_HEADERS = new Set([
+  "content-length",
+  "content-encoding",
+  "transfer-encoding",
+  "connection",
+]);
+
+function setCors(res: Res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
-export default async function handler(req: Request): Promise<Response> {
+export default async function handler(req: Req, res: Res): Promise<void> {
+  setCors(res);
+
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: withCors() });
+    res.status(204).end();
+    return;
   }
-
   if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405, headers: withCors() });
+    res.status(405).send("Method not allowed");
+    return;
   }
 
+  // Vercel parses a JSON body into req.body; tolerate string/Buffer too.
   let payload: ProxyRequest;
   try {
-    payload = (await req.json()) as ProxyRequest;
+    const raw = req.body;
+    payload =
+      raw && typeof raw === "object" && !Buffer.isBuffer(raw)
+        ? (raw as ProxyRequest)
+        : (JSON.parse(Buffer.isBuffer(raw) ? raw.toString("utf8") : String(raw ?? "")) as ProxyRequest);
   } catch (err) {
     console.error("Failed to parse supabase proxy payload", err);
-    return new Response("Invalid JSON", { status: 400, headers: withCors() });
+    res.status(400).send("Invalid JSON");
+    return;
   }
 
   const targetUrl = payload.url?.trim();
   if (!targetUrl) {
-    return new Response("Missing target URL", { status: 400, headers: withCors() });
+    res.status(400).send("Missing target URL");
+    return;
   }
 
   const supabaseUrl = (process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL)?.replace(/\/$/, "");
   if (!supabaseUrl || !targetUrl.startsWith(supabaseUrl)) {
-    return new Response("Target URL is not allowed", { status: 400, headers: withCors() });
+    res.status(400).send("Target URL is not allowed");
+    return;
   }
 
-  // Forward only what a proxy needs. Spreading payload.init carried a JSON-serialized
-  // signal ({}), which the edge fetch rejects — the real cause of the login failure.
-  const headers = new Headers(payload.init?.headers ?? []);
-  const forwardInit: RequestInit = {
-    method: payload.init?.method ?? "GET",
-    headers,
-    body: payload.init?.body ?? null,
-  };
-
-  let upstreamResponse: Response;
+  const method = payload.init?.method ?? "GET";
+  let upstream: Response;
   try {
-    upstreamResponse = await fetch(targetUrl, forwardInit);
+    upstream = await fetch(targetUrl, {
+      method,
+      headers: new Headers(payload.init?.headers ?? []),
+      body: payload.init?.body ?? null,
+      // Never hang forever: bound the upstream call so the client gets a 502
+      // instead of a request that stays pending until the function times out.
+      signal: AbortSignal.timeout(15000),
+    });
   } catch (err) {
     const e = err as { name?: string; message?: string; cause?: unknown; stack?: string };
     const cause = e?.cause as { code?: string; message?: string } | undefined;
     // diag: temporary — surface the real fetch failure in the response + logs
     const detail = JSON.stringify({
       targetUrl,
-      method: forwardInit.method,
-      hasBody: forwardInit.body != null,
+      method,
       name: e?.name,
       message: e?.message,
       causeCode: cause?.code,
       causeMessage: cause?.message ?? (e?.cause != null ? String(e.cause) : undefined),
     });
     console.error("Supabase upstream fetch failed", detail, e?.stack);
-    return new Response("Upstream request failed: " + detail, { status: 502, headers: withCors() });
+    res.status(502).send("Upstream request failed: " + detail);
+    return;
   }
 
-  const responseHeaders = withCors(upstreamResponse.headers);
-  // Body is auto-decompressed, so upstream content-length/-encoding no longer match it;
-  // leaving them makes the edge runtime reject the response (FUNCTION_INVOCATION_FAILED).
-  ["content-length", "content-encoding", "transfer-encoding", "connection"].forEach((h) =>
-    responseHeaders.delete(h),
-  );
-  const body = await upstreamResponse.arrayBuffer();
-
-  return new Response(body, {
-    status: upstreamResponse.status,
-    statusText: upstreamResponse.statusText,
-    headers: responseHeaders,
+  upstream.headers.forEach((value, key) => {
+    if (!SKIP_RESPONSE_HEADERS.has(key.toLowerCase())) res.setHeader(key, value);
   });
+  setCors(res); // ensure CORS wins over any forwarded header
+  const body = Buffer.from(await upstream.arrayBuffer());
+  res.status(upstream.status).send(body);
 }
