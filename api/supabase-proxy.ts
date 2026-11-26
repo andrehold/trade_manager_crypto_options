@@ -85,19 +85,8 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       signal: AbortSignal.timeout(15000),
     });
   } catch (err) {
-    const e = err as { name?: string; message?: string; cause?: unknown; stack?: string };
-    const cause = e?.cause as { code?: string; message?: string } | undefined;
-    // diag: temporary — surface the real fetch failure in the response + logs
-    const detail = JSON.stringify({
-      targetUrl,
-      method,
-      name: e?.name,
-      message: e?.message,
-      causeCode: cause?.code,
-      causeMessage: cause?.message ?? (e?.cause != null ? String(e.cause) : undefined),
-    });
-    console.error("Supabase upstream fetch failed", detail, e?.stack);
-    res.status(502).send("Upstream request failed: " + detail);
+    console.error("Supabase upstream fetch failed", err);
+    res.status(502).send("Upstream request failed");
     return;
   }
 
