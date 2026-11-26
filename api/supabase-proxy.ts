@@ -50,10 +50,13 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response("Target URL is not allowed", { status: 400, headers: withCors() });
   }
 
+  // Forward only what a proxy needs. Spreading payload.init carried a JSON-serialized
+  // signal ({}), which the edge fetch rejects — the real cause of the login failure.
   const headers = new Headers(payload.init?.headers ?? []);
   const forwardInit: RequestInit = {
-    ...payload.init,
+    method: payload.init?.method ?? "GET",
     headers,
+    body: payload.init?.body ?? null,
   };
 
   let upstreamResponse: Response;
