@@ -63,8 +63,20 @@ export default async function handler(req: Request): Promise<Response> {
   try {
     upstreamResponse = await fetch(targetUrl, forwardInit);
   } catch (err) {
-    console.error("Supabase upstream fetch failed", err);
-    return new Response("Upstream request failed", { status: 502, headers: withCors() });
+    const e = err as { name?: string; message?: string; cause?: unknown; stack?: string };
+    const cause = e?.cause as { code?: string; message?: string } | undefined;
+    // diag: temporary — surface the real fetch failure in the response + logs
+    const detail = JSON.stringify({
+      targetUrl,
+      method: forwardInit.method,
+      hasBody: forwardInit.body != null,
+      name: e?.name,
+      message: e?.message,
+      causeCode: cause?.code,
+      causeMessage: cause?.message ?? (e?.cause != null ? String(e.cause) : undefined),
+    });
+    console.error("Supabase upstream fetch failed", detail, e?.stack);
+    return new Response("Upstream request failed: " + detail, { status: 502, headers: withCors() });
   }
 
   const responseHeaders = withCors(upstreamResponse.headers);
