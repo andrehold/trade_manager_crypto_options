@@ -23,8 +23,8 @@ export function analyticsDrillFilters(selection: AnalyticsResultSelection): Anal
   if (compareAnalyticsInstants(result.start, result.end) >= 0) throw new Error('This bucket does not overlap the original trading period.')
   const partition = (name: 'currency' | 'quantityUnit' | 'instrument', value: string | null) => {
     const nullName = `${name}IsNull` as 'currencyIsNull' | 'quantityUnitIsNull' | 'instrumentIsNull'
-    if ((filters[name] !== undefined && filters[name] !== value) || (filters[nullName] === true && value !== null)
-      || (filters[nullName] === false && value === null)) throw new Error('This group conflicts with the original filters.')
+    // False means no null-only restriction in the Hub query, not IS NOT NULL.
+    if ((filters[name] !== undefined && filters[name] !== value) || (filters[nullName] === true && value !== null)) throw new Error('This group conflicts with the original filters.')
     delete result[name]
     delete result[nullName]
     if (value === null) result[nullName] = true
@@ -52,7 +52,6 @@ export function rowMatchesDrill(row: HubAnalyticsTransaction, filters: Analytics
     const nullKey = `${key}IsNull` as 'currencyIsNull' | 'quantityUnitIsNull' | 'instrumentIsNull'
     if (filters[key] !== undefined && row[key] !== filters[key]) return false
     if (filters[nullKey] === true && row[key] !== null) return false
-    if (filters[nullKey] === false && row[key] === null) return false
   }
   return (filters.denomination === undefined || row.denomination === filters.denomination)
     && (filters.category === undefined || row.category === filters.category)

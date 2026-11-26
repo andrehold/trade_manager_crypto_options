@@ -1,0 +1,917 @@
+{
+  "recorded_at_utc": "2026-10-22T09:24:34.082529+00:00",
+  "read_only": true,
+  "public_hub_base_url": "https://hub.germanquantum.tech",
+  "provenance": "Independently executed using existing local server-side credentials and actual discovered account IDs; no synthetic IDs used for live requests. Counts/timings only; no transaction payloads, amounts, IDs, cursors, tokens or credentials persisted.",
+  "release_sign_off": "pending_remaining_portal_coverage_and_deployed_verification",
+  "supplied_smoke": {
+    "read_only": true,
+    "captured_at_utc": "2026-10-22T09:06:44.285225+00:00",
+    "scope": "Supplied acceptance smoke; actual discovered enabled accounts; full observed history",
+    "status": "passed",
+    "acceptance": {
+      "read_only": true,
+      "accounts": [
+        {
+          "account": "Annamite",
+          "venue": "deribit",
+          "rows": 238,
+          "metric_checks": 2407,
+          "calculated_profit_rows": 125,
+          "derived_status": "ready",
+          "history_complete": false
+        },
+        {
+          "account": "Coincall",
+          "venue": "coincall",
+          "rows": 6240,
+          "metric_checks": 92403,
+          "calculated_profit_rows": 6225,
+          "derived_status": "ready",
+          "history_complete": false
+        },
+        {
+          "account": "DWF",
+          "venue": "deribit",
+          "rows": 2181,
+          "metric_checks": 25727,
+          "calculated_profit_rows": 1838,
+          "derived_status": "ready",
+          "history_complete": false
+        },
+        {
+          "account": "Nickel",
+          "venue": "deribit",
+          "rows": 500,
+          "metric_checks": 4045,
+          "calculated_profit_rows": 220,
+          "derived_status": "ready",
+          "history_complete": false
+        },
+        {
+          "account": "Paradex",
+          "venue": "paradex",
+          "rows": 4417,
+          "metric_checks": 15210,
+          "calculated_profit_rows": 226,
+          "derived_status": "ready",
+          "history_complete": false
+        },
+        {
+          "account": "Paradex-HYPE",
+          "venue": "paradex",
+          "rows": 299,
+          "metric_checks": 1266,
+          "calculated_profit_rows": 19,
+          "derived_status": "ready",
+          "history_complete": false
+        }
+      ]
+    },
+    "measurements": {
+      "accounts": {
+        "requests": 1,
+        "max_bytes": 1613,
+        "total_bytes": 1613,
+        "min_ms": 594.25,
+        "median_ms": 594.25,
+        "p95_ms": 594.25,
+        "max_ms": 594.25
+      },
+      "summary": {
+        "requests": 24,
+        "max_bytes": 12391375,
+        "total_bytes": 29525869,
+        "min_ms": 960.19,
+        "median_ms": 2867.39,
+        "p95_ms": 16899.16,
+        "max_ms": 25296.24
+      },
+      "transactions": {
+        "requests": 73,
+        "max_bytes": 595021,
+        "total_bytes": 32503588,
+        "min_ms": 1062.1,
+        "median_ms": 5249.61,
+        "p95_ms": 11010.37,
+        "max_ms": 12828.96
+      }
+    },
+    "script_sha256": {
+      "analytics_smoke.py": "414520853ba277da85550b8d109dc7e5aac7525f06b2aed70c94204433f2dbf0",
+      "analytics_client.py": "3fd616ea78ebb8c753d36f2e2f9a13379dd93f628e0f2df725822268bf12e417"
+    }
+  },
+  "totals": {
+    "rows": 13875,
+    "metric_checks": 141058,
+    "calculated_profit_rows": 8653
+  },
+  "application_parser_and_drill": {
+    "readOnly": true,
+    "capturedAt": "2026-10-22T09:19:23.314Z",
+    "scope": "Direct six-account parser/drill checks plus in-process protected portal handlers with real Supabase authentication/RLS; not deployed browser end-to-end",
+    "accounts": [
+      {
+        "account": "Annamite",
+        "venue": "deribit",
+        "status": "passed",
+        "historyComplete": false,
+        "buildEvidence": true,
+        "nullDenominations": 0,
+        "samples": [
+          {
+            "metric": "calculated_realized_gross_profit",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 14,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "fee_expense",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 14,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "rebates",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 14,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "net_trading_cost",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 14,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "execution_count",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 14,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "executed_quantity",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 14,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "premium_turnover",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 14,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "notional_turnover",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 14,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "calculated_realized_gross_profit",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 14,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "period"
+          }
+        ],
+        "ineligible": [
+          "net_funding"
+        ]
+      },
+      {
+        "account": "Coincall",
+        "venue": "coincall",
+        "status": "passed",
+        "historyComplete": false,
+        "buildEvidence": true,
+        "nullDenominations": 0,
+        "samples": [
+          {
+            "metric": "calculated_realized_gross_profit",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 3,
+            "rows": 138,
+            "missing": 8,
+            "nullPartition": false,
+            "partial": true,
+            "bucket": "day"
+          },
+          {
+            "metric": "fee_expense",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 2,
+            "rows": 52,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "rebates",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 2,
+            "rows": 52,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "net_trading_cost",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 2,
+            "rows": 51,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "execution_count",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 2,
+            "rows": 51,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "executed_quantity",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 2,
+            "rows": 51,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "premium_turnover",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 2,
+            "rows": 51,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "notional_turnover",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 2,
+            "rows": 51,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "calculated_realized_gross_profit",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 2,
+            "rows": 52,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "period"
+          }
+        ],
+        "ineligible": [
+          "net_funding"
+        ]
+      },
+      {
+        "account": "DWF",
+        "venue": "deribit",
+        "status": "passed",
+        "historyComplete": false,
+        "buildEvidence": true,
+        "nullDenominations": 0,
+        "samples": [
+          {
+            "metric": "calculated_realized_gross_profit",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 2,
+            "rows": 54,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "fee_expense",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 2,
+            "rows": 54,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "rebates",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 2,
+            "rows": 54,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "net_trading_cost",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 2,
+            "rows": 54,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "execution_count",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 2,
+            "rows": 54,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "executed_quantity",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 2,
+            "rows": 54,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "premium_turnover",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 2,
+            "rows": 54,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "notional_turnover",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 2,
+            "rows": 54,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "calculated_realized_gross_profit",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 2,
+            "rows": 54,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "period"
+          }
+        ],
+        "ineligible": [
+          "net_funding"
+        ]
+      },
+      {
+        "account": "Nickel",
+        "venue": "deribit",
+        "status": "passed",
+        "historyComplete": false,
+        "buildEvidence": true,
+        "nullDenominations": 0,
+        "samples": [
+          {
+            "metric": "calculated_realized_gross_profit",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 3,
+            "missing": 3,
+            "nullPartition": false,
+            "partial": true,
+            "bucket": "day"
+          },
+          {
+            "metric": "fee_expense",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 4,
+            "missing": 0,
+            "nullPartition": true,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "rebates",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 4,
+            "missing": 0,
+            "nullPartition": true,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "net_trading_cost",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 3,
+            "missing": 0,
+            "nullPartition": true,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "execution_count",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 30,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "executed_quantity",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 30,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "premium_turnover",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 30,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "notional_turnover",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 30,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "calculated_realized_gross_profit",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 30,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "period"
+          }
+        ],
+        "ineligible": [
+          "net_funding"
+        ]
+      },
+      {
+        "account": "Paradex",
+        "venue": "paradex",
+        "status": "passed",
+        "historyComplete": false,
+        "buildEvidence": true,
+        "nullDenominations": 0,
+        "samples": [
+          {
+            "metric": "calculated_realized_gross_profit",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 49,
+            "missing": 43,
+            "nullPartition": false,
+            "partial": true,
+            "bucket": "day"
+          },
+          {
+            "metric": "fee_expense",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 49,
+            "missing": 0,
+            "nullPartition": true,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "rebates",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 49,
+            "missing": 0,
+            "nullPartition": true,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "net_trading_cost",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 30,
+            "missing": 0,
+            "nullPartition": true,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "net_funding",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 49,
+            "missing": 0,
+            "nullPartition": true,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "execution_count",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 30,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "executed_quantity",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 30,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "premium_turnover",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 30,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "notional_turnover",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 30,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "calculated_realized_gross_profit",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 49,
+            "missing": 43,
+            "nullPartition": false,
+            "partial": true,
+            "bucket": "period"
+          }
+        ],
+        "ineligible": []
+      },
+      {
+        "account": "Paradex-HYPE",
+        "venue": "paradex",
+        "status": "passed",
+        "historyComplete": false,
+        "buildEvidence": true,
+        "nullDenominations": 0,
+        "samples": [
+          {
+            "metric": "calculated_realized_gross_profit",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 15,
+            "missing": 15,
+            "nullPartition": false,
+            "partial": true,
+            "bucket": "day"
+          },
+          {
+            "metric": "fee_expense",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 15,
+            "missing": 0,
+            "nullPartition": true,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "rebates",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 15,
+            "missing": 0,
+            "nullPartition": true,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "net_trading_cost",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 8,
+            "missing": 0,
+            "nullPartition": true,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "net_funding",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 15,
+            "missing": 0,
+            "nullPartition": true,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "execution_count",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 8,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "executed_quantity",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 8,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "premium_turnover",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 8,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "notional_turnover",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 8,
+            "missing": 0,
+            "nullPartition": false,
+            "partial": false,
+            "bucket": "day"
+          },
+          {
+            "metric": "calculated_realized_gross_profit",
+            "firstPageLimit": 50,
+            "continuationLimit": 50,
+            "pages": 1,
+            "rows": 15,
+            "missing": 15,
+            "nullPartition": false,
+            "partial": true,
+            "bucket": "period"
+          }
+        ],
+        "ineligible": []
+      }
+    ],
+    "directStatus": "passed",
+    "measurements": {
+      "accounts": {
+        "requests": 1,
+        "maxBytes": 1613,
+        "maxMs": 408.39,
+        "p95Ms": 408.39,
+        "successfulRequests": 1
+      },
+      "summary": {
+        "requests": 30,
+        "maxBytes": 717804,
+        "maxMs": 6435.29,
+        "p95Ms": 6387.86,
+        "successfulRequests": 30
+      },
+      "transactions": {
+        "requests": 75,
+        "maxBytes": 145159,
+        "maxMs": 4176.98,
+        "p95Ms": 4105.78,
+        "successfulRequests": 75
+      }
+    }
+  },
+  "authenticated_portal": {
+    "readOnly": true,
+    "capturedAt": "2026-10-22T09:21:27.706Z",
+    "scope": "Direct six-account parser/drill checks plus in-process protected portal handlers with real Supabase authentication/RLS; not deployed browser end-to-end",
+    "portalAccounts": [
+      {
+        "status": "passed",
+        "account": "Paradex",
+        "venue": "paradex",
+        "authenticatedRlsMapping": true,
+        "snapshotRequests": 0,
+        "sample": {
+          "metric": "calculated_realized_gross_profit",
+          "firstPageLimit": 50,
+          "continuationLimit": 50,
+          "pages": 1,
+          "rows": 4,
+          "missing": 0,
+          "nullPartition": false,
+          "partial": false,
+          "bucket": "day"
+        }
+      }
+    ],
+    "measurements": {
+      "auth": {
+        "requests": 5,
+        "maxBytes": 2054,
+        "maxMs": 446.97,
+        "p95Ms": 446.97,
+        "successfulRequests": 5
+      },
+      "mapping": {
+        "requests": 4,
+        "maxBytes": 229,
+        "maxMs": 427.52,
+        "p95Ms": 427.52,
+        "successfulRequests": 4
+      },
+      "summary": {
+        "requests": 3,
+        "maxBytes": 20395,
+        "maxMs": 3655.62,
+        "p95Ms": 3655.62,
+        "successfulRequests": 3
+      },
+      "transactions": {
+        "requests": 1,
+        "maxBytes": 11465,
+        "maxMs": 1303.38,
+        "p95Ms": 1303.38,
+        "successfulRequests": 1
+      }
+    }
+  },
+  "additional_test_login": {
+    "configuration": "VITE_DEV_CLIENT_EMAIL / VITE_DEV_CLIENT_PASSWORD",
+    "outcome": "CLIENT_NOT_LINKED",
+    "status": 403,
+    "interpretation": "Sign-in succeeded; the existing RLS client mapping did not resolve to exactly one client. No mapping or permissions changed."
+  },
+  "gaps": [
+    "Authenticated portal coverage is positive for Paradex only; the other five mapped client sessions were not available.",
+    "Tests exercised real Supabase authentication/RLS and the local protected handlers, not the deployed portal runtime or a live-data browser session.",
+    "Provider source was inspected at local commit 0a9249c; deployed revision equivalence and runtime limits were not independently established.",
+    "All six accounts report history_complete=false; known per-metric financial gaps remain.",
+    "Large application bundle warning remains; no broad polling or application-side accounting was added."
+  ],
+  "timing_interpretation": "Body-inclusive elapsed times and JSON payload bytes from this run, not production percentiles/SLOs. Node fetch payload sizes are decoded bytes; supplied Python smoke reads uncompressed response bodies. Concurrent acceptance traffic can affect timings.",
+  "analytics_timeout_decision": {
+    "default_ms": 30000,
+    "override": "PORTFOLIO_DATA_HUB_ANALYTICS_TIMEOUT_MS",
+    "allowed_ms": [
+      500,
+      30000
+    ],
+    "other_route_default_ms": 10000,
+    "reason": "Supplied smoke measured summary max 25296.24ms and detail max 12828.96ms. The final focused application-shape sweep was faster; 30s provides headroom for broad history and load variability."
+  },
+  "portal_coverage_decision": {
+    "date": "2026-10-22",
+    "source": "Explicit user reply",
+    "decision": "Record the remaining portal coverage gap",
+    "remaining_client_session_checks": "deferred_unverified",
+    "deployment_authorized": false
+  }
+}

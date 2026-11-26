@@ -55,6 +55,10 @@ export function evaluateHubPreflight(env, { production = false } = {}) {
   if (timeout && (!/^\d+$/.test(timeout) || Number(timeout) < 500 || Number(timeout) > 30_000)) {
     fail('PORTFOLIO_DATA_HUB_TIMEOUT_MS must be an integer from 500 to 30000')
   }
+  const analyticsTimeout = env.PORTFOLIO_DATA_HUB_ANALYTICS_TIMEOUT_MS?.trim()
+  if (analyticsTimeout && (!/^\d+$/.test(analyticsTimeout) || Number(analyticsTimeout) < 500 || Number(analyticsTimeout) > 30_000)) {
+    fail('PORTFOLIO_DATA_HUB_ANALYTICS_TIMEOUT_MS must be an integer from 500 to 30000')
+  }
 
   if (!configured('SUPABASE_URL', 'VITE_SUPABASE_URL')) {
     fail('SUPABASE_URL or VITE_SUPABASE_URL is required for authenticated Hub routes')

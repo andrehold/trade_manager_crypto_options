@@ -1,6 +1,6 @@
 # Dashboard transaction analytics first release implementation plan
 
-Status: Packages 1–3 completed on 2026-10-21; Packages 4–5 completed on 2026-10-22. Package 6 has not started.
+Status: Packages 1–3 completed on 2026-10-21; Packages 4–5 completed on 2026-10-22. Package 6 implementation and available validation performed on 2026-10-22; final release sign-off is pending the remaining live portal/runtime checks documented below.
 
 Package 1 capture: [contract mapping, provenance and fixture coverage](../../integrations/2026-10-21-transaction-analytics/README.md), with [validation results](../../integrations/2026-10-21-transaction-analytics/VALIDATION.md). Existing dashboard work is preserved. The documented schema value `live` uses the neutral Live processing label pending provider clarification; production publication semantics remain an integration check.
 
@@ -10,7 +10,9 @@ Package 3: [authenticated client, mounted state, consistency/recovery and valida
 
 Package 4: [trading presentation, dashboard integration and validation](../../integrations/2026-10-21-transaction-analytics/PACKAGE-4.md). The component/dashboard metric/partition/isolation gate passed.
 
-Package 5: [contributing transactions, exact drill scope, pagination recovery and validation](../../integrations/2026-10-21-transaction-analytics/PACKAGE-5.md). The fixture-backed detail/context/pagination gate passed. Unsupported null-denomination scoping and missing build evidence remain explicit service limitations; authenticated production acceptance remains Package 6.
+Package 5: [contributing transactions, exact drill scope, pagination recovery and validation](../../integrations/2026-10-21-transaction-analytics/PACKAGE-5.md). The fixture-backed detail/context/pagination gate passed. Unsupported null-denomination scoping and missing build evidence remain explicit service limitations.
+
+Package 6: [final validation, measured analytics timeout, live evidence and rollout gate](../../integrations/2026-10-21-transaction-analytics/PACKAGE-6.md). Independent full-history Hub acceptance passed for all six accounts; 56 application cells reconciled through 75 pages; actual authenticated portal coverage passed for Paradex. Five mapped client-session checks and deployed portal/runtime verification remain open. The release gate is not signed off; deployment is a separate action.
 
 Add transaction-based realized gross profit, trading costs, verified funding and trading activity to the live client dashboard. Clients should be able to select a period, see the limitations of each result and inspect the contributing transactions without losing the current account overview.
 
